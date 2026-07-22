@@ -12,6 +12,7 @@ import {
   buildMovementDedupeKey,
   buildMovementInsertFromPreview,
   buildStatementImportRecord,
+  canonicalFingerprintFromExistingRow,
   inferBankStatementImportFileType,
   inferBankStatementParserId,
   SANTANDER_EXCEL_CONSOLIDATED_PARSER_ID,
@@ -187,6 +188,153 @@ describe("anti-duplicado", () => {
     const plan = planSantanderBankStatementImport(preview, existing, WS);
     expect(plan.to_insert).toHaveLength(2);
     expect(plan.skipped_duplicates_count).toBe(1);
+  });
+});
+
+describe("FASE BANK-GLOBAL-MOVEMENT-RECEIPT-INVOICE-INTEGRITY-AUDIT-AND-CORRECTION-001 — dedupe cross-parser", () => {
+  const preview = previewBodyFromFixture(SANTANDER_UYU_JULY_AUSZUG_FIXTURE);
+
+  it("caso real Nirmex/Harrison: misma operación ya importada por Excel, ahora vista de nuevo por PDF con descripción distinta -> no crea fila operativa nueva, se reporta como cross_parser_duplicates", () => {
+    const movement = preview.movements[0]!;
+    const plannedFromExcel = buildMovementInsertFromPreview(movement, {
+      workspaceId: WS,
+      accountNumber: preview.account_number,
+      currencyCode: preview.currency_code,
+      parserId: "santander_excel_consolidated_v1",
+    });
+    // Simula el artefacto real de un parser PDF distinto para la MISMA
+    // transferencia ("-- N of M --", espaciado): su propio dedupe_key exacto
+    // (que sí incluye descripción) es DISTINTO al de la fila Excel — por eso
+    // el dedupe_key no la detecta y hace falta el chequeo por huella canónica.
+    const excelRowDescription = `${plannedFromExcel.description} -- 1 of 7 --`;
+    const excelRowDedupeKey = buildMovementDedupeKey({
+      workspaceId: WS,
+      bankName: "Santander",
+      accountNumber: preview.account_number,
+      currency: plannedFromExcel.currency,
+      movementDate: plannedFromExcel.movement_date,
+      bankReference: plannedFromExcel.bank_reference,
+      amount: plannedFromExcel.amount,
+      description: excelRowDescription,
+    });
+    expect(excelRowDedupeKey).not.toBe(plannedFromExcel.dedupe_key);
+
+    const existing: ExistingBankMovementForDedupe[] = [
+      {
+        id: "existing-excel-row",
+        movement_date: plannedFromExcel.movement_date,
+        amount: plannedFromExcel.amount,
+        currency: plannedFromExcel.currency,
+        direction: plannedFromExcel.direction,
+        bank_reference: plannedFromExcel.bank_reference,
+        description: excelRowDescription,
+        account_label: "Santander 000001211749 UYU",
+        bank_name: "Santander",
+        metadata: {
+          ...plannedFromExcel.metadata,
+          dedupe_key: excelRowDedupeKey,
+          canonical_fingerprint: plannedFromExcel.canonical_fingerprint,
+        },
+      },
+    ];
+
+    const plan = planSantanderBankStatementImport(preview, existing, WS, "santander_pdf_v1");
+    const skip = plan.cross_parser_duplicates.find(
+      (d) => d.movement.bank_reference === plannedFromExcel.bank_reference
+    );
+    expect(skip).toBeDefined();
+    expect(skip?.existingMovementId).toBe("existing-excel-row");
+    expect(plan.to_insert.some((r) => r.bank_reference === plannedFromExcel.bank_reference)).toBe(false);
+  });
+
+  it("sin bank_reference nunca se fusiona por huella (solo el dedupe_key exacto sigue vigente)", () => {
+    const movement = { ...preview.movements[0]!, reference: null };
+    const plannedNoRef = buildMovementInsertFromPreview(movement, {
+      workspaceId: WS,
+      accountNumber: preview.account_number,
+      currencyCode: preview.currency_code,
+    });
+    expect(plannedNoRef.canonical_fingerprint).toBeNull();
+
+    const existing: ExistingBankMovementForDedupe[] = [
+      {
+        id: "existing-no-ref",
+        movement_date: plannedNoRef.movement_date,
+        amount: plannedNoRef.amount,
+        currency: plannedNoRef.currency,
+        direction: plannedNoRef.direction,
+        bank_reference: null,
+        description: "OTRA DESCRIPCION TOTALMENTE DISTINTA",
+        account_label: "Santander 000001211749 UYU",
+        bank_name: "Santander",
+        metadata: {},
+      },
+    ];
+    const plan = planSantanderBankStatementImport(
+      { ...preview, movements: [movement] },
+      existing,
+      WS
+    );
+    expect(plan.cross_parser_duplicates).toHaveLength(0);
+    expect(plan.to_insert).toHaveLength(1);
+  });
+
+  it("filas existentes sin id (fixtures legacy) quedan fuera del chequeo cross-parser (solo dedupe_key exacto aplica)", () => {
+    const movement = preview.movements[0]!;
+    const planned = buildMovementInsertFromPreview(movement, {
+      workspaceId: WS,
+      accountNumber: preview.account_number,
+      currencyCode: preview.currency_code,
+    });
+    const existingWithoutId: ExistingBankMovementForDedupe[] = [
+      {
+        movement_date: planned.movement_date,
+        amount: planned.amount,
+        currency: planned.currency,
+        direction: planned.direction,
+        bank_reference: planned.bank_reference,
+        description: "DESCRIPCION DISTINTA SIN ID",
+        account_label: "Santander 000001211749 UYU",
+        bank_name: "Santander",
+        metadata: {},
+      },
+    ];
+    const plan = planSantanderBankStatementImport(preview, existingWithoutId, WS);
+    expect(plan.cross_parser_duplicates).toHaveLength(0);
+    expect(plan.to_insert.some((r) => r.bank_reference === planned.bank_reference)).toBe(true);
+  });
+
+  it("dos filas del mismo archivo comparten huella (superposición interna) -> la segunda se omite como duplicado, no como cross_parser_duplicates", () => {
+    const movement = preview.movements[0]!;
+    const duplicateWithinSameFile = { ...movement, description: `${movement.description} -- 1 of 2 --` };
+    const plan = planSantanderBankStatementImport(
+      { ...preview, movements: [movement, duplicateWithinSameFile] },
+      [],
+      WS
+    );
+    const matches = plan.to_insert.filter((r) => r.bank_reference === movement.reference);
+    expect(matches).toHaveLength(1);
+    expect(plan.cross_parser_duplicates).toHaveLength(0);
+    expect(plan.skipped_duplicates_count).toBeGreaterThanOrEqual(1);
+  });
+
+  it("canonicalFingerprintFromExistingRow reusa metadata.canonical_fingerprint cuando está presente", () => {
+    const stored = "precomputed-fingerprint-value";
+    const fp = canonicalFingerprintFromExistingRow(
+      {
+        movement_date: "2026-04-10",
+        amount: 7567,
+        currency: "UYU",
+        direction: "inflow",
+        bank_reference: "TR0082544541",
+        description: "cualquier cosa",
+        account_label: "Santander 000001211749 UYU",
+        bank_name: "Santander",
+        metadata: { canonical_fingerprint: stored },
+      },
+      WS
+    );
+    expect(fp).toBe(stored);
   });
 });
 

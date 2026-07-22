@@ -15,6 +15,7 @@ import {
   type BankMovement,
 } from "@/lib/bank-movements/bank-movements-types";
 import { batchDeriveMovementReconciliationLevels } from "@/lib/bank/canonical/movement-reconciliation-level";
+import { auditDuplicateBankMovements } from "@/lib/bank/canonical/duplicate-import-audit.server";
 
 export const dynamic = "force-dynamic";
 
@@ -84,11 +85,35 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // FASE BANK-GLOBAL-MOVEMENT-RECEIPT-INVOICE-INTEGRITY-AUDIT-AND-CORRECTION-001
+  // Duplicados de importación (misma operación real, distinto parser/archivo)
+  // — solo lectura, nunca marca nada en DB. Ver duplicate-import-audit.server.ts.
+  let duplicates: Record<string, { canonicalMovementId: string }> = {};
+  if (rows.length > 0) {
+    try {
+      const dates = rows.map((r) => r.movement_date).sort();
+      const groups = await auditDuplicateBankMovements(
+        supabase,
+        tenantCompanyId,
+        dates[0]!,
+        dates[dates.length - 1]!
+      );
+      for (const group of groups) {
+        for (const duplicateId of group.duplicateMovementIds) {
+          duplicates[duplicateId] = { canonicalMovementId: group.canonicalMovementId };
+        }
+      }
+    } catch {
+      duplicates = {};
+    }
+  }
+
   return NextResponse.json({
     ok: true as const,
     data: rows,
     meta: { total: rows.length, migration_pending: false },
     levels,
+    duplicates,
   });
 }
 

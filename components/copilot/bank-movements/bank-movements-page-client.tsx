@@ -42,6 +42,7 @@ import {
   MOVEMENT_LEVEL_LABEL,
   type MovementReconciliationLevel,
 } from "@/lib/bank/canonical/movement-reconciliation-level-labels";
+import { DUPLICATE_OF_IMPORT_LABEL } from "@/lib/bank/canonical/duplicate-import-audit-labels";
 import { resolveImportedBankMovementAmount } from "@/lib/bank-movements/santander-excel-amount";
 import {
   BANK_MOVEMENT_DIRECTION_LABELS,
@@ -153,6 +154,7 @@ export function BankMovementsPageClient() {
   const [tesoreriaOpen, setTesoreriaOpen] = useState(false);
   const [movements, setMovements] = useState<BankMovement[]>([]);
   const [movementLevels, setMovementLevels] = useState<Record<string, MovementReconciliationLevel>>({});
+  const [movementDuplicates, setMovementDuplicates] = useState<Record<string, { canonicalMovementId: string }>>({});
   const [imports, setImports] = useState<BankStatementImport[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<FormState | null>(null);
@@ -171,11 +173,13 @@ export function BankMovementsPageClient() {
       ]);
       const movementsJson = (await movementsRes.json()) as ListResponse<BankMovement> & {
         levels?: Record<string, MovementReconciliationLevel>;
+        duplicates?: Record<string, { canonicalMovementId: string }>;
       };
       const importsJson = (await importsRes.json()) as ListResponse<BankStatementImport>;
       if (movementsJson.ok) {
         setMovements(movementsJson.data ?? []);
         setMovementLevels(movementsJson.levels ?? {});
+        setMovementDuplicates(movementsJson.duplicates ?? {});
       }
       if (importsJson.ok) setImports(importsJson.data ?? []);
     } catch {
@@ -199,7 +203,11 @@ export function BankMovementsPageClient() {
     const monthPrefix = todayYmd().slice(0, 7);
     // Los KPIs reflejan la operación (post inicio operativo): los históricos no
     // deben contarse como "pendientes de identificar" ni ensuciar las métricas.
-    const operational = movements.filter((m) => !isBankMovementHistorical(m));
+    // Los duplicados de importación (misma operación real vista por otro
+    // archivo/parser) tampoco cuentan — no son operaciones reales separadas.
+    const operational = movements.filter(
+      (m) => !isBankMovementHistorical(m) && !movementDuplicates[m.id]
+    );
     return {
       pending: operational.filter((m) => m.status === "pending" || m.status === "needs_review")
         .length,
@@ -211,7 +219,7 @@ export function BankMovementsPageClient() {
       ).length,
       reviewed: operational.filter((m) => m.status === "matched" || m.status === "ignored").length,
     };
-  }, [movements]);
+  }, [movements, movementDuplicates]);
 
   const summaryCards = [
     { label: "Pendientes de identificar", value: counts.pending },
@@ -354,7 +362,14 @@ export function BankMovementsPageClient() {
   // FASE BANK-FULL-RECONCILIATION-UI-CORRECTION-001 — el estado visible de un
   // ingreso ya no es el legacy pending/matched/ignored: refleja el nivel real
   // (identificación + link + allocations), calculado en lote server-side.
+  //
+  // FASE BANK-GLOBAL-MOVEMENT-RECEIPT-INVOICE-INTEGRITY-AUDIT-AND-CORRECTION-001
+  // — un duplicado de importación (misma operación real vista por otro
+  // archivo/parser) nunca muestra el estado de reconciliación normal: no es
+  // una operación real separada, así que ni "Sin identificar" ni ningún otro
+  // nivel aplica.
   const movementStatusLabel = (m: BankMovement): string => {
+    if (movementDuplicates[m.id]) return DUPLICATE_OF_IMPORT_LABEL;
     if (m.direction !== "inflow" || m.status === "ignored") return BANK_MOVEMENT_STATUS_LABELS[m.status];
     const level = movementLevels[m.id];
     return level ? MOVEMENT_LEVEL_LABEL[level] : BANK_MOVEMENT_STATUS_LABELS[m.status];
@@ -410,6 +425,33 @@ export function BankMovementsPageClient() {
 
   const renderMovementActions = (m: BankMovement) => {
     const level = m.direction === "inflow" && m.status !== "ignored" ? movementLevels[m.id] : undefined;
+    // FASE BANK-GLOBAL-MOVEMENT-RECEIPT-INVOICE-INTEGRITY-AUDIT-AND-CORRECTION-001
+    // — un duplicado nunca ofrece identificar/vincular/ignorar/reabrir: no es
+    // una operación real separada. Solo queda editar (para corregirlo a mano)
+    // y eliminar; la evidencia del archivo que lo generó se conserva en
+    // metadata.additional_sources de la fila canónica, nunca se borra sola.
+    if (movementDuplicates[m.id]) {
+      return (
+        <div className="flex flex-wrap justify-end gap-1.5">
+          <button
+            type="button"
+            onClick={() => setForm(formFromMovement(m))}
+            className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+            aria-label="Editar movimiento"
+          >
+            <Pencil className="h-3.5 w-3.5" aria-hidden />
+          </button>
+          <button
+            type="button"
+            onClick={() => void remove(m)}
+            className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+            aria-label="Eliminar movimiento"
+          >
+            <Trash2 className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        </div>
+      );
+    }
     return (
     <div className="flex flex-wrap justify-end gap-1.5">
       <button

@@ -29,6 +29,8 @@ export type ConfirmSantanderImportResult = {
   inserted_count: number;
   skipped_duplicates_count: number;
   total_preview_count: number;
+  /** Duplicados cross-parser: misma operación real ya en DB desde otro archivo/parser. Nunca crean fila nueva. */
+  cross_parser_duplicates_count: number;
   /** Presente si el extracto se rechazó por no ser cuenta de EASY. */
   blocked?: BlockedAccountInfo;
 };
@@ -55,6 +57,7 @@ export async function confirmSantanderBankStatementImport(params: {
       import_id: null,
       inserted_count: 0,
       skipped_duplicates_count: 0,
+      cross_parser_duplicates_count: 0,
       total_preview_count: preview.movements.length,
       blocked: {
         account_number: preview.account_number,
@@ -67,7 +70,7 @@ export async function confirmSantanderBankStatementImport(params: {
   const { data: existingRows, error: loadError } = await supabase
     .from("bank_movements")
     .select(
-      "movement_date, amount, currency, direction, bank_reference, description, account_label, bank_name, metadata"
+      "id, movement_date, amount, currency, direction, bank_reference, description, account_label, bank_name, metadata"
     )
     .eq("workspace_id", workspaceId)
     .eq("bank_name", "Santander")
@@ -133,10 +136,52 @@ export async function confirmSantanderBankStatementImport(params: {
     }
   }
 
+  // FASE BANK-GLOBAL-MOVEMENT-RECEIPT-INVOICE-INTEGRITY-AUDIT-AND-CORRECTION-001
+  // Nunca se crea una segunda fila operativa para la misma operación real ya
+  // vista por otro archivo/parser: se registra este archivo como evidencia
+  // adicional sobre la fila existente (metadata.additional_sources), append-
+  // only, sin tocar movement_date/amount/currency/status/identificaciones ni
+  // links de esa fila.
+  const crossParserDuplicates = plan.cross_parser_duplicates.filter((d) => d.existingMovementId);
+  if (crossParserDuplicates.length > 0) {
+    const existingById = new Map(
+      ((existingRows ?? []) as ExistingBankMovementForDedupe[]).map((row) => [row.id, row])
+    );
+    for (const dup of crossParserDuplicates) {
+      const existingRow = existingById.get(dup.existingMovementId);
+      if (!existingRow) continue;
+      const currentMetadata = (existingRow.metadata ?? {}) as Record<string, unknown>;
+      const additionalSources = Array.isArray(currentMetadata.additional_sources)
+        ? (currentMetadata.additional_sources as unknown[])
+        : [];
+      const { error: updateError } = await supabase
+        .from("bank_movements")
+        .update({
+          metadata: {
+            ...currentMetadata,
+            additional_sources: [
+              ...additionalSources,
+              {
+                import_id: importId,
+                file_name: fileName,
+                parser: parserId,
+                seen_at: new Date().toISOString(),
+              },
+            ],
+          },
+        })
+        .eq("id", dup.existingMovementId);
+      // Best-effort: si la evidencia no se pudo registrar, el import ya
+      // insertó/omitió lo correcto — no se revierte por esto.
+      if (updateError) continue;
+    }
+  }
+
   return {
     import_id: importId,
     inserted_count: plan.to_insert.length,
     skipped_duplicates_count: plan.skipped_duplicates_count,
+    cross_parser_duplicates_count: crossParserDuplicates.length,
     total_preview_count: plan.total_preview_count,
   };
 }
