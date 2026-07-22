@@ -61,6 +61,8 @@ type IdentificationRow = {
   actorEmail: string | null;
 };
 
+const BANK_MOVEMENT_LINK_BASE = "/copilot/movimientos-bancarios?movementId=";
+
 type ReconciledPaymentRow = {
   movementId: string;
   movementDate: string;
@@ -216,6 +218,12 @@ export function ClientPayerMemorySection({ companyId }: { companyId: string }) {
                 </span>
                 {row.reason ? <span className="text-[var(--copilot-muted)]"> · {row.reason}</span> : null}
                 {row.actorEmail ? <span className="text-[var(--copilot-muted)]"> · {row.actorEmail}</span> : null}
+                <a
+                  href={`${BANK_MOVEMENT_LINK_BASE}${row.movementId}`}
+                  className="ml-2 font-medium text-[var(--copilot-accent)] hover:underline"
+                >
+                  Ver en Banco
+                </a>
               </li>
             ))}
           </ul>

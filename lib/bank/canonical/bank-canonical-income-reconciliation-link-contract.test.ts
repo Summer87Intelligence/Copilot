@@ -13,7 +13,7 @@ const incomeWorkspace = readFileSync(join(COMPONENTS_ROOT, "bank-income-workspac
 
 describe("Deep link: URLs antiguas normalizan a Conciliación", () => {
   it("reconoce tab=ingresos, reconciliation y conciliacion → setTab(conciliacion)", () => {
-    const effectBlock = pageClient.match(/useEffect\(\(\) => \{\s*if \(deepLinkApplied[\s\S]*?\}, \[searchParams\]\);/)![0];
+    const effectBlock = pageClient.match(/useEffect\(\(\) => \{\s*if \(deepLinkApplied[\s\S]*?\}, \[searchParams, openSimpleAssociation\]\);/)![0];
     expect(effectBlock).toContain('requestedTab === "ingresos"');
     expect(effectBlock).toContain('requestedTab === "reconciliation"');
     expect(effectBlock).toContain('requestedTab === "conciliacion"');
@@ -21,10 +21,10 @@ describe("Deep link: URLs antiguas normalizan a Conciliación", () => {
     expect(effectBlock).not.toContain('setTab("ingresos")');
   });
 
-  it("preserva movementId", () => {
-    const effectBlock = pageClient.match(/useEffect\(\(\) => \{\s*if \(deepLinkApplied[\s\S]*?\}, \[searchParams\]\);/)![0];
+  it("preserva movementId abriendo el panel simple de asociación directo (FASE BANK-SIMPLE-FLOW-COMPLETION-001)", () => {
+    const effectBlock = pageClient.match(/useEffect\(\(\) => \{\s*if \(deepLinkApplied[\s\S]*?\}, \[searchParams, openSimpleAssociation\]\);/)![0];
     expect(effectBlock).toContain('searchParams.get("movementId")');
-    expect(effectBlock).toContain("setFocusMovementId(movementIdParam)");
+    expect(effectBlock).toContain("openSimpleAssociation(movementIdParam)");
   });
 
   it("BankIncomeWorkspace consume el foco vía initialMovementId", () => {

@@ -51,15 +51,15 @@ describe("Deep links preservan movementId y normalizan URLs antiguas", () => {
     expect(pageClient).toContain('setTab("conciliacion")');
   });
 
-  it("preserva movementId al enfocar", () => {
-    expect(pageClient).toContain("setFocusMovementId(movementIdParam)");
+  it("preserva movementId al enfocar, abriendo el panel simple directo", () => {
+    expect(pageClient).toContain("openSimpleAssociation(movementIdParam)");
   });
 });
 
 describe("Movimientos: sin writer directo a matched", () => {
-  it("entradas usan Revisar conciliación", () => {
-    expect(pageClient).toContain("Revisar conciliación");
-    expect(pageClient).toContain("goToReconciliationForMovement");
+  it("entradas abren el panel simple de asociación (FASE BANK-SIMPLE-FLOW-COMPLETION-001, ya no 'Revisar conciliación')", () => {
+    expect(pageClient).toContain("openSimpleAssociation");
+    expect(pageClient).not.toContain("Revisar conciliación");
   });
 
   it("salidas usan Vincular con pago programado", () => {
@@ -75,18 +75,20 @@ describe("Movimientos: sin writer directo a matched", () => {
   });
 });
 
-describe("Conciliación consume ÚNICAMENTE el motor canónico (D)", () => {
-  // FASE BANK-RECONCILIATION-SIMPLE-UNIFIED-WORKSPACE-001 — reemplazó las dos
-  // sub-vistas visibles ("Identificar clientes"/"Vincular recibos") por una
-  // única vista (UnifiedReconciliationWorkspace); los dos motores existentes
-  // (identificación en lote, confirmación de recibo enfocada) se reusan sin
-  // cambios, ahora como acciones contextuales (ClusterReviewDrawer /
-  // FocusedReceiptConfirmDrawer) en vez de pestañas que el usuario deba elegir.
-  it("el tab 'conciliacion' monta la vista unificada y reusa los motores existentes como acciones contextuales", () => {
+describe("Conciliación: lista plana movimiento→cliente (FASE BANK-SIMPLE-FLOW-COMPLETION-001)", () => {
+  // El tab 'conciliacion' ya no monta clusters por pagador, colas de revisión
+  // ni drawers de recibo — es una lista plana de movimientos que abre el
+  // mismo panel simple de asociación que Movimientos. La infraestructura
+  // vieja (UnifiedReconciliationWorkspace/ClusterReviewDrawer/
+  // FocusedReceiptConfirmDrawer) sigue existiendo como archivos, pero ya no
+  // se monta desde acá.
+  it("el tab 'conciliacion' monta SimpleReconciliationList y el panel único de asociación, no la infraestructura vieja de clusters/recibos", () => {
     expect(pageClient).toMatch(/tab === "conciliacion" \? \(/);
-    expect(pageClient).toContain("UnifiedReconciliationWorkspace");
-    expect(pageClient).toContain("ClusterReviewDrawer");
-    expect(pageClient).toContain("FocusedReceiptConfirmDrawer");
+    expect(pageClient).toContain("SimpleReconciliationList");
+    expect(pageClient).toContain("SimpleMovementAssociationPanel");
+    expect(pageClient).not.toContain("UnifiedReconciliationWorkspace");
+    expect(pageClient).not.toContain("ClusterReviewDrawer");
+    expect(pageClient).not.toContain("FocusedReceiptConfirmDrawer");
     expect(pageClient).not.toContain("BankClientIdentificationWorkspace");
   });
 

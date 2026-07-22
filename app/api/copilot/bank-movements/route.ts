@@ -95,6 +95,10 @@ export async function GET(request: NextRequest) {
   // usan el flujo de Tesorería). Batch en 3-4 queries, nunca 1 por fila.
   const inflowRows = rows.filter((r) => r.direction === "inflow" && r.status !== "ignored");
   let levels: Record<string, string> = {};
+  // FASE BANK-SIMPLE-FLOW-COMPLETION-001 — la columna "Cliente" de la lista
+  // simple (Movimientos/Conciliación) necesita el nombre, no solo el id;
+  // resuelto en un batch adicional (nunca 1 query por fila).
+  let clients: Record<string, { clientCompanyId: string; clientName: string | null }> = {};
   if (inflowRows.length > 0) {
     try {
       const levelMap = await batchDeriveMovementReconciliationLevels(
@@ -103,8 +107,27 @@ export async function GET(request: NextRequest) {
         inflowRows.map((r) => ({ id: r.id, currency: r.currency, amount: Number(r.amount) }))
       );
       levels = Object.fromEntries([...levelMap.entries()].map(([id, d]) => [id, d.level]));
+      const clientIds = Array.from(
+        new Set([...levelMap.values()].map((d) => d.clientCompanyId).filter((id): id is string => Boolean(id)))
+      );
+      if (clientIds.length > 0) {
+        const { data: clientRows } = await supabase
+          .from("proto_companies")
+          .select("id, name")
+          .in("id", clientIds);
+        const nameById = new Map((clientRows ?? []).map((c) => [(c as { id: string }).id, (c as { name: string }).name]));
+        for (const [movementId, detail] of levelMap.entries()) {
+          if (detail.clientCompanyId) {
+            clients[movementId] = {
+              clientCompanyId: detail.clientCompanyId,
+              clientName: nameById.get(detail.clientCompanyId) ?? null,
+            };
+          }
+        }
+      }
     } catch {
       levels = {};
+      clients = {};
     }
   }
 
@@ -142,6 +165,7 @@ export async function GET(request: NextRequest) {
     meta: { total: rows.length, migration_pending: false },
     levels,
     duplicates,
+    clients,
   });
 }
 

@@ -24,18 +24,18 @@ describe("Conciliación: vista única unificada, sin tabs principales nuevos", (
     expect(ids).toEqual(["importar", "movimientos", "conciliacion", "historial"]);
   });
 
-  // FASE BANK-RECONCILIATION-SIMPLE-UNIFIED-WORKSPACE-001 — Conciliación dejó
-  // de exigir elegir manualmente entre "Identificar clientes" y "Vincular
-  // recibos"; ambos flujos existentes siguen montados (reusados, nunca
-  // duplicados) pero se abren como acciones contextuales desde la vista
-  // unificada, no como pestañas visibles que el usuario deba operar a mano.
-  it("Conciliación monta la vista unificada, y reusa (no reimplementa) los flujos existentes de identificar/vincular", () => {
+  // FASE BANK-SIMPLE-FLOW-COMPLETION-001 — Conciliación ya no exige elegir
+  // entre "Identificar clientes"/"Vincular recibos" NI monta la vista
+  // unificada de clusters: es una lista plana de movimientos que abre el
+  // mismo panel simple de asociación que Movimientos.
+  it("Conciliación monta la lista plana simple, no las sub-vistas ni la infraestructura vieja de clusters/recibos", () => {
     expect(pageClient).not.toContain('useState<"identificar" | "vincular">');
     expect(pageClient).not.toContain(">Identificar clientes<");
     expect(pageClient).not.toContain(">Vincular recibos<");
-    expect(pageClient).toContain("UnifiedReconciliationWorkspace");
-    expect(pageClient).toContain("ClusterReviewDrawer");
-    expect(pageClient).toContain("FocusedReceiptConfirmDrawer");
+    expect(pageClient).toContain("SimpleReconciliationList");
+    expect(pageClient).not.toContain("UnifiedReconciliationWorkspace");
+    expect(pageClient).not.toContain("ClusterReviewDrawer");
+    expect(pageClient).not.toContain("FocusedReceiptConfirmDrawer");
     expect(pageClient).not.toMatch(/fixed inset-0[\s\S]{0,200}BankIncomeWorkspace/);
   });
 

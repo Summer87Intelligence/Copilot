@@ -7,13 +7,8 @@ import { Pencil, Plus, Sparkles, Trash2, EyeOff, Eye, X } from "lucide-react";
 import { BankMovementsFiltersBar } from "@/components/copilot/bank-movements/bank-movements-filters-bar";
 import { BankMovementsImportPanel } from "@/components/copilot/bank-movements/bank-movements-import-panel";
 import { BankMovementsReconciliationPanel } from "@/components/copilot/bank-movements/bank-movements-reconciliation-panel";
-import { ClusterReviewDrawer } from "@/components/copilot/bank-movements/bank-client-identification-workspace";
-import { FocusedReceiptConfirmDrawer } from "@/components/copilot/bank-movements/focused-receipt-confirm-drawer";
 import { SimpleMovementAssociationPanel } from "@/components/copilot/bank-movements/simple-movement-association-panel";
-import {
-  UnifiedReconciliationWorkspace,
-  type OpenReceiptHints,
-} from "@/components/copilot/bank-movements/unified-reconciliation-workspace";
+import { SimpleReconciliationList } from "@/components/copilot/bank-movements/simple-reconciliation-list";
 import { BankHistoryPanel } from "@/components/copilot/bank-movements/bank-history-panel";
 
 import {
@@ -44,7 +39,6 @@ import {
 } from "@/lib/bank-movements/bank-movements-filters";
 import { isBankMovementUiHidden } from "@/lib/bank-movements/bank-movement-visibility";
 import { isBankMovementHistorical } from "@/lib/bank/canonical/historical-policy";
-import { derivePayerClusterKey } from "@/lib/bank/canonical/bank-payer-identification";
 import type { MovementReconciliationLevel } from "@/lib/bank/canonical/movement-reconciliation-level-labels";
 import { DUPLICATE_OF_IMPORT_LABEL } from "@/lib/bank/canonical/duplicate-import-audit-labels";
 import {
@@ -148,20 +142,21 @@ export function BankMovementsPageClient() {
   // que `inflow_readonly` jamás puede colar un canWriteBank=true acá.
   const canWriteBank = canMutateBankMovementRecord(bankScope);
   const [tab, setTab] = useState<BankTab>("movimientos");
-  // FASE BANK-RECONCILIATION-SIMPLE-UNIFIED-WORKSPACE-001 — Conciliación ya no
-  // tiene dos sub-vistas separadas; ambos flujos existentes (identificación en
-  // lote, búsqueda de recibo) se abren como acciones contextuales desde la
-  // vista unificada, nunca como pestañas que el usuario deba elegir a mano.
-  const [identifyClusterKey, setIdentifyClusterKey] = useState<string | null>(null);
-  const [focusClusterKey, setFocusClusterKey] = useState<string | null>(null);
   const deepLinkApplied = useRef(false);
+  // FASE BANK-SIMPLE-MOVEMENT-TO-CLIENT-RESET-001 — panel simple de
+  // asociación movimiento→cliente. Es el ÚNICO drawer de Conciliación: se abre
+  // directo desde Movimientos o Conciliación, sin cambiar de pestaña salvo
+  // que el deep-link pida explícitamente la pestaña Conciliación.
+  const [simpleAssociationMovementId, setSimpleAssociationMovementId] = useState<string | null>(null);
+  const openSimpleAssociation = useCallback((movementId: string) => {
+    setSimpleAssociationMovementId(movementId);
+  }, []);
 
   // Deep link desde el cuaderno de trabajo / URLs antiguas de las pestañas
-  // extintas "Conciliación" independiente e "Ingresos" (FASE
-  // BANK-SIMPLE-RECONCILIATION-AND-PAYER-MEMORY-001): ?tab=reconciliation |
+  // extintas "Conciliación" independiente e "Ingresos": ?tab=reconciliation |
   // ?tab=conciliacion | ?tab=ingresos normalizan todas a la pestaña
-  // Conciliación actual, preservando movementId/suggestionId para enfocar el
-  // caso puntual. Ninguna ruta queda huérfana.
+  // Conciliación actual; ?movementId abre directo el panel de asociación del
+  // movimiento exacto (sin depender de en qué pestaña haya quedado la app).
   useEffect(() => {
     if (deepLinkApplied.current) return;
     const requestedTab = searchParams.get("tab");
@@ -174,32 +169,17 @@ export function BankMovementsPageClient() {
       requestedTab === "reconciliation"
     ) {
       setTab("conciliacion");
-      if (movementIdParam) setFocusMovementId(movementIdParam);
     }
+    if (movementIdParam) openSimpleAssociation(movementIdParam);
     deepLinkApplied.current = true;
-  }, [searchParams]);
-  const [focusMovementId, setFocusMovementId] = useState<string | null>(null);
-  const [receiptFocusMovementId, setReceiptFocusMovementId] = useState<string | null>(null);
-  const [receiptFocusHints, setReceiptFocusHints] = useState<OpenReceiptHints | undefined>(undefined);
-  // FASE BANK-SIMPLE-MOVEMENT-TO-CLIENT-RESET-001 — panel simple de
-  // asociación movimiento→cliente. Se abre directo desde Movimientos, sin
-  // cambiar de pestaña. Nunca convive con los otros drawers de Conciliación
-  // (mismo criterio de exclusividad que evitó el bug de drawers cruzados).
-  const [simpleAssociationMovementId, setSimpleAssociationMovementId] = useState<string | null>(null);
-  const openSimpleAssociation = useCallback((movementId: string) => {
-    setIdentifyClusterKey(null);
-    setReceiptFocusMovementId(null);
-    setReceiptFocusHints(undefined);
-    setFocusClusterKey(null);
-    setFocusMovementId(null);
-    setSimpleAssociationMovementId(movementId);
-  }, []);
-  const returnToMovimientosRef = useRef(false);
-  const savedScrollY = useRef(0);
+  }, [searchParams, openSimpleAssociation]);
   const [tesoreriaOpen, setTesoreriaOpen] = useState(false);
   const [movements, setMovements] = useState<BankMovement[]>([]);
   const [movementLevels, setMovementLevels] = useState<Record<string, MovementReconciliationLevel>>({});
   const [movementDuplicates, setMovementDuplicates] = useState<Record<string, { canonicalMovementId: string }>>({});
+  const [movementClients, setMovementClients] = useState<
+    Record<string, { clientCompanyId: string; clientName: string | null }>
+  >({});
   const [imports, setImports] = useState<BankStatementImport[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<FormState | null>(null);
@@ -228,12 +208,14 @@ export function BankMovementsPageClient() {
       const movementsJson = (await movementsRes.json()) as ListResponse<BankMovement> & {
         levels?: Record<string, MovementReconciliationLevel>;
         duplicates?: Record<string, { canonicalMovementId: string }>;
+        clients?: Record<string, { clientCompanyId: string; clientName: string | null }>;
       };
       const importsJson = (await importsRes.json()) as ListResponse<BankStatementImport>;
       if (movementsJson.ok) {
         setMovements(movementsJson.data ?? []);
         setMovementLevels(movementsJson.levels ?? {});
         setMovementDuplicates(movementsJson.duplicates ?? {});
+        setMovementClients(movementsJson.clients ?? {});
       }
       if (importsJson.ok) setImports(importsJson.data ?? []);
     } catch {
@@ -398,106 +380,6 @@ export function BankMovementsPageClient() {
   const movementAmountLabel = (m: BankMovement) =>
     `${m.currency} ${numberFormatter.format(resolveImportedBankMovementAmount(m))}`;
 
-  // FASE BANK-END-TO-END-RECONCILIATION-FLOW-UX-CORRECTION-001 —
-  // Acciones de fila abren Conciliación unificada con el cluster/movimiento
-  // exacto. Confirmar con recibo usa FocusedReceiptConfirmDrawer (1 movimiento),
-  // nunca la bandeja general de ingresos pendientes.
-  const goToReconciliationForMovement = useCallback(
-    (movementId: string, _level?: MovementReconciliationLevel) => {
-      const m = movements.find((row) => row.id === movementId);
-      if (!m) {
-        savedScrollY.current = typeof window !== "undefined" ? window.scrollY : 0;
-        returnToMovimientosRef.current = true;
-        setReceiptFocusMovementId(null);
-        setReceiptFocusHints(undefined);
-        setFocusMovementId(movementId);
-        setFocusClusterKey(null);
-        setTab("conciliacion");
-        return;
-      }
-      if (m.direction !== "inflow") {
-        setTesoreriaOpen(true);
-        return;
-      }
-      const clusterKey = derivePayerClusterKey({
-        movementId: m.id,
-        movementDate: m.movement_date,
-        amount: Number(m.amount),
-        currency: m.currency,
-        description: m.description,
-        bankReference: m.bank_reference,
-        bankName: null,
-      });
-      // FASE BANK-RECONCILIATION-FULL-SYSTEM-AUDIT-AND-SIMPLIFICATION-001 — el
-      // drawer de recibo enfocado solo se monta dentro del bloque `tab ===
-      // "conciliacion"`. Sin este `setTab`, el click quedaba en Movimientos
-      // como no-op silencioso (bug reproducido: "Identificar cliente" no
-      // llevaba a ningún lado para pagadores sin nombre derivable). También
-      // limpiamos el foco de cluster/movimiento previo para que nunca queden
-      // dos drawers de movimientos distintos montados a la vez.
-      if (!clusterKey) {
-        savedScrollY.current = typeof window !== "undefined" ? window.scrollY : 0;
-        returnToMovimientosRef.current = true;
-        setFocusMovementId(null);
-        setFocusClusterKey(null);
-        setReceiptFocusHints(undefined);
-        setReceiptFocusMovementId(movementId);
-        setTab("conciliacion");
-        return;
-      }
-      savedScrollY.current = typeof window !== "undefined" ? window.scrollY : 0;
-      returnToMovimientosRef.current = true;
-      setReceiptFocusMovementId(null);
-      setReceiptFocusHints(undefined);
-      setFocusMovementId(movementId);
-      setFocusClusterKey(clusterKey);
-      setTab("conciliacion");
-    },
-    [movements]
-  );
-
-  // Deep-link / foco: derivar cluster si falta. Sin cluster, abrir identify
-  // vía ClusterReviewDrawer no aplica — dejamos el foco en Conciliación con
-  // movementId; nunca montamos la bandeja general de ingresos como listado.
-  useEffect(() => {
-    if (!focusMovementId || tab !== "conciliacion") return;
-    const m = movements.find((row) => row.id === focusMovementId);
-    if (!m) return;
-    if (m.direction !== "inflow") {
-      setTesoreriaOpen(true);
-      setFocusMovementId(null);
-      return;
-    }
-    if (focusClusterKey) return;
-    const clusterKey = derivePayerClusterKey({
-      movementId: m.id,
-      movementDate: m.movement_date,
-      amount: Number(m.amount),
-      currency: m.currency,
-      description: m.description,
-      bankReference: m.bank_reference,
-      bankName: null,
-    });
-    if (clusterKey) {
-      setFocusClusterKey(clusterKey);
-      return;
-    }
-    // Sin cluster derivable: no dejar el deep-link "colgado" en Conciliación
-    // sin caso que mostrar — abrir directo el drawer de confirmar recibo.
-    setFocusMovementId(null);
-    setReceiptFocusHints(undefined);
-    setReceiptFocusMovementId(m.id);
-  }, [focusMovementId, focusClusterKey, movements, tab]);
-
-  const restoreMovimientosIfNeeded = useCallback(() => {
-    if (!returnToMovimientosRef.current) return;
-    returnToMovimientosRef.current = false;
-    setTab("movimientos");
-    requestAnimationFrame(() => {
-      if (typeof window !== "undefined") window.scrollTo(0, savedScrollY.current);
-    });
-  }, []);
-
   const hideOrRestoreMovement = useCallback(
     async (m: BankMovement, action: "hide" | "restore") => {
       const hidden = isBankMovementUiHidden(m.metadata);
@@ -647,10 +529,10 @@ export function BankMovementsPageClient() {
         m.direction === "inflow" ? (
           <button
             type="button"
-            onClick={() => goToReconciliationForMovement(m.id, level)}
+            onClick={() => openSimpleAssociation(m.id)}
             className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
           >
-            Revisar conciliación
+            Ver detalle
           </button>
         ) : (
           <button
@@ -996,52 +878,15 @@ export function BankMovementsPageClient() {
 
       {tab === "conciliacion" ? (
         <div className="space-y-3">
-          <UnifiedReconciliationWorkspace
-            onChanged={load}
-            onOpenIdentify={(clusterKey) => {
-              setReceiptFocusMovementId(null);
-              setReceiptFocusHints(undefined);
-              setSimpleAssociationMovementId(null);
-              setIdentifyClusterKey(clusterKey);
-            }}
-            onOpenReceipt={(movementId, hints) => {
-              setIdentifyClusterKey(null);
-              setSimpleAssociationMovementId(null);
-              setReceiptFocusHints(hints);
-              setReceiptFocusMovementId(movementId);
-            }}
-            initialClusterKey={focusClusterKey}
-            initialMovementId={focusMovementId}
-            onInitialFocusConsumed={() => {
-              setFocusClusterKey(null);
-              setFocusMovementId(null);
-            }}
-            onCaseClosed={restoreMovimientosIfNeeded}
+          <SimpleReconciliationList
+            movements={movements}
+            movementLevels={movementLevels}
+            movementDuplicates={movementDuplicates}
+            movementClients={movementClients}
+            canWriteBank={canWriteBank}
+            onOpenAssociation={openSimpleAssociation}
+            onRestore={(m) => void hideOrRestoreMovement(m, "restore")}
           />
-
-          {identifyClusterKey ? (
-            <ClusterReviewDrawer
-              clusterKey={identifyClusterKey}
-              onClose={() => setIdentifyClusterKey(null)}
-              onConfirmed={() => {
-                setIdentifyClusterKey(null);
-                load();
-              }}
-            />
-          ) : null}
-
-          {receiptFocusMovementId ? (
-            <FocusedReceiptConfirmDrawer
-              movementId={receiptFocusMovementId}
-              onClose={() => {
-                setReceiptFocusMovementId(null);
-                setReceiptFocusHints(undefined);
-              }}
-              onChanged={load}
-              expectedHasCompatibleReceipt={receiptFocusHints?.expectedHasCompatibleReceipt}
-              clientLabel={receiptFocusHints?.clientLabel}
-            />
-          ) : null}
         </div>
       ) : null}
 

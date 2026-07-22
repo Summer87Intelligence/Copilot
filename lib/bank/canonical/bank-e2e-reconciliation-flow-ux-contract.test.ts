@@ -43,16 +43,16 @@ describe("Banco tabs y chrome", () => {
 });
 
 describe("Foco exacto de movimiento", () => {
-  it("Identificar desde Movimientos preserva return + scroll y abre Conciliación", () => {
-    expect(pageClient).toContain("returnToMovimientosRef");
-    expect(pageClient).toContain("restoreMovimientosIfNeeded");
-    expect(pageClient).toContain("savedScrollY");
-    expect(pageClient).toContain("onCaseClosed={restoreMovimientosIfNeeded}");
-    expect(pageClient).toContain("goToReconciliationForMovement");
+  // FASE BANK-SIMPLE-FLOW-COMPLETION-001 — ya no hace falta preservar scroll
+  // ni "volver" a Movimientos: el panel simple se abre como overlay sobre
+  // cualquier pestaña (Movimientos o Conciliación), sin navegar a otro lado.
+  it("Identificar desde Movimientos/Conciliación abre el panel simple con el movementId exacto, sin cambiar de pestaña", () => {
+    expect(pageClient).toContain("SimpleMovementAssociationPanel");
+    expect(pageClient).toContain("openSimpleAssociation");
+    expect(pageClient).toMatch(/simpleAssociationMovementId \? \(/);
   });
 
-  it("Confirmar con recibo abre FocusedReceiptConfirmDrawer (1 movementId), no listado de pendientes", () => {
-    expect(pageClient).toContain("FocusedReceiptConfirmDrawer");
+  it("standalone: FocusedReceiptConfirmDrawer (código conservado, ya no montado por defecto) sigue apuntando a 1 movementId", () => {
     expect(focused).toContain("canonical-suggestions?workspace=income&movementIds=");
     expect(focused).toContain("Confirmar con recibo");
     expect(focused).not.toContain("status: \"pendientes\"");
@@ -83,29 +83,25 @@ describe("Foco exacto de movimiento", () => {
   });
 });
 
-describe("Un solo drawer a la vez (sin estado cruzado entre movimientos)", () => {
-  it("Identificar cliente sin cluster derivable abre el drawer de recibo Y cambia a la pestaña Conciliación (bug: quedaba como no-op silencioso, el drawer solo se monta bajo tab==='conciliacion')", () => {
-    const noClusterBranch = pageClient.match(
-      /if \(!clusterKey\) \{[\s\S]*?setTab\("conciliacion"\);\s*return;\s*\}/
-    );
-    expect(noClusterBranch).not.toBeNull();
-    expect(noClusterBranch![0]).toContain("setFocusMovementId(null)");
-    expect(noClusterBranch![0]).toContain("setFocusClusterKey(null)");
-    expect(noClusterBranch![0]).toContain("setReceiptFocusMovementId(movementId)");
+describe("Un solo panel a la vez (FASE BANK-SIMPLE-FLOW-COMPLETION-001: un único drawer, sin estado cruzado posible)", () => {
+  // Con un solo drawer (SimpleMovementAssociationPanel) controlado por un
+  // único id de movimiento (simpleAssociationMovementId), no puede existir el
+  // bug de dos drawers de movimientos distintos montados a la vez: abrir
+  // uno nuevo siempre reemplaza el anterior (mismo setState), nunca los
+  // acumula.
+  it("un único estado (simpleAssociationMovementId) controla el único drawer de asociación", () => {
+    const stateDecl = pageClient.match(/const \[simpleAssociationMovementId, setSimpleAssociationMovementId\] = useState<string \| null>\(null\);/);
+    expect(stateDecl).not.toBeNull();
+    expect(pageClient).toContain("const openSimpleAssociation = useCallback((movementId: string) => {");
   });
 
-  it("Identificar cliente con cluster derivable limpia cualquier drawer de recibo previo antes de abrir el caso unificado", () => {
-    const clusterBranch = pageClient.match(
-      /setReceiptFocusMovementId\(null\);\s*setReceiptFocusHints\(undefined\);\s*setFocusMovementId\(movementId\);\s*setFocusClusterKey\(clusterKey\);/
-    );
-    expect(clusterBranch).not.toBeNull();
+  it("abrir el panel para un movimiento siempre reemplaza cualquier apertura previa (mismo setState, no un mapa por id)", () => {
+    expect(pageClient).toMatch(/setSimpleAssociationMovementId\(movementId\);\s*\}, \[\]\);/);
   });
 
-  it("onOpenIdentify / onOpenReceipt del workspace unificado limpian el drawer opuesto (identificar vs recibo)", () => {
-    expect(pageClient).toMatch(
-      /onOpenIdentify=\{\(clusterKey\) => \{\s*setReceiptFocusMovementId\(null\);\s*setReceiptFocusHints\(undefined\);(\s*setSimpleAssociationMovementId\(null\);)?\s*setIdentifyClusterKey\(clusterKey\);/
-    );
-    expect(pageClient).toMatch(/onOpenReceipt=\{\(movementId, hints\) => \{\s*setIdentifyClusterKey\(null\);/);
+  it("Movimientos y Conciliación usan la misma función openSimpleAssociation para abrir el panel", () => {
+    const occurrences = [...pageClient.matchAll(/onOpenAssociation=\{openSimpleAssociation\}|onClick=\{\(\) => openSimpleAssociation\(/g)];
+    expect(occurrences.length).toBeGreaterThan(1);
   });
 });
 

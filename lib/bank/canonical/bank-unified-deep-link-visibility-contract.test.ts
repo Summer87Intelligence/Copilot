@@ -13,24 +13,12 @@ const pageClient = readFileSync(join(COMPONENTS_ROOT, "bank-movements-page-clien
 const unified = readFileSync(join(COMPONENTS_ROOT, "unified-reconciliation-workspace.tsx"), "utf8");
 
 describe("Movimientos → Conciliación unificada (deep-link)", () => {
-  it("goToReconciliationForMovement deriva cluster y abre Conciliación, no BankIncome como destino principal", () => {
-    expect(pageClient).toContain("goToReconciliationForMovement");
-    expect(pageClient).toContain("derivePayerClusterKey");
-    expect(pageClient).toContain("setFocusClusterKey");
-    expect(pageClient).toContain('setTab("conciliacion")');
-    expect(pageClient).toContain("initialClusterKey={focusClusterKey}");
-    expect(pageClient).toContain("initialMovementId={focusMovementId}");
-    expect(pageClient).toContain("FocusedReceiptConfirmDrawer");
-    expect(pageClient).toContain("receiptFocusMovementId");
-    // El drawer de recibo solo puede abrirse (setReceiptFocusMovementId con el
-    // movementId real) DESPUÉS de intentar derivar el cluster — nunca antes.
-    // Limpiarlo defensivamente con `(null)` al entrar a la función (para que
-    // dos movimientos distintos nunca queden con drawers cruzados) sí está
-    // permitido y ocurre antes de `derivePayerClusterKey`.
-    const clusterKeyIndex = pageClient.indexOf("derivePayerClusterKey({");
-    const openReceiptIndex = pageClient.indexOf("setReceiptFocusMovementId(movementId)");
-    expect(clusterKeyIndex).toBeGreaterThan(-1);
-    expect(openReceiptIndex).toBeGreaterThan(clusterKeyIndex);
+  // FASE BANK-SIMPLE-FLOW-COMPLETION-001 — ya no deriva cluster ni foca la
+  // vista unificada: abre directo el panel simple de asociación con el
+  // movementId exacto, desde Movimientos o desde Conciliación.
+  it("openSimpleAssociation abre el panel simple (egresos van a Tesorería), no BankIncome como destino", () => {
+    expect(pageClient).toContain("const openSimpleAssociation = useCallback");
+    expect(pageClient).toContain("setSimpleAssociationMovementId(movementId)");
     expect(pageClient).not.toContain("BankIncomeWorkspace");
   });
 
