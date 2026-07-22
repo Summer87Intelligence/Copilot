@@ -1,5 +1,57 @@
 # Project Context
 
+## BANK — Reset de pruebas + panel simple movimiento→cliente — 2026-07-22
+
+**FASE BANK-SIMPLE-MOVEMENT-TO-CLIENT-RESET-001:** commit `1950fa5` sobre `2f7eb49`, pusheado y desplegado (`dpl_23RYvi7Tip7kVosxXu2zj8JCg75U` READY, alias `copilot-pro.vercel.app`).
+
+- **Reset de datos (autorizado explícitamente por el usuario tras dry-run):** las 62 identificaciones `bank_movement_client_identifications` activas (todas creadas el 22/07 durante las fases BANK-* de QA, por `daniel.odella@gmail.com`, en lotes de segundos, sobre 8 clientes reales) se revocaron (`status='revoked'`, `metadata.revocation_reason='bank_simple_reconciliation_reset_20260722'`). Snapshot antes/después idéntico salvo esa revocación: 1004 bank_movements, 2 links reales (2026-07-21, sin tocar), 0 allocations, 17 events — todos intactos. Ningún DELETE; solo UPDATE de estado.
+- **Panel nuevo:** `SimpleMovementAssociationPanel` — abre directo desde Movimientos (sin cambiar de tab), busca cliente, "Confirmar asociación" sin exigir recibo/factura. Reutiliza el escritor existente (`bank_movement_client_identifications` vía confirm/reassign/revoke) — no crea infraestructura nueva de datos. Nuevo endpoint de revocación individual + endpoint de lectura del estado de asociación de un movimiento.
+- **Simplificación visual:** Movimientos usa un modelo de 7 estados simples (Sin cliente/Asociado/Pendiente/Ingreso no comercial/Duplicado/Oculto) vía `deriveSimpleMovementState`, colapsando los 8 niveles técnicos del motor real (que sigue existiendo intacto para Conciliación/Cliente 360).
+- **QA productiva verificada en vivo:** "Asignar cliente" abre el panel con datos del movimiento; buscar "Nirmex" trae el cliente real; al elegirlo, "Confirmar asociación" se habilita sin pedir recibo; cerrado sin confirmar. DB verificada sin cambios post-QA (0 identificaciones activas, 64 total, 1004 movimientos).
+- **Gates:** tsc 0 errores, eslint limpio, vitest bank+bank-movements 833/833, build OK (2 builds).
+- **Limitaciones reales (no completado en esta pasada):** reescritura completa de la vista Conciliación a tabla plana (sección 6 del spec) — la vista de clusters/recibos sigue siendo la Conciliación real, ahora secundaria; Historial y Cliente 360 no se rediseñaron (secciones 11-12); solo 8 tests unitarios nuevos (no las ~24 del checklist sección 16); sin suite E2E nueva (sección 17, 24 escenarios) — Playwright sigue en los 4 escenarios existentes.
+- **Veredicto:** `GO_WITH_KNOWN_LIMITATIONS` — el flujo simple movimiento→cliente es real, funciona en producción y no exige recibo/factura; la simplificación completa de UI/tests del enunciado queda parcial y documentada como pendiente.
+
+## BANK — Auditoría full-system: 2 bugs reales encontrados y corregidos en prod — 2026-07-22
+
+**FASE BANK-RECONCILIATION-FULL-SYSTEM-AUDIT-AND-SIMPLIFICATION-001:** commits `0d8ae30` y `2f7eb49` sobre `2bfbf1b` (que ya estaba en producción tras la fase anterior). Ambos pusheados y desplegados: `dpl_H9BQdogLGejBDmsPr22CAUKhsmZa` y `dpl_J3LaYcGj9GrbPgtiRnbvhVyQ1S1r` READY, alias `copilot-pro.vercel.app`.
+
+- **Bug 1 (real, reproducido en vivo):** `goToReconciliationForMovement` — cuando el pagador no derivaba `clusterKey` (ej. "LOMBARDO GODOY MARIA BELEN Y"), abría `FocusedReceiptConfirmDrawer` sin `setTab("conciliacion")`; como ese drawer solo se monta bajo `tab==="conciliacion"`, el click era un no-op silencioso. Si después se identificaba OTRO movimiento con cluster válido, el `receiptFocusMovementId` viejo nunca se limpiaba → dos drawers de movimientos distintos montados a la vez, tabs flotando encima de ambos. Fix: ambas ramas de la función y los callbacks `onOpenIdentify`/`onOpenReceipt` ahora limpian el estado del drawer opuesto antes de abrir el propio.
+- **Bug 2 (real, reproducido en vivo):** el offset superior de `BankDrawerShell` (`pt-[3.25rem]`) solo despejaba la franja de fecha, no la barra de tabs sticky (`z-[70]`) que se pega al mismo y de la pantalla al hacer scroll. Con un drawer abierto y la lista de Conciliación scrolleada, la barra de tabs (mayor z-index) tapaba física y funcionalmente el botón "Cerrar" propio del drawer — confirmado con `getBoundingClientRect` antes/después y con click real de Playwright. Fix: offset subido a `pt-[6.5rem]`.
+- Verificado en producción tras cada deploy: click real en "Cerrar" ya no lanza pointer-interception error; un solo dialog nunca queda duplicado.
+- **Gates:** tsc 0 errores, vitest bank suite 825/825 (2 tests nuevos de regresión + 1 contrato reescrito para reflejar el comportamiento correcto), eslint limpio en archivos tocados, build OK (2 builds).
+- **Limitación conocida:** el resto del spec de esta fase (30 escenarios E2E Playwright, snapshot QA productiva formal, Cliente 360/Historial exhaustivo) NO se re-auditó de cero en esta pasada — ya estaba cubierto por ~15 fases `BANK-*` previas del mismo día (ver entradas debajo). Esta pasada fue una auditoría dirigida a encontrar bugs reales via QA en vivo, no una reescritura completa.
+- **Veredicto:** `GO_WITH_KNOWN_LIMITATIONS` — Conciliación operable sin los dos bugs de estado/z-index encontrados; suite E2E Playwright sigue en 4 escenarios (no 30).
+
+## BANK — Estabilización E2E + inflow_readonly Camila — 2026-07-22
+
+**FASE BANK-RECONCILIATION-END-TO-END-STABILIZATION-001:** `2bfbf1b` origin/main (0/0). Production READY `dpl_7zjJc5YqCFa3BF52N8KvABpjqE7N`, alias `copilot-pro.vercel.app`.
+
+- View-model canónico + loading/ready; CTA “Revisar N listos”; FocusedReceipt sin falso “sin recibo”.
+- Alcance `bank_movements=inflow_readonly` (CHECK migrado); Camila configurada; API fuerza inflow; mutaciones 403.
+- QA admin: Identificar exacto + return/filtros; Nirmex 13+5+8+1; Revisar 5 listos.
+- QA Camila: sin dirección/ocultar/editar; API outflow→solo ingresos; hide/patch/delete 403.
+- Snapshot neto: 1004 / ui_hidden 0 / BMCI 64 / links 2 / events 17.
+- **Veredicto:** `READY_FOR_BANK_STABLE_RECONCILIATION_FLOW`.
+
+## BANK — Flujo E2E conciliación UX (deploy + QA) — 2026-07-22
+
+**FASE BANK-END-TO-END-RECONCILIATION-FLOW-UX-CORRECTION-001:** `071de3a` en origin/main (0/0). Production READY `dpl_6cMNarf1C3SotEsgKVsAbye16PMj` (hotfix return) sobre `312ec97` (navegación/foco). Alias `copilot-pro.vercel.app`, `aliasError=null`.
+
+- **Causa:** `Confirmar con recibo` montaba `BankIncomeWorkspace` full-screen (listado ~52 pendientes) y ocultaba tabs Banco.
+- **Fix:** `FocusedReceiptConfirmDrawer` (1 movimiento); drawers con offset bajo chrome; tabs sticky; return a Movimientos vía ref; Nirmex “Confirmar 5 con recibo” (no “Confirmar cliente en 5”); facturas con copy Zeta honesto.
+- **QA prod read-only:** tabs 4 visibles; Identificar→caso; Confirmar con recibo exacto; filtros preservados al cerrar; 0 POST financieros; snapshot 1004/0/64/2/0/17.
+- **Veredicto:** `READY_FOR_BANK_30_SECOND_RECONCILIATION_FLOW`.
+
+## BANK — Deploy + QA RBAC visibilidad y conteos Nirmex — 2026-07-22
+
+**FASE BANK-VISIBILITY-RBAC-AND-NIRMEX-COUNT-DEPLOY-QA-001:** push `5d3d960` → origin/main (0/0); Vercel production READY `dpl_2QcgDMG2VPiBgnLcxEoJBd2mAB2c`, alias `copilot-pro.vercel.app`, `aliasError=null`.
+
+- **Camila write:** hide/restore 200 (ya no `READ_ONLY_USER`); filtros Ocultos/Todos visibles.
+- **Nirmex:** tarjeta/detalle `13 reales · 1 duplicado excluido · 5 listos · 8 pendientes`; lote 5; total UYU 160.207 (sin dup); sección colapsada OK.
+- **Integridad:** mov 1004, ui_hidden 0, BMCI 64, links 2, events 17 — igual antes/después (solo hide→restore neto 0).
+- **Veredicto:** `READY_FOR_BANK_VISIBILITY_RBAC_AND_NIRMEX_COUNTS`.
+
 ## BANK — RBAC visibilidad + conteos Nirmex (local, sin push) — 2026-07-22
 
 **FASE BANK-VISIBILITY-RBAC-AND-NIRMEX-COUNT-CORRECTION-001:** corrige `READ_ONLY_USER` para rol `usuario` con override write (hide/restore) y semántica Nirmex 13 reales + 1 duplicado excluido.
