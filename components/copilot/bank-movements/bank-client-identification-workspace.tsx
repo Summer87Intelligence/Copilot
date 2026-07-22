@@ -9,6 +9,7 @@ import {
   copilotInputClass,
   copilotMetricLabelClass,
 } from "@/components/copilot/ui/copilot-visual-system";
+import { MOVEMENT_LEVEL_LABEL } from "@/lib/bank/canonical/movement-reconciliation-level-labels";
 
 /**
  * FASE BANK-CLIENT-IDENTIFICATION-SCHEMA-APPLY-AND-BATCH-UI-001 — vista
@@ -72,14 +73,6 @@ const EVIDENCE_TONE: Record<EvidenceLevel, string> = {
   probable: "text-[var(--copilot-warning-text-strong)]",
   ambiguous: "text-[var(--copilot-danger-text-strong)]",
   none: "text-[var(--copilot-muted)]",
-};
-
-const MOVEMENT_STATUS_LABEL: Record<string, string> = {
-  full_reconciliation: "Conciliado",
-  reconciled_with_receipt: "Conciliado",
-  client_identified: "Con recibo",
-  missing_receipt: "Falta recibo en Zeta",
-  unidentified: "Sin identificar",
 };
 
 function formatAmount(totalByCurrency: Record<string, number>): string {
@@ -479,7 +472,7 @@ function ClusterReviewDrawer({
                           {m.currency} {m.amount.toLocaleString("es-UY")}
                         </td>
                         <td className="py-1">{m.referenceMasked ?? "—"}</td>
-                        <td className="py-1">{MOVEMENT_STATUS_LABEL[m.level] ?? m.level}</td>
+                        <td className="py-1">{MOVEMENT_LEVEL_LABEL[m.level as keyof typeof MOVEMENT_LEVEL_LABEL] ?? m.level}</td>
                       </tr>
                     );
                   })}

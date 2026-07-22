@@ -49,13 +49,23 @@ describe("BankClientIdentificationWorkspace: nunca escribe en tablas financieras
     expect(identificationWorkspace).toContain("Ningún recibo ni factura será modificado");
   });
 
+  it("BANK-FULL-RECONCILIATION-UI-CORRECTION-001: usa el label canónico compartido, no un mapa local duplicado", () => {
+    expect(identificationWorkspace).toContain(
+      'import { MOVEMENT_LEVEL_LABEL } from "@/lib/bank/canonical/movement-reconciliation-level-labels"'
+    );
+    expect(identificationWorkspace).not.toContain("const MOVEMENT_STATUS_LABEL");
+  });
+
   it("nunca llama la palabra 'Conciliado' para una mera identificación (solo para full/reconciled)", () => {
-    const label = identificationWorkspace.match(/MOVEMENT_STATUS_LABEL[\s\S]*?};/)![0];
-    // "Conciliado" solo debe aparecer asociado a full_reconciliation/reconciled_with_receipt.
-    expect(label).toMatch(/full_reconciliation:\s*"Conciliado"/);
-    expect(label).toMatch(/reconciled_with_receipt:\s*"Conciliado"/);
-    expect(label).toMatch(/client_identified:\s*"Con recibo"/);
-    expect(label).toMatch(/missing_receipt:\s*"Falta recibo en Zeta"/);
+    const labelsSource = readFileSync(
+      join(process.cwd(), "lib", "bank", "canonical", "movement-reconciliation-level-labels.ts"),
+      "utf8"
+    );
+    expect(labelsSource).toMatch(/full_reconciliation:\s*"Conciliación completa"/);
+    expect(labelsSource).toMatch(/reconciled_with_receipt:\s*"Conciliado con recibo"/);
+    expect(labelsSource).toMatch(/client_identified:\s*"Cliente identificado"/);
+    expect(labelsSource).toMatch(/missing_receipt:\s*"Falta recibo en Zeta"/);
+    expect(identificationWorkspace).not.toMatch(/>\s*Conciliado\s*</);
   });
 
   it("expone las 4 evidencias del modelo (fuerte/probable/ambigua/sin candidato)", () => {

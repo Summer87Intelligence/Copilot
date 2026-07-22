@@ -38,6 +38,10 @@ import {
   type BankMovementsListFilters,
 } from "@/lib/bank-movements/bank-movements-filters";
 import { isBankMovementHistorical } from "@/lib/bank/canonical/historical-policy";
+import {
+  MOVEMENT_LEVEL_LABEL,
+  type MovementReconciliationLevel,
+} from "@/lib/bank/canonical/movement-reconciliation-level-labels";
 import { resolveImportedBankMovementAmount } from "@/lib/bank-movements/santander-excel-amount";
 import {
   BANK_MOVEMENT_DIRECTION_LABELS,
@@ -148,6 +152,7 @@ export function BankMovementsPageClient() {
   const [focusMovementId, setFocusMovementId] = useState<string | null>(null);
   const [tesoreriaOpen, setTesoreriaOpen] = useState(false);
   const [movements, setMovements] = useState<BankMovement[]>([]);
+  const [movementLevels, setMovementLevels] = useState<Record<string, MovementReconciliationLevel>>({});
   const [imports, setImports] = useState<BankStatementImport[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<FormState | null>(null);
@@ -164,9 +169,14 @@ export function BankMovementsPageClient() {
         fetch("/api/copilot/bank-movements"),
         fetch("/api/copilot/bank-movements/imports"),
       ]);
-      const movementsJson = (await movementsRes.json()) as ListResponse<BankMovement>;
+      const movementsJson = (await movementsRes.json()) as ListResponse<BankMovement> & {
+        levels?: Record<string, MovementReconciliationLevel>;
+      };
       const importsJson = (await importsRes.json()) as ListResponse<BankStatementImport>;
-      if (movementsJson.ok) setMovements(movementsJson.data ?? []);
+      if (movementsJson.ok) {
+        setMovements(movementsJson.data ?? []);
+        setMovementLevels(movementsJson.levels ?? {});
+      }
       if (importsJson.ok) setImports(importsJson.data ?? []);
     } catch {
       // Estado vacío ya cubre el caso sin datos.
@@ -327,12 +337,80 @@ export function BankMovementsPageClient() {
   // resuelve exclusivamente en la pestaña Conciliación (motor canónico, nunca por
   // un toggle de estado directo acá); una salida se vincula con Tesorería
   // (abre el panel de pagos programados ya existente, sin motor nuevo).
-  const goToReconciliationForMovement = useCallback((movementId: string) => {
-    setFocusMovementId(movementId);
-    setTab("conciliacion");
-  }, []);
+  // FASE BANK-FULL-RECONCILIATION-UI-CORRECTION-001 — un movimiento con link
+  // financiero real (recibo vinculado) vive en "Vincular recibos", no en
+  // "Identificar clientes" (que resuelve solo el nivel 1, sin recibo todavía).
+  const goToReconciliationForMovement = useCallback(
+    (movementId: string, level?: MovementReconciliationLevel) => {
+      setFocusMovementId(movementId);
+      setTab("conciliacion");
+      const hasFinancialLink =
+        level === "reconciled_with_receipt" || level === "full_reconciliation" || level === "requires_review";
+      setConciliacionSubView(hasFinancialLink ? "vincular" : "identificar");
+    },
+    []
+  );
 
-  const renderMovementActions = (m: BankMovement) => (
+  // FASE BANK-FULL-RECONCILIATION-UI-CORRECTION-001 — el estado visible de un
+  // ingreso ya no es el legacy pending/matched/ignored: refleja el nivel real
+  // (identificación + link + allocations), calculado en lote server-side.
+  const movementStatusLabel = (m: BankMovement): string => {
+    if (m.direction !== "inflow" || m.status === "ignored") return BANK_MOVEMENT_STATUS_LABELS[m.status];
+    const level = movementLevels[m.id];
+    return level ? MOVEMENT_LEVEL_LABEL[level] : BANK_MOVEMENT_STATUS_LABELS[m.status];
+  };
+
+  // Acción exacta por nivel (sección 2). "Ver conciliación"/"Ver detalle completo"
+  // son solo lectura — no ofrecen "Reabrir": no existe todavía un flujo seguro
+  // y completo de reversión del link financiero + allocations reales.
+  const renderInflowLevelAction = (m: BankMovement, level: MovementReconciliationLevel) => {
+    switch (level) {
+      case "unidentified":
+        return (
+          <button type="button" onClick={() => goToReconciliationForMovement(m.id, level)} className={copilotButtonClassName({ variant: "ghost", size: "sm" })}>
+            Identificar cliente
+          </button>
+        );
+      case "client_identified":
+        return (
+          <button type="button" onClick={() => goToReconciliationForMovement(m.id, level)} className={copilotButtonClassName({ variant: "ghost", size: "sm" })}>
+            Vincular recibo
+          </button>
+        );
+      case "missing_receipt":
+        return (
+          <button type="button" onClick={() => goToReconciliationForMovement(m.id, level)} className={copilotButtonClassName({ variant: "ghost", size: "sm" })}>
+            Revisar cuando aparezca el recibo
+          </button>
+        );
+      case "reconciled_with_receipt":
+        return (
+          <button type="button" onClick={() => goToReconciliationForMovement(m.id, level)} className={copilotButtonClassName({ variant: "ghost", size: "sm" })}>
+            Ver conciliación
+          </button>
+        );
+      case "full_reconciliation":
+        return (
+          <button type="button" onClick={() => goToReconciliationForMovement(m.id, level)} className={copilotButtonClassName({ variant: "ghost", size: "sm" })}>
+            Ver detalle completo
+          </button>
+        );
+      case "third_party":
+      case "shared_account":
+      case "requires_review":
+        return (
+          <button type="button" onClick={() => goToReconciliationForMovement(m.id, level)} className={copilotButtonClassName({ variant: "ghost", size: "sm" })}>
+            Revisar
+          </button>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const renderMovementActions = (m: BankMovement) => {
+    const level = m.direction === "inflow" && m.status !== "ignored" ? movementLevels[m.id] : undefined;
+    return (
     <div className="flex flex-wrap justify-end gap-1.5">
       <button
         type="button"
@@ -342,11 +420,13 @@ export function BankMovementsPageClient() {
       >
         <Pencil className="h-3.5 w-3.5" aria-hidden />
       </button>
-      {m.status !== "matched" ? (
+      {m.direction === "inflow" && level ? (
+        renderInflowLevelAction(m, level)
+      ) : m.status !== "matched" ? (
         m.direction === "inflow" ? (
           <button
             type="button"
-            onClick={() => goToReconciliationForMovement(m.id)}
+            onClick={() => goToReconciliationForMovement(m.id, level)}
             className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
           >
             Revisar conciliación
@@ -387,7 +467,8 @@ export function BankMovementsPageClient() {
         <Trash2 className="h-3.5 w-3.5" aria-hidden />
       </button>
     </div>
-  );
+    );
+  };
 
   const movementColumns: CopilotResponsiveTableColumn<BankMovement>[] = [
     {
@@ -440,7 +521,7 @@ export function BankMovementsPageClient() {
       key: "status",
       header: "Estado",
       cellClassName: "whitespace-nowrap align-top",
-      render: (m) => BANK_MOVEMENT_STATUS_LABELS[m.status],
+      render: (m) => movementStatusLabel(m),
     },
     {
       key: "actions",
@@ -470,7 +551,7 @@ export function BankMovementsPageClient() {
       </div>
       <p className="text-sm text-[var(--copilot-ink)]">{m.description}</p>
       {m.bank_reference ? <p className={copilotCaptionClass}>Ref: {m.bank_reference}</p> : null}
-      <p className={copilotCaptionClass}>{BANK_MOVEMENT_STATUS_LABELS[m.status]}</p>
+      <p className={copilotCaptionClass}>{movementStatusLabel(m)}</p>
       <div className="pt-1">{renderMovementActions(m)}</div>
     </div>
   );

@@ -61,6 +61,23 @@ type IdentificationRow = {
   actorEmail: string | null;
 };
 
+type ReconciledPaymentRow = {
+  movementId: string;
+  movementDate: string;
+  movementAmount: number;
+  currency: string;
+  receiptId: string;
+  receiptAmount: number;
+  level: "reconciled_with_receipt" | "full_reconciliation";
+  appliedInvoices: Array<{ invoiceId: string; invoiceNumber: string | null; appliedAmount: number }>;
+  totalApplied: number;
+};
+
+const RECONCILIATION_LEVEL_LABEL: Record<ReconciledPaymentRow["level"], string> = {
+  reconciled_with_receipt: "Conciliado con recibo",
+  full_reconciliation: "Conciliación completa",
+};
+
 const IDENTIFICATION_STATUS_LABEL: Record<string, string> = {
   identified: "Cliente identificado",
   shared_account: "Cuenta compartida",
@@ -89,6 +106,7 @@ export function ClientPayerMemorySection({ companyId }: { companyId: string }) {
   const [cards, setCards] = useState<PayerCard[]>([]);
   const [history, setHistory] = useState<HistoryRow[]>([]);
   const [identificationsOnly, setIdentificationsOnly] = useState<IdentificationRow[]>([]);
+  const [reconciledPayments, setReconciledPayments] = useState<ReconciledPaymentRow[]>([]);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -101,6 +119,7 @@ export function ClientPayerMemorySection({ companyId }: { companyId: string }) {
         identities?: ApiRow[];
         history?: HistoryRow[];
         identificationsOnly?: IdentificationRow[];
+        reconciledPayments?: ReconciledPaymentRow[];
         error?: string;
       };
       if (!res.ok || !json.ok) {
@@ -108,6 +127,7 @@ export function ClientPayerMemorySection({ companyId }: { companyId: string }) {
         setCards([]);
         setHistory([]);
         setIdentificationsOnly([]);
+        setReconciledPayments([]);
         return;
       }
       const identities = json.identities ?? [];
@@ -131,6 +151,7 @@ export function ClientPayerMemorySection({ companyId }: { companyId: string }) {
       );
       setHistory(json.history ?? []);
       setIdentificationsOnly(json.identificationsOnly ?? []);
+      setReconciledPayments(json.reconciledPayments ?? []);
     } catch {
       setError("No se pudo cargar la memoria de pagos.");
     } finally {
@@ -152,7 +173,7 @@ export function ClientPayerMemorySection({ companyId }: { companyId: string }) {
     );
   }
 
-  if (cards.length === 0 && identificationsOnly.length === 0) {
+  if (cards.length === 0 && identificationsOnly.length === 0 && reconciledPayments.length === 0) {
     return (
       <div className="px-5 py-4">
         <h3 className="text-sm font-semibold text-[var(--copilot-text)]">Pagos y cuentas utilizadas</h3>
@@ -196,6 +217,46 @@ export function ClientPayerMemorySection({ companyId }: { companyId: string }) {
                 </span>
                 {row.reason ? <span className="text-[var(--copilot-muted)]"> · {row.reason}</span> : null}
                 {row.actorEmail ? <span className="text-[var(--copilot-muted)]"> · {row.actorEmail}</span> : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {reconciledPayments.length > 0 ? (
+        <div>
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-muted)]">
+            Pagos conciliados
+          </h4>
+          <p className={`${copilotCaptionClass} mt-1`}>
+            Movimiento vinculado a un recibo real de Zeta. &ldquo;Conciliación completa&rdquo; solo cuando hay
+            facturas realmente aplicadas — nunca por coincidencia de importe.
+          </p>
+          <ul className="mt-2 space-y-2">
+            {reconciledPayments.map((p) => (
+              <li
+                key={p.movementId}
+                className="rounded-lg border border-[var(--copilot-border)] px-3 py-2 text-xs text-[var(--copilot-text)]"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-medium">
+                    {formatDate(p.movementDate)} · {p.currency} {p.movementAmount.toLocaleString("es-UY")}
+                  </span>
+                  <span className="text-[var(--copilot-muted)]">{RECONCILIATION_LEVEL_LABEL[p.level]}</span>
+                </div>
+                {p.appliedInvoices.length > 0 ? (
+                  <p className="mt-1 text-[var(--copilot-muted)]">
+                    Facturas aplicadas:{" "}
+                    {p.appliedInvoices
+                      .map((inv) => `${inv.invoiceNumber ?? inv.invoiceId} (${p.currency} ${inv.appliedAmount.toLocaleString("es-UY")})`)
+                      .join(", ")}{" "}
+                    · Total aplicado: {p.currency} {p.totalApplied.toLocaleString("es-UY")}
+                  </p>
+                ) : (
+                  <p className="mt-1 text-[var(--copilot-muted)]">
+                    No encontramos una aplicación de este recibo a facturas en Zeta.
+                  </p>
+                )}
               </li>
             ))}
           </ul>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { requireCopilotModuleAccessAny } from "@/lib/auth/copilot-module-api-auth";
 import { listIdentificationsForClient } from "@/lib/bank/canonical/client-identification-repository.server";
+import { listReconciledPaymentsForClient } from "@/lib/bank/canonical/movement-reconciliation-level";
 import {
   countOtherClientsForPayerIdentity,
   listClientPayerHistory,
@@ -142,7 +143,16 @@ export async function GET(
       identificationsOnly = [];
     }
 
-    return NextResponse.json({ ok: true as const, identities, history, identificationsOnly });
+    // Sección 6 (Cliente 360 · Pagos conciliados) — real, nunca `client_payer_links`
+    // (aprendizaje de nombre de pagador, sin movement_id, no es conciliación).
+    let reconciledPayments: Awaited<ReturnType<typeof listReconciledPaymentsForClient>> = [];
+    try {
+      reconciledPayments = await listReconciledPaymentsForClient(auth.ctx.supabase, auth.ctx.tenantCompanyId, companyId);
+    } catch {
+      reconciledPayments = [];
+    }
+
+    return NextResponse.json({ ok: true as const, identities, history, identificationsOnly, reconciledPayments });
   } catch (err) {
     return NextResponse.json(
       {

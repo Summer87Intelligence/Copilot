@@ -74,7 +74,7 @@ const STATUS_BADGE: Record<IncomeRowStatus, string> = {
   cliente_sugerido: "Con sugerencia",
   con_coincidencia: "Con sugerencia",
   requiere_revision: "Requiere revisión",
-  conciliado: "Conciliado",
+  conciliado: "Conciliado con recibo",
   sugerencia_rechazada: "Rechazado",
   ignorado: "Ignorado",
 };
@@ -644,7 +644,9 @@ function IncomeRow({
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${STATUS_BADGE_STYLE[view.status]}`}>
-            {STATUS_BADGE[view.status]}
+            {view.status === "conciliado" && view.evidence?.reconciliationLevel === "full_reconciliation"
+              ? "Conciliación completa"
+              : STATUS_BADGE[view.status]}
           </span>
           <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
         </div>

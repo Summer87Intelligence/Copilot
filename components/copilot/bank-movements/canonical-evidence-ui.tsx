@@ -164,22 +164,48 @@ export function EvidenceSummary({ item }: { item: EvidenceItem }) {
         )}
       </div>
 
-      <div>
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-muted)]">
-          Facturas candidatas del cliente
-        </p>
-        {item.candidateInvoices.length > 0 ? (
-          <ul className="mt-1 space-y-1">
-            {item.candidateInvoices.slice(0, 3).map((inv) => (
-              <li key={inv.invoiceId} className={copilotCaptionClass}>
-                Saldo {money(inv.currencyCode, inv.balanceAmount)} · vence {formatDate(inv.dueDate)}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className={`${copilotCaptionClass} mt-1`}>Sin facturas abiertas para este cliente/moneda.</p>
-        )}
-      </div>
+      {item.status === "confirmed" ? (
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-muted)]">
+            Facturas aplicadas
+          </p>
+          {item.appliedAllocations.length > 0 ? (
+            <ul className="mt-1 space-y-1">
+              {item.appliedAllocations.map((a) => (
+                <li key={a.invoiceId} className={copilotCaptionClass}>
+                  {a.invoiceNumber ?? a.invoiceId} · aplicado {money(a.currencyCode, a.appliedAmount)}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className={`${copilotCaptionClass} mt-1`}>
+              No encontramos una aplicación de este recibo a facturas en Zeta.
+            </p>
+          )}
+          {item.reconciliationLevel ? (
+            <p className={`${copilotCaptionClass} mt-2 font-medium`}>
+              Nivel: {item.reconciliationLevel === "full_reconciliation" ? "Conciliación completa" : "Conciliado con recibo"}
+            </p>
+          ) : null}
+        </div>
+      ) : (
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-muted)]">
+            Facturas candidatas del cliente
+          </p>
+          {item.candidateInvoices.length > 0 ? (
+            <ul className="mt-1 space-y-1">
+              {item.candidateInvoices.slice(0, 3).map((inv) => (
+                <li key={inv.invoiceId} className={copilotCaptionClass}>
+                  Saldo {money(inv.currencyCode, inv.balanceAmount)} · vence {formatDate(inv.dueDate)}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className={`${copilotCaptionClass} mt-1`}>Sin facturas abiertas para este cliente/moneda.</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -14,6 +14,7 @@ import {
   isValidBankMovementStatus,
   type BankMovement,
 } from "@/lib/bank-movements/bank-movements-types";
+import { batchDeriveMovementReconciliationLevels } from "@/lib/bank/canonical/movement-reconciliation-level";
 
 export const dynamic = "force-dynamic";
 
@@ -64,10 +65,30 @@ export async function GET(request: NextRequest) {
   }
 
   const rows = (data ?? []) as BankMovement[];
+
+  // FASE BANK-FULL-RECONCILIATION-UI-CORRECTION-001 — nivel real por movimiento
+  // (solo ingresos: el triado cliente→recibo→factura no aplica a egresos, que
+  // usan el flujo de Tesorería). Batch en 3-4 queries, nunca 1 por fila.
+  const inflowRows = rows.filter((r) => r.direction === "inflow" && r.status !== "ignored");
+  let levels: Record<string, string> = {};
+  if (inflowRows.length > 0) {
+    try {
+      const levelMap = await batchDeriveMovementReconciliationLevels(
+        supabase,
+        tenantCompanyId,
+        inflowRows.map((r) => ({ id: r.id, currency: r.currency, amount: Number(r.amount) }))
+      );
+      levels = Object.fromEntries([...levelMap.entries()].map(([id, d]) => [id, d.level]));
+    } catch {
+      levels = {};
+    }
+  }
+
   return NextResponse.json({
     ok: true as const,
     data: rows,
     meta: { total: rows.length, migration_pending: false },
+    levels,
   });
 }
 
