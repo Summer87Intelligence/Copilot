@@ -1,5 +1,16 @@
 # Project Context
 
+## BANK — Panel de asociación endurecido como modal real — 2026-07-22
+
+**FASE BANK-SIMPLE-ASSOCIATION-PANEL-LAYOUT-FIX-001:** commit `c7c08f5` sobre `53cedde`, pusheado y desplegado (`dpl_EZYg78Ym6mQX5oZrCpHHDsniypdJ` READY, alias `copilot-pro.vercel.app`).
+
+- **Bug reportado vs. bug real:** el click-through de mouse hacia el fondo (síntoma reportado) **no se reprodujo** — verificado con `elementFromPoint` en el sidebar antes de tocar código: el backdrop ya bloqueaba el click en mobile y desktop. Los gaps reales eran otros: `document.body` nunca se bloqueaba (scroll doble genuino), Escape no cerraba, Tab podía sacar el foco hacia el fondo (sin focus trap), y cerrar no restauraba el foco al elemento que abrió el panel.
+- **Fix en `BankDrawerShell`** (compartido por `SimpleMovementAssociationPanel`, `FocusedReceiptConfirmDrawer` y el drawer de `UnifiedReconciliationWorkspace`): portal a `document.body` (preventivo, sin stacking-context roto detectado), `body.style.overflow="hidden"` al abrir con restauración al cerrar, Escape cierra, foco inicial se mueve adentro del panel y Tab/Shift+Tab ciclan sin escapar, foco se restaura al cerrar. Z-index y offset superior sin cambios (ya correctos de una fase previa).
+- **Verificado en vivo** (Movimientos y Conciliación, desktop 1440×900 y mobile 390×844): `body.style.overflow` pasa a `"hidden"` al abrir y vuelve a `""` tanto con Escape como con click en el backdrop; dialog portado a `document.body` confirmado.
+- **Gates:** tsc 0, eslint limpio, vitest 842/842 (7 tests nuevos de contrato para el hardening), build OK.
+- **Limitación real:** sin suite Playwright E2E nueva (gap frente a los 24 escenarios detallados del enunciado, sección 7).
+- **Veredicto:** `READY_FOR_BANK_ASSOCIATION_PANEL_LAYOUT` en cuanto al comportamiento modal real (logrado y verificado en vivo) — no en cuanto a cobertura de tests automatizados Playwright, que queda pendiente.
+
 ## BANK — Conciliación pasa a lista plana; bug real de consistencia encontrado y corregido — 2026-07-22
 
 **FASE BANK-SIMPLE-FLOW-COMPLETION-001:** commits `f2795ac` + `e790855` sobre `1950fa5`, pusheados y desplegados (`dpl_26YJ545CFEGQAZVG1iMrBxHg9aBR` y `dpl_3ux5xxoJ2vLQES4oK2xALfAF1x4L`, ambos READY, alias `copilot-pro.vercel.app`).
