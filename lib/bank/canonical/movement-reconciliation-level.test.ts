@@ -186,6 +186,35 @@ describe("BANK-FULL-RECONCILIATION-UI-CORRECTION-001 — batchDeriveMovementReco
     expect(levels.get("mov-1")!.level).toBe("shared_account");
   });
 
+  it("link financiero real SIN fila de identificación (flujo directo confirm_bank_reconciliation_v1, caso real Botica/Samysol) → reconciled_with_receipt, no unidentified", async () => {
+    const client = fakeClient({
+      bank_movement_client_identifications: [],
+      bank_movement_reconciliation_links: [
+        { id: "link-1", bank_movement_id: "mov-1", target_type: "receipt", target_id: "receipt-1", currency: "UYU", archived_at: null, workspace_id: WS },
+      ],
+      proto_receipts: [{ id: "receipt-1", company_id: "client-1" }],
+      payment_allocations: [],
+    });
+    const levels = await batchDeriveMovementReconciliationLevels(client as never, WS, [MOV]);
+    const detail = levels.get("mov-1")!;
+    expect(detail.level).toBe("reconciled_with_receipt");
+    expect(detail.clientCompanyId).toBe("client-1");
+    expect(detail.receiptId).toBe("receipt-1");
+  });
+
+  it("link financiero real SIN identificación + allocation activa → full_reconciliation", async () => {
+    const client = fakeClient({
+      bank_movement_client_identifications: [],
+      bank_movement_reconciliation_links: [
+        { id: "link-1", bank_movement_id: "mov-1", target_type: "receipt", target_id: "receipt-1", currency: "UYU", archived_at: null, workspace_id: WS },
+      ],
+      proto_receipts: [{ id: "receipt-1", company_id: "client-1" }],
+      payment_allocations: [{ reconciliation_link_id: "link-1", status: "active", workspace_id: WS }],
+    });
+    const levels = await batchDeriveMovementReconciliationLevels(client as never, WS, [MOV]);
+    expect(levels.get("mov-1")!.level).toBe("full_reconciliation");
+  });
+
   it("link con moneda distinta al movimiento (anomalía) → requires_review", async () => {
     const client = fakeClient({
       bank_movement_client_identifications: [

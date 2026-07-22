@@ -107,10 +107,34 @@ export async function batchDeriveMovementReconciliationLevels(
     }
   }
 
+  // Links reales creados por el flujo directo `confirm_bank_reconciliation_v1`
+  // (anterior a `bank_movement_client_identifications`) no tienen fila de
+  // identificación propia. Un link financiero real es evidencia suficiente de
+  // que el cliente fue identificado (de otro modo no existiría el link), así
+  // que resolvemos su cliente vía el recibo cuando falta la identificación.
+  const linksMissingIdent = [...linkByMovement.entries()].filter(
+    ([movId]) => !identByMovement.has(movId)
+  );
+  const receiptCompanyById = new Map<string, string>();
+  const receiptIdsMissingIdent = [
+    ...new Set(linksMissingIdent.map(([, l]) => l.target_id).filter((id): id is string => id != null)),
+  ];
+  if (receiptIdsMissingIdent.length > 0) {
+    const { data: receiptOwnerRows, error: receiptOwnerErr } = await supabase
+      .from("proto_receipts")
+      .select("id, company_id")
+      .in("id", receiptIdsMissingIdent);
+    if (receiptOwnerErr) throw new Error(`MOVEMENT_LEVEL_RECEIPT_OWNERS_FAILED: ${receiptOwnerErr.message}`);
+    for (const r of receiptOwnerRows ?? []) {
+      receiptCompanyById.set(r.id as string, r.company_id as string);
+    }
+  }
+
   for (const m of movements) {
     const ident = identByMovement.get(m.id) ?? null;
     const link = linkByMovement.get(m.id) ?? null;
-    const clientCompanyId = ident?.client_company_id ?? null;
+    const clientCompanyId =
+      ident?.client_company_id ?? (link?.target_id ? receiptCompanyById.get(link.target_id) ?? null : null);
 
     if (ident && (ident.status === "third_party" || ident.status === "shared_account") && !link) {
       result.set(m.id, {
@@ -140,7 +164,7 @@ export async function batchDeriveMovementReconciliationLevels(
       : false;
 
     const level = deriveIdentificationLevel({
-      clientConfirmed: ident !== null,
+      clientConfirmed: ident !== null || link !== null,
       hasCompatibleReceipt,
       hasFinancialLink: link !== null,
       hasInvoiceAllocations: movementIdsWithAllocations.has(m.id),
