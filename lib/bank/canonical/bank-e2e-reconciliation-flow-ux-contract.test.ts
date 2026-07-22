@@ -29,10 +29,16 @@ describe("Banco tabs y chrome", () => {
   });
 
   it("drawers usan BankDrawerShell / offset bajo chrome, no full-screen opaco que oculte tabs", () => {
-    expect(shell).toContain("pt-[3.25rem]");
+    expect(shell).toContain("pt-[6.5rem]");
     expect(unified).toContain("BankDrawerShell");
     expect(pageClient).not.toMatch(/fixed inset-0 z-40 overflow-y-auto bg-\[var\(--copilot-card-bg\)\]/);
     expect(pageClient).not.toContain("BankIncomeWorkspace");
+  });
+
+  it("el offset del drawer despeja tanto la franja de fecha como la barra de tabs sticky (z-[70]), para que 'Cerrar' nunca quede tapado tras hacer scroll", () => {
+    // Franja de fecha (~3.25rem=52px) + barra de tabs sticky (~2.9rem=46px)
+    // medidos en vivo: el offset debe ser mayor a esa suma (~98px / 6.125rem).
+    expect(shell).toMatch(/pt-\[6\.5rem\]/);
   });
 });
 
