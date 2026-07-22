@@ -30,14 +30,15 @@ export const MODULE_KEYS = [
 
 export type ModuleKey = (typeof MODULE_KEYS)[number];
 
-export const ACCESS_LEVELS = ["none", "read", "write", "admin"] as const;
+export const ACCESS_LEVELS = ["none", "inflow_readonly", "read", "write", "admin"] as const;
 export type AccessLevel = (typeof ACCESS_LEVELS)[number];
 
 const LEVEL_RANK: Record<AccessLevel, number> = {
   none: 0,
-  read: 1,
-  write: 2,
-  admin: 3,
+  inflow_readonly: 1,
+  read: 2,
+  write: 3,
+  admin: 4,
 };
 
 export type ModulePermission = {
@@ -120,6 +121,7 @@ export function canAdminModule(
 export function accessLevelLabel(level: AccessLevel): string {
   const labels: Record<AccessLevel, string> = {
     none: "No ver",
+    inflow_readonly: "Solo ingresos · Solo lectura",
     read: "Ver",
     write: "Modificar",
     admin: "Admin",

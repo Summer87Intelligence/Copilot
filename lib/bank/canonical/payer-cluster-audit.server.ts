@@ -28,6 +28,13 @@ import { isBankMovementUiHidden } from "@/lib/bank-movements/bank-movement-visib
  * puntual se pide aparte (`getPayerClusterDetail`), lazy, al abrir el drawer.
  */
 
+export type PayerClusterReceiptCandidate = {
+  receiptId: string;
+  amount: number;
+  currency: string;
+  date: string | null;
+};
+
 export type PayerClusterMovementView = {
   movementId: string;
   date: string;
@@ -38,6 +45,15 @@ export type PayerClusterMovementView = {
   hasFinancialLink: boolean;
   alreadyIdentifiedClientId: string | null;
   level: IdentificationLevel;
+  /**
+   * FASE BANK-RECONCILIATION-END-TO-END-STABILIZATION-001 — primer recibo
+   * compatible (moneda + monto ±0.01) encontrado entre los clientes candidatos
+   * del cluster. Opcional: solo se calcula en el detalle (getPayerClusterDetail),
+   * nunca en el resumen paginado.
+   */
+  receiptCandidate?: PayerClusterReceiptCandidate | null;
+  /** Cantidad total de recibos compatibles encontrados (0, 1, o varios). */
+  receiptCandidatesCount?: number;
 };
 
 export type PayerClusterSummary = {
@@ -61,7 +77,7 @@ type WorkspaceWindow = { workspaceId: string; from: string; to: string };
 type ComputedContext = {
   clusters: PayerCluster[];
   clients: ClientCandidate[];
-  receiptsByClient: Map<string, { amount: number; currency: string }[]>;
+  receiptsByClient: Map<string, { id: string; amount: number; currency: string; date: string | null }[]>;
   linkedMovementIds: Set<string>;
   movementIdsWithAllocations: Set<string>;
   identifiedByMovement: Map<string, string>;
@@ -102,7 +118,7 @@ async function computeContext(supabase: SupabaseClient, input: WorkspaceWindow):
     await Promise.all([
       supabase
         .from("proto_receipts")
-        .select("id, company_id, amount, currency_code, currency")
+        .select("id, company_id, amount, currency_code, currency, receipt_date")
         .eq("workspace_company_id", workspaceId)
         .limit(20000),
       supabase
@@ -150,11 +166,19 @@ async function computeContext(supabase: SupabaseClient, input: WorkspaceWindow):
     identifiedByMovement.set(r.movement_id as string, r.client_company_id as string);
   }
 
-  const receiptsByClient = new Map<string, { amount: number; currency: string }[]>();
+  const receiptsByClient = new Map<
+    string,
+    { id: string; amount: number; currency: string; date: string | null }[]
+  >();
   for (const r of receiptRows ?? []) {
     const cid = r.company_id as string;
     const list = receiptsByClient.get(cid) ?? [];
-    list.push({ amount: Number(r.amount), currency: (r.currency_code || r.currency) as string });
+    list.push({
+      id: r.id as string,
+      amount: Number(r.amount),
+      currency: (r.currency_code || r.currency) as string,
+      date: (r.receipt_date as string | null) ?? null,
+    });
     receiptsByClient.set(cid, list);
   }
 
@@ -268,11 +292,25 @@ export async function getPayerClusterDetail(
   const movements: PayerClusterMovementView[] = cluster.movements.map((m) => {
     const alreadyIdentifiedClientId = ctx.identifiedByMovement.get(m.movementId) ?? null;
     const hasFinancialLink = ctx.linkedMovementIds.has(m.movementId);
-    const hasCompatibleReceipt = distinctClientIds.some((cid) =>
-      (ctx.receiptsByClient.get(cid) ?? []).some(
+    // FASE BANK-RECONCILIATION-END-TO-END-STABILIZATION-001 — recolecta TODOS
+    // los recibos compatibles (moneda + monto ±0.01) entre los clientes
+    // candidatos del cluster, no solo un booleano: el primero se propone como
+    // receiptCandidate y el total permite distinguir "listo" de "ambiguo".
+    const matchingReceipts = distinctClientIds.flatMap((cid) =>
+      (ctx.receiptsByClient.get(cid) ?? []).filter(
         (r) => r.currency === m.currency && Math.abs(r.amount - m.amount) <= 0.01
       )
     );
+    const hasCompatibleReceipt = matchingReceipts.length > 0;
+    const firstMatch = matchingReceipts[0] ?? null;
+    const receiptCandidate: PayerClusterReceiptCandidate | null = firstMatch
+      ? {
+          receiptId: firstMatch.id,
+          amount: firstMatch.amount,
+          currency: firstMatch.currency,
+          date: firstMatch.date,
+        }
+      : null;
     const level = deriveIdentificationLevel({
       clientConfirmed: alreadyIdentifiedClientId !== null,
       hasCompatibleReceipt,
@@ -289,6 +327,8 @@ export async function getPayerClusterDetail(
       hasFinancialLink,
       alreadyIdentifiedClientId,
       level,
+      receiptCandidate,
+      receiptCandidatesCount: matchingReceipts.length,
     };
   });
 

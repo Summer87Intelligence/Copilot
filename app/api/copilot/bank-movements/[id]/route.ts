@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { parseAndValidateJsonBody } from "@/lib/api/parse-and-validate-json-body";
 import {
+  getCopilotModuleAccessLevel,
   requireCopilotModuleAccess,
   requireCopilotModuleWriteAccess,
 } from "@/lib/auth/copilot-module-api-auth";
+import { bankMovementsScopeFromAccessLevel, mustForceBankInflowOnly } from "@/lib/auth/bank-movements-scope";
 import {
   bankMovementUpdateBodySchema,
   buildBankMovementPatch,
@@ -51,7 +53,23 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       { status: 404 }
     );
   }
-  return NextResponse.json({ ok: true as const, data: data as BankMovement });
+
+  const movement = data as BankMovement;
+
+  // FASE BANK-RECONCILIATION-END-TO-END-STABILIZATION-001 — `inflow_readonly`
+  // no debe poder confirmar la existencia de egresos ni ver su detalle:
+  // tratamos un egreso fuera de su alcance como si no existiera (404), igual
+  // que el listado ya lo excluye del alcance de este lector.
+  const accessLevel = await getCopilotModuleAccessLevel(auth.ctx, "bank_movements");
+  const scope = bankMovementsScopeFromAccessLevel(accessLevel);
+  if (mustForceBankInflowOnly(scope) && movement.direction !== "inflow") {
+    return NextResponse.json(
+      { ok: false as const, error: "Movimiento no encontrado." },
+      { status: 404 }
+    );
+  }
+
+  return NextResponse.json({ ok: true as const, data: movement });
 }
 
 export async function PATCH(request: NextRequest, { params }: RouteParams) {

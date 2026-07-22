@@ -37,6 +37,8 @@ type BankMovementsFiltersBarProps = {
   showWithSuggestionHint?: boolean;
   /** Write/admin Banco: ve Ocultos/Todos. Read-only solo Visibles. */
   canManageVisibility?: boolean;
+  /** `inflow_readonly`: dirección forzada a ingresos server-side; el filtro no aporta nada. */
+  hideDirectionFilter?: boolean;
 };
 
 const MOVEMENT_STATUS_OPTIONS = [
@@ -141,6 +143,7 @@ export function BankMovementsFiltersBar({
   showPeriodHint = false,
   showWithSuggestionHint = false,
   canManageVisibility = false,
+  hideDirectionFilter = false,
 }: BankMovementsFiltersBarProps) {
   const update = (patch: Partial<BankMovementsListFilters & ReconciliationViewFilters>) => {
     onChange({ ...filters, ...patch });
@@ -204,15 +207,17 @@ export function BankMovementsFiltersBar({
           </FilterField>
         )}
 
-        <FilterField label="Dirección" htmlFor="bank-filter-direction">
-          <FilterSelect
-            id="bank-filter-direction"
-            value={filters.direction}
-            onChange={(v) => update({ direction: v as BankMovementDirection | "all" })}
-            options={DIRECTION_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
-            ariaLabel="Filtrar por dirección"
-          />
-        </FilterField>
+        {hideDirectionFilter ? null : (
+          <FilterField label="Dirección" htmlFor="bank-filter-direction">
+            <FilterSelect
+              id="bank-filter-direction"
+              value={filters.direction}
+              onChange={(v) => update({ direction: v as BankMovementDirection | "all" })}
+              options={DIRECTION_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+              ariaLabel="Filtrar por dirección"
+            />
+          </FilterField>
+        )}
 
         <FilterField label="Búsqueda" htmlFor="bank-filter-text" className="min-w-[180px] flex-1">
           <FilterSearchInput

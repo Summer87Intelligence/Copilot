@@ -11,6 +11,7 @@ import {
   canAdminModule,
   canReadModule,
   canWriteModule,
+  getModuleAccessLevel,
   resolveEffectivePermissions,
   type AccessLevel,
   type ModuleKey,
@@ -18,6 +19,10 @@ import {
 } from "@/lib/auth/module-permissions";
 import { getDefaultPermissionsForRole } from "@/lib/auth/role-permission-presets";
 import { isReadOnlyRole } from "@/lib/auth/permissions";
+import {
+  bankMovementsScopeFromAccessLevel,
+  canReadBankMovementsScope,
+} from "@/lib/auth/bank-movements-scope";
 import type { AppUser } from "@/types/app-user";
 
 export type CopilotModuleAccessOptions = {
@@ -97,6 +102,19 @@ function assertModuleAccess(
   const role = ctx.appUser.role ?? "";
   if (role.trim().toLowerCase() === "superadmin") return null;
 
+  // FASE BANK-RECONCILIATION-END-TO-END-STABILIZATION-001 — `bank_movements`
+  // tiene un nivel intermedio `inflow_readonly` que NO alcanza el rank de
+  // 'read' genérico (canReadModule) pero SÍ debe poder leer (solo ingresos,
+  // enforced por el route handler). Nunca debe pasar minAccess === "write".
+  if (moduleKey === "bank_movements" && minAccess === "read") {
+    const level = getModuleAccessLevel(effective, moduleKey);
+    const scope = bankMovementsScopeFromAccessLevel(level);
+    if (!canReadBankMovementsScope(scope)) {
+      return moduleForbiddenResponse(moduleKey, minAccess);
+    }
+    return null;
+  }
+
   const allowed =
     minAccess === "write"
       ? canWriteModule(role, effective, moduleKey)
@@ -106,6 +124,22 @@ function assertModuleAccess(
     return moduleForbiddenResponse(moduleKey, minAccess);
   }
   return null;
+}
+
+/**
+ * Nivel de acceso efectivo (preset + overrides DB) para un módulo, ya
+ * resuelto para el appUser de este ctx. superadmin → 'admin'. Usar en route
+ * handlers de `bank_movements` para derivar el `BankMovementsScope` real
+ * (p. ej. forzar `direction=inflow` para `inflow_readonly`).
+ */
+export async function getCopilotModuleAccessLevel(
+  ctx: CopilotTenantContext,
+  moduleKey: ModuleKey
+): Promise<AccessLevel> {
+  const role = ctx.appUser.role?.trim().toLowerCase() ?? "";
+  if (role === "superadmin") return "admin";
+  const effective = await loadEffectiveModulePermissionsForAppUser(ctx.supabase, ctx.appUser);
+  return getModuleAccessLevel(effective, moduleKey);
 }
 
 /**

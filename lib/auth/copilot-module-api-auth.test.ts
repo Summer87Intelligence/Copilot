@@ -184,6 +184,77 @@ describe("requireCopilotModuleAccess", () => {
   });
 });
 
+describe("requireCopilotModuleAccess — bank_movements inflow_readonly (FASE BANK-RECONCILIATION-END-TO-END-STABILIZATION-001)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    requireCopilotTenantContext.mockResolvedValue({
+      ok: true,
+      ctx: {
+        ...tenantCtx,
+        appUser: { ...tenantCtx.appUser, role: "usuario" },
+      },
+    });
+  });
+
+  it("permite lectura (GET) con inflow_readonly aunque no alcance el rank genérico de 'read'", async () => {
+    tenantCtx.supabase = mockPermissionsSupabase([
+      { module_key: "bank_movements", access_level: "inflow_readonly" },
+    ]);
+    requireCopilotTenantContext.mockResolvedValue({
+      ok: true,
+      ctx: { ...tenantCtx, appUser: { ...tenantCtx.appUser, role: "usuario" } },
+    });
+    const req = new NextRequest("http://localhost/api/copilot/bank-movements");
+    const auth = await requireCopilotModuleAccess(req, "bank_movements");
+    expect(auth.ok).toBe(true);
+  });
+
+  it("403 FORBIDDEN_MODULE de lectura con bank_movements=none", async () => {
+    tenantCtx.supabase = mockPermissionsSupabase([{ module_key: "bank_movements", access_level: "none" }]);
+    requireCopilotTenantContext.mockResolvedValue({
+      ok: true,
+      ctx: { ...tenantCtx, appUser: { ...tenantCtx.appUser, role: "usuario" } },
+    });
+    const req = new NextRequest("http://localhost/api/copilot/bank-movements");
+    const auth = await requireCopilotModuleAccess(req, "bank_movements");
+    expect(auth.ok).toBe(false);
+    if (!auth.ok) {
+      expect(auth.response.status).toBe(403);
+      const body = await auth.response.json();
+      expect(body.code).toBe("FORBIDDEN_MODULE");
+    }
+  });
+
+  it("inflow_readonly NUNCA pasa el check de escritura (403 en POST/PATCH/DELETE)", async () => {
+    tenantCtx.supabase = mockPermissionsSupabase([
+      { module_key: "bank_movements", access_level: "inflow_readonly" },
+    ]);
+    requireCopilotTenantContext.mockResolvedValue({
+      ok: true,
+      ctx: { ...tenantCtx, appUser: { ...tenantCtx.appUser, role: "usuario" } },
+    });
+    const req = new NextRequest("http://localhost/api/copilot/bank-movements/x/hide", { method: "POST" });
+    const auth = await requireCopilotModuleWriteAccess(req, "bank_movements");
+    expect(auth.ok).toBe(false);
+    if (!auth.ok) {
+      expect(auth.response.status).toBe(403);
+      const body = await auth.response.json();
+      expect(body.code).toBe("FORBIDDEN_MODULE");
+    }
+  });
+
+  it("read/write efectivo con bank_movements siguen funcionando (no regresión del rank genérico)", async () => {
+    tenantCtx.supabase = mockPermissionsSupabase([{ module_key: "bank_movements", access_level: "read" }]);
+    requireCopilotTenantContext.mockResolvedValue({
+      ok: true,
+      ctx: { ...tenantCtx, appUser: { ...tenantCtx.appUser, role: "usuario" } },
+    });
+    const req = new NextRequest("http://localhost/api/copilot/bank-movements");
+    const auth = await requireCopilotModuleAccess(req, "bank_movements");
+    expect(auth.ok).toBe(true);
+  });
+});
+
 describe("requireCopilotModuleAccessAny", () => {
   beforeEach(() => {
     vi.clearAllMocks();

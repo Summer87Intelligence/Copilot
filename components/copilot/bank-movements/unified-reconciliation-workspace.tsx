@@ -41,6 +41,8 @@ type CaseSummary = {
   recommendedAction: string;
 };
 
+type ReceiptCandidate = { receiptId: string; amount: number; currency: string; date: string | null };
+
 type CaseRow = {
   movementId: string;
   date: string;
@@ -56,9 +58,24 @@ type CaseRow = {
   hasFinancialLink: boolean;
   alreadyIdentifiedClientId: string | null;
   canonicalMovementId: string | null;
+  receiptCandidate: ReceiptCandidate | null;
+  receiptCandidatesCount: number;
 };
 
 type CaseDetail = CaseSummary & { rows: CaseRow[]; batchEligibleMovementIds: string[] };
+
+/** Hints opcionales del cluster para que el drawer enfocado no mienta durante loading. */
+export type OpenReceiptHints = {
+  expectedHasCompatibleReceipt?: boolean;
+  clientLabel?: string;
+};
+
+/** Etiqueta honesta de recibo a nivel fila — nunca "no hay recibo" fuera de loading. */
+function receiptColumnLabel(row: CaseRow): string {
+  if (row.receiptCandidatesCount > 1) return "Varios recibos posibles";
+  if (row.receiptCandidate || row.hasCompatibleReceipt) return "Recibo encontrado";
+  return "Sin recibo";
+}
 
 const STATUS_FILTERS: Array<{ value: UnifiedCaseStatus | ""; label: string }> = [
   { value: "", label: "Todos" },
@@ -112,7 +129,7 @@ export function UnifiedReconciliationWorkspace({
 }: {
   onChanged?: () => void;
   onOpenIdentify: (clusterKey: string) => void;
-  onOpenReceipt: (movementId: string) => void;
+  onOpenReceipt: (movementId: string, hints?: OpenReceiptHints) => void;
   initialClusterKey?: string | null;
   initialMovementId?: string | null;
   onInitialFocusConsumed?: () => void;
@@ -342,7 +359,7 @@ function UnifiedCaseDrawer({
   onClose: () => void;
   onChanged: () => void;
   onOpenIdentify: (clusterKey: string) => void;
-  onOpenReceipt: (movementId: string) => void;
+  onOpenReceipt: (movementId: string, hints?: OpenReceiptHints) => void;
 }) {
   const [detail, setDetail] = useState<CaseDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -356,6 +373,11 @@ function UnifiedCaseDrawer({
     setPrevHighlightMovementId(highlightMovementId);
     if (highlightMovementId) setFocusedRowId(highlightMovementId);
   }
+  // FASE BANK-RECONCILIATION-END-TO-END-STABILIZATION-001 — cola de revisión
+  // "1 de N": al iniciar el lote de listos-para-confirmar, guardamos el orden
+  // y la posición actual para mostrar progreso y navegar sin perder el lugar.
+  const [reviewQueue, setReviewQueue] = useState<string[]>([]);
+  const [reviewIndex, setReviewIndex] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -408,17 +430,38 @@ function UnifiedCaseDrawer({
     onChanged();
   };
 
-  const openFirstEligibleReceipt = () => {
-    const id = detail?.batchEligibleMovementIds[0];
-    if (!id) return;
-    setFocusedRowId(id);
-    onOpenReceipt(id);
+  const openReceiptWithHints = (movementId: string) => {
+    const row = detail?.rows.find((r) => r.movementId === movementId);
+    setFocusedRowId(movementId);
+    onOpenReceipt(movementId, {
+      expectedHasCompatibleReceipt: row?.hasCompatibleReceipt ?? true,
+      clientLabel: row?.clientLabel ?? detail?.suggestedClientName ?? undefined,
+    });
+  };
+
+  /** Arranca la cola de revisión con todos los movimientos listos para confirmar. */
+  const startReviewQueue = () => {
+    const queue = detail?.batchEligibleMovementIds ?? [];
+    if (queue.length === 0) return;
+    setReviewQueue(queue);
+    setReviewIndex(0);
+    openReceiptWithHints(queue[0]!);
+  };
+
+  const goToReviewIndex = (nextIndex: number) => {
+    if (nextIndex < 0 || nextIndex >= reviewQueue.length) return;
+    setReviewIndex(nextIndex);
+    openReceiptWithHints(reviewQueue[nextIndex]!);
   };
 
   const focusedRow = detail?.rows.find((r) => r.movementId === focusedRowId) ?? null;
 
   return (
-    <BankDrawerShell onBackdropClick={onClose} aria-label="Detalle de conciliación">
+    <BankDrawerShell
+      onBackdropClick={onClose}
+      aria-label="Detalle de conciliación"
+      panelClassName="w-full max-w-[820px] overflow-x-hidden"
+    >
       <div className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -460,10 +503,10 @@ function UnifiedCaseDrawer({
               {detail.batchEligibleMovementIds.length >= 1 && clientAlreadyIdentified ? (
                 <button
                   type="button"
-                  onClick={openFirstEligibleReceipt}
+                  onClick={startReviewQueue}
                   className={copilotButtonClassName({ variant: "primary", size: "sm" })}
                 >
-                  Confirmar {detail.batchEligibleMovementIds.length} con recibo
+                  Revisar {detail.batchEligibleMovementIds.length} listos
                 </button>
               ) : null}
               {detail.batchEligibleMovementIds.length >= 1 &&
@@ -504,6 +547,42 @@ function UnifiedCaseDrawer({
                 </a>
               ) : null}
             </div>
+
+            {reviewQueue.length > 0 ? (
+              <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] px-3 py-2">
+                <p className="text-xs font-medium text-[var(--copilot-text)]" data-review-progress>
+                  Revisando {reviewIndex + 1} de {reviewQueue.length}
+                </p>
+                <div className="ml-auto flex gap-1.5">
+                  <button
+                    type="button"
+                    disabled={reviewIndex <= 0}
+                    onClick={() => goToReviewIndex(reviewIndex - 1)}
+                    className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+                  >
+                    Anterior
+                  </button>
+                  <button
+                    type="button"
+                    disabled={reviewIndex >= reviewQueue.length - 1}
+                    onClick={() => goToReviewIndex(reviewIndex + 1)}
+                    className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+                  >
+                    Siguiente
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReviewQueue([]);
+                      setReviewIndex(0);
+                    }}
+                    className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+                  >
+                    Salir de la revisión
+                  </button>
+                </div>
+              </div>
+            ) : null}
 
             <p className={`${copilotCaptionClass} mt-3`}>
               La corrección financiera todavía requiere revisión. Ocultar no modifica la conciliación.
@@ -565,7 +644,7 @@ function UnifiedCaseDrawer({
                   <UnifiedRowActions
                     row={focusedRow}
                     onIdentify={() => onOpenIdentify(detail.clusterKey)}
-                    onReceipt={() => onOpenReceipt(focusedRow.movementId)}
+                    onReceipt={() => openReceiptWithHints(focusedRow.movementId)}
                     onFocus={() => setFocusedRowId(focusedRow.movementId)}
                   />
                 </div>
@@ -597,10 +676,7 @@ function UnifiedCaseDrawer({
                         <UnifiedRowCard
                           row={row}
                           onIdentify={() => onOpenIdentify(detail.clusterKey)}
-                          onReceipt={() => {
-                            setFocusedRowId(row.movementId);
-                            onOpenReceipt(row.movementId);
-                          }}
+                          onReceipt={() => openReceiptWithHints(row.movementId)}
                           onSelect={() => setFocusedRowId(row.movementId)}
                         />
                       </div>
@@ -637,19 +713,14 @@ function UnifiedCaseDrawer({
                               ) : null}
                               <span className={`block ${copilotCaptionClass}`}>{row.clientLabel}</span>
                             </td>
-                            <td className="py-1.5 pr-2">
-                              {row.hasCompatibleReceipt ? "Recibo encontrado" : "Sin recibo"}
-                            </td>
+                            <td className="py-1.5 pr-2">{receiptColumnLabel(row)}</td>
                             <td className="py-1.5 pr-2 max-w-[14rem]">{row.invoiceContextLabel}</td>
                             <td className="py-1.5 pr-2">{row.statusLabel}</td>
                             <td className="py-1.5">
                               <UnifiedRowActions
                                 row={row}
                                 onIdentify={() => onOpenIdentify(detail.clusterKey)}
-                                onReceipt={() => {
-                                  setFocusedRowId(row.movementId);
-                                  onOpenReceipt(row.movementId);
-                                }}
+                                onReceipt={() => openReceiptWithHints(row.movementId)}
                                 onFocus={() => setFocusedRowId(row.movementId)}
                               />
                             </td>
@@ -791,7 +862,7 @@ function UnifiedRowCard({
         </div>
         <div>
           <dt className="inline text-[var(--copilot-muted)]">Recibo · </dt>
-          <dd className="inline">{row.hasCompatibleReceipt ? "Recibo encontrado" : "Sin recibo"}</dd>
+          <dd className="inline">{receiptColumnLabel(row)}</dd>
         </div>
         <div>
           <dt className="inline text-[var(--copilot-muted)]">Factura · </dt>

@@ -9,6 +9,7 @@ import {
   type EvidenceLevel,
   type ListClustersInput,
   type PayerClusterMovementView,
+  type PayerClusterReceiptCandidate,
   type PayerClusterSummary,
 } from "@/lib/bank/canonical/payer-cluster-audit.server";
 import { auditDuplicateBankMovements } from "@/lib/bank/canonical/duplicate-import-audit.server";
@@ -19,6 +20,10 @@ import {
   type UnifiedCaseStatus,
   type UnifiedRowStatus,
 } from "@/lib/bank/canonical/unified-reconciliation-status";
+import {
+  deriveInvoiceContextKind,
+  invoiceContextLabel,
+} from "@/lib/bank/canonical/canonical-reconciliation-movement-view";
 
 /**
  * FASE BANK-RECONCILIATION-SIMPLE-UNIFIED-WORKSPACE-001
@@ -276,6 +281,10 @@ export type UnifiedReconciliationRow = {
   alreadyIdentifiedClientId: string | null;
   /** Solo filas `duplicado`: movimiento canónico del grupo. */
   canonicalMovementId: string | null;
+  /** Primer recibo compatible encontrado a nivel cluster (si lo hay). */
+  receiptCandidate: PayerClusterReceiptCandidate | null;
+  /** Cantidad de recibos compatibles encontrados a nivel cluster. */
+  receiptCandidatesCount: number;
 };
 
 export type UnifiedReconciliationCaseDetail = UnifiedReconciliationCaseSummary & {
@@ -284,12 +293,18 @@ export type UnifiedReconciliationCaseDetail = UnifiedReconciliationCaseSummary &
   batchEligibleMovementIds: string[];
 };
 
-function invoiceContextFromLevel(level: PayerClusterMovementView["level"]): string {
-  if (level === "full_reconciliation") return "Factura comprobada";
-  if (level === "reconciled_with_receipt") {
-    return "No encontramos en la API de Zeta qué factura fue aplicada por este recibo.";
-  }
-  return "Factura pendiente";
+/**
+ * FASE BANK-RECONCILIATION-END-TO-END-STABILIZATION-001 — delega en la fuente
+ * canónica única (canonical-reconciliation-movement-view.ts) para no mantener
+ * dos vocabularios de "contexto de factura" divergentes entre la vista
+ * unificada y la evidencia de un movimiento puntual.
+ */
+function invoiceContextFromLevel(input: {
+  level: PayerClusterMovementView["level"];
+  hasCompatibleReceipt: boolean;
+  hasFinancialLink: boolean;
+}): string {
+  return invoiceContextLabel(deriveInvoiceContextKind(input));
 }
 
 /**
@@ -331,7 +346,11 @@ export async function getUnifiedReconciliationCaseDetail(
       currency: m.currency,
       referenceMasked: m.referenceMasked,
       clientLabel: suggested.name ?? (m.alreadyIdentifiedClientId ? "Cliente identificado" : "Sin cliente"),
-      invoiceContextLabel: invoiceContextFromLevel(m.level),
+      invoiceContextLabel: invoiceContextFromLevel({
+        level: m.level,
+        hasCompatibleReceipt: m.hasCompatibleReceipt,
+        hasFinancialLink: m.hasFinancialLink,
+      }),
       status,
       statusLabel: unifiedRowStatusLabel(status),
       action: deriveRowAction(status),
@@ -339,6 +358,8 @@ export async function getUnifiedReconciliationCaseDetail(
       hasFinancialLink: m.hasFinancialLink,
       alreadyIdentifiedClientId: m.alreadyIdentifiedClientId,
       canonicalMovementId: canonicalByDuplicate.get(m.movementId) ?? null,
+      receiptCandidate: m.receiptCandidate ?? null,
+      receiptCandidatesCount: m.receiptCandidatesCount ?? 0,
     };
   });
 

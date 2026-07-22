@@ -29,7 +29,7 @@ import {
   CopilotSectionTitle,
   copilotPageMainClass,
 } from "@/components/copilot/copilot-ui";
-import { type AccessLevel, type ModuleKey } from "@/lib/auth/module-permissions";
+import { accessLevelLabel, type AccessLevel, type ModuleKey } from "@/lib/auth/module-permissions";
 import { ROLE_LABELS, type SupportedRole } from "@/lib/auth/role-permission-presets";
 import { AdminTasksWorkloadPanel } from "@/components/copilot/admin/tasks-workload-panel";
 
@@ -705,6 +705,39 @@ function EditPermissionsModal({
             {visibleModules.map((moduleKey) => {
               const level = perms[moduleKey] ?? "none";
               const isLocked = isSuperadmin && moduleKey === "admin";
+
+              // FASE BANK-RECONCILIATION-END-TO-END-STABILIZATION-001 — Banco
+              // tiene un nivel intermedio (`inflow_readonly`, solo ingresos)
+              // que los checkboxes Ver/Modificar no pueden representar. Un
+              // select explícito evita que el admin arme una combinación
+              // imposible ("ver" + "inflow_readonly" al mismo tiempo).
+              if (moduleKey === "bank_movements") {
+                return (
+                  <tr key={moduleKey} className="border-b border-[var(--copilot-border)]/50">
+                    <td className="py-2 font-medium text-[var(--copilot-ink)]">{MODULE_LABELS[moduleKey]}</td>
+                    <td className="py-2 text-center" colSpan={2}>
+                      <select
+                        value={level}
+                        onChange={(e) =>
+                          setPerms((prev) => ({
+                            ...prev,
+                            [moduleKey]: e.target.value as AccessLevel,
+                          }))
+                        }
+                        aria-label={`Nivel de acceso para ${MODULE_LABELS[moduleKey]}`}
+                        className="w-full max-w-[220px] rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 py-1 text-xs text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/40"
+                      >
+                        {(["none", "inflow_readonly", "read", "write"] as const).map((option) => (
+                          <option key={option} value={option}>
+                            {accessLevelLabel(option)}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                  </tr>
+                );
+              }
+
               const { canView, canEdit } = accessLevelToChecks(level);
               return (
                 <tr key={moduleKey} className="border-b border-[var(--copilot-border)]/50">

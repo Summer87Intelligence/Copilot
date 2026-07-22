@@ -9,7 +9,10 @@ import { BankMovementsImportPanel } from "@/components/copilot/bank-movements/ba
 import { BankMovementsReconciliationPanel } from "@/components/copilot/bank-movements/bank-movements-reconciliation-panel";
 import { ClusterReviewDrawer } from "@/components/copilot/bank-movements/bank-client-identification-workspace";
 import { FocusedReceiptConfirmDrawer } from "@/components/copilot/bank-movements/focused-receipt-confirm-drawer";
-import { UnifiedReconciliationWorkspace } from "@/components/copilot/bank-movements/unified-reconciliation-workspace";
+import {
+  UnifiedReconciliationWorkspace,
+  type OpenReceiptHints,
+} from "@/components/copilot/bank-movements/unified-reconciliation-workspace";
 import { BankHistoryPanel } from "@/components/copilot/bank-movements/bank-history-panel";
 
 import {
@@ -48,6 +51,11 @@ import {
 import { DUPLICATE_OF_IMPORT_LABEL } from "@/lib/bank/canonical/duplicate-import-audit-labels";
 import { resolveImportedBankMovementAmount } from "@/lib/bank-movements/santander-excel-amount";
 import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
+import {
+  bankMovementsScopeFromAccessLevel,
+  canMutateBankMovementRecord,
+  mustForceBankInflowOnly,
+} from "@/lib/auth/bank-movements-scope";
 import {
   BANK_MOVEMENT_DIRECTION_LABELS,
   BANK_MOVEMENT_STATUS_LABELS,
@@ -127,8 +135,16 @@ function formFromMovement(m: BankMovement): FormState {
 export function BankMovementsPageClient() {
   const searchParams = useSearchParams();
   const { modulePermissions } = useCopilotPermissions();
-  const canWriteBank =
-    modulePermissions["bank_movements"] === "write" || modulePermissions["bank_movements"] === "admin";
+  // FASE BANK-RECONCILIATION-END-TO-END-STABILIZATION-001 — el alcance real de
+  // Banco (independiente de cualquier heurística por email) sale del
+  // access_level efectivo del módulo `bank_movements`. `inflow_readonly` es un
+  // nivel intermedio: puede leer, pero SOLO ingresos, y nunca puede mutar.
+  const bankScope = bankMovementsScopeFromAccessLevel(modulePermissions["bank_movements"]);
+  const forceInflowOnly = mustForceBankInflowOnly(bankScope);
+  // Nunca confiar solo en el string de rol/nivel para habilitar mutaciones:
+  // `canMutateBankMovementRecord` es la única fuente de verdad del scope, así
+  // que `inflow_readonly` jamás puede colar un canWriteBank=true acá.
+  const canWriteBank = canMutateBankMovementRecord(bankScope);
   const [tab, setTab] = useState<BankTab>("movimientos");
   // FASE BANK-RECONCILIATION-SIMPLE-UNIFIED-WORKSPACE-001 — Conciliación ya no
   // tiene dos sub-vistas separadas; ambos flujos existentes (identificación en
@@ -162,6 +178,7 @@ export function BankMovementsPageClient() {
   }, [searchParams]);
   const [focusMovementId, setFocusMovementId] = useState<string | null>(null);
   const [receiptFocusMovementId, setReceiptFocusMovementId] = useState<string | null>(null);
+  const [receiptFocusHints, setReceiptFocusHints] = useState<OpenReceiptHints | undefined>(undefined);
   const returnToMovimientosRef = useRef(false);
   const savedScrollY = useRef(0);
   const [tesoreriaOpen, setTesoreriaOpen] = useState(false);
@@ -176,6 +193,15 @@ export function BankMovementsPageClient() {
   const [movementFilters, setMovementFilters] = useState<BankMovementsListFilters>(
     DEFAULT_BANK_MOVEMENTS_LIST_FILTERS
   );
+
+  // `inflow_readonly` nunca debe poder filtrar por egresos: el filtro de
+  // dirección se oculta en la UI (ver `hideDirectionFilter` abajo), pero
+  // además se fuerza acá por si el estado quedó en otro valor (p. ej. un
+  // cambio de permisos en caliente sin recargar la página).
+  useEffect(() => {
+    if (!forceInflowOnly) return;
+    setMovementFilters((prev) => (prev.direction === "inflow" ? prev : { ...prev, direction: "inflow" }));
+  }, [forceInflowOnly]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -385,6 +411,16 @@ export function BankMovementsPageClient() {
         bankReference: m.bank_reference,
         bankName: null,
       });
+      // FASE BANK-RECONCILIATION-END-TO-END-STABILIZATION-001 — sin cluster
+      // derivable (nombre de pagador no extraíble) no hay caso de Conciliación
+      // unificada que mostrar. En vez de dejar al usuario en una pestaña sin
+      // nada relevante, abrimos directo el drawer de confirmar recibo de este
+      // movimiento puntual.
+      if (!clusterKey) {
+        setReceiptFocusHints(undefined);
+        setReceiptFocusMovementId(movementId);
+        return;
+      }
       savedScrollY.current = typeof window !== "undefined" ? window.scrollY : 0;
       returnToMovimientosRef.current = true;
       setFocusMovementId(movementId);
@@ -418,7 +454,13 @@ export function BankMovementsPageClient() {
     });
     if (clusterKey) {
       setFocusClusterKey(clusterKey);
+      return;
     }
+    // Sin cluster derivable: no dejar el deep-link "colgado" en Conciliación
+    // sin caso que mostrar — abrir directo el drawer de confirmar recibo.
+    setFocusMovementId(null);
+    setReceiptFocusHints(undefined);
+    setReceiptFocusMovementId(m.id);
   }, [focusMovementId, focusClusterKey, movements, tab]);
 
   const restoreMovimientosIfNeeded = useCallback(() => {
@@ -558,6 +600,7 @@ export function BankMovementsPageClient() {
     // y eliminar; la evidencia del archivo que lo generó se conserva en
     // metadata.additional_sources de la fila canónica, nunca se borra sola.
     if (movementDuplicates[m.id]) {
+      if (!canWriteBank) return null;
       return (
         <div className="flex flex-wrap justify-end gap-1.5">
           <button
@@ -581,14 +624,16 @@ export function BankMovementsPageClient() {
     }
     return (
     <div className="flex flex-wrap justify-end gap-1.5">
-      <button
-        type="button"
-        onClick={() => setForm(formFromMovement(m))}
-        className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
-        aria-label="Editar movimiento"
-      >
-        <Pencil className="h-3.5 w-3.5" aria-hidden />
-      </button>
+      {canWriteBank ? (
+        <button
+          type="button"
+          onClick={() => setForm(formFromMovement(m))}
+          className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+          aria-label="Editar movimiento"
+        >
+          <Pencil className="h-3.5 w-3.5" aria-hidden />
+        </button>
+      ) : null}
       {m.direction === "inflow" && level ? (
         renderInflowLevelAction(m, level)
       ) : m.status !== "matched" ? (
@@ -609,7 +654,7 @@ export function BankMovementsPageClient() {
             Vincular con pago programado
           </button>
         )
-      ) : (
+      ) : canWriteBank ? (
         <button
           type="button"
           onClick={() => void changeStatus(m, "pending")}
@@ -617,8 +662,8 @@ export function BankMovementsPageClient() {
         >
           Reabrir
         </button>
-      )}
-      {m.status !== "ignored" ? (
+      ) : null}
+      {m.status !== "ignored" && canWriteBank ? (
         <button
           type="button"
           onClick={() => void changeStatus(m, "ignored")}
@@ -650,14 +695,16 @@ export function BankMovementsPageClient() {
           </button>
         )
       ) : null}
-      <button
-        type="button"
-        onClick={() => void remove(m)}
-        className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
-        aria-label="Eliminar movimiento"
-      >
-        <Trash2 className="h-3.5 w-3.5" aria-hidden />
-      </button>
+      {canWriteBank ? (
+        <button
+          type="button"
+          onClick={() => void remove(m)}
+          className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+          aria-label="Eliminar movimiento"
+        >
+          <Trash2 className="h-3.5 w-3.5" aria-hidden />
+        </button>
+      ) : null}
     </div>
     );
   };
@@ -830,17 +877,19 @@ export function BankMovementsPageClient() {
         <section className={copilotCardStandardClass}>
           <div className="flex items-center justify-between gap-3">
             <h2 className={copilotSectionTitleClass}>Movimientos del banco</h2>
-            <button
-              type="button"
-              onClick={() => setForm(form ? null : emptyForm())}
-              className={copilotButtonClassName({ variant: "primary", size: "sm" })}
-            >
-              <Plus className="mr-1 h-3.5 w-3.5" aria-hidden />
-              Agregar movimiento
-            </button>
+            {canWriteBank ? (
+              <button
+                type="button"
+                onClick={() => setForm(form ? null : emptyForm())}
+                className={copilotButtonClassName({ variant: "primary", size: "sm" })}
+              >
+                <Plus className="mr-1 h-3.5 w-3.5" aria-hidden />
+                Agregar movimiento
+              </button>
+            ) : null}
           </div>
 
-          {form ? (
+          {form && canWriteBank ? (
             <MovementForm
               form={form}
               submitting={submitting}
@@ -854,12 +903,24 @@ export function BankMovementsPageClient() {
             <BankMovementsFiltersBar
               mode="movements"
               filters={movementFilters}
-              onChange={(next) => setMovementFilters(next as BankMovementsListFilters)}
-              onClear={() => setMovementFilters(DEFAULT_BANK_MOVEMENTS_LIST_FILTERS)}
+              onChange={(next) => {
+                const nextFilters = next as BankMovementsListFilters;
+                setMovementFilters(
+                  forceInflowOnly ? { ...nextFilters, direction: "inflow" } : nextFilters
+                );
+              }}
+              onClear={() =>
+                setMovementFilters(
+                  forceInflowOnly
+                    ? { ...DEFAULT_BANK_MOVEMENTS_LIST_FILTERS, direction: "inflow" }
+                    : DEFAULT_BANK_MOVEMENTS_LIST_FILTERS
+                )
+              }
               showingCount={filteredMovements.length}
               totalCount={movements.length}
               countLabel="movimientos"
               canManageVisibility={canWriteBank}
+              hideDirectionFilter={forceInflowOnly}
             />
           </div>
 
@@ -911,7 +972,7 @@ export function BankMovementsPageClient() {
         </section>
       ) : null}
 
-      {tab === "movimientos" ? (
+      {tab === "movimientos" && !forceInflowOnly ? (
         <details
           open={tesoreriaOpen}
           onToggle={(e) => setTesoreriaOpen(e.currentTarget.open)}
@@ -931,7 +992,10 @@ export function BankMovementsPageClient() {
           <UnifiedReconciliationWorkspace
             onChanged={load}
             onOpenIdentify={(clusterKey) => setIdentifyClusterKey(clusterKey)}
-            onOpenReceipt={(movementId) => setReceiptFocusMovementId(movementId)}
+            onOpenReceipt={(movementId, hints) => {
+              setReceiptFocusHints(hints);
+              setReceiptFocusMovementId(movementId);
+            }}
             initialClusterKey={focusClusterKey}
             initialMovementId={focusMovementId}
             onInitialFocusConsumed={() => {
@@ -955,8 +1019,13 @@ export function BankMovementsPageClient() {
           {receiptFocusMovementId ? (
             <FocusedReceiptConfirmDrawer
               movementId={receiptFocusMovementId}
-              onClose={() => setReceiptFocusMovementId(null)}
+              onClose={() => {
+                setReceiptFocusMovementId(null);
+                setReceiptFocusHints(undefined);
+              }}
               onChanged={load}
+              expectedHasCompatibleReceipt={receiptFocusHints?.expectedHasCompatibleReceipt}
+              clientLabel={receiptFocusHints?.clientLabel}
             />
           ) : null}
         </div>

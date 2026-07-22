@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { parseAndValidateJsonBody } from "@/lib/api/parse-and-validate-json-body";
 import {
+  getCopilotModuleAccessLevel,
   requireCopilotModuleAccess,
   requireCopilotModuleWriteAccess,
 } from "@/lib/auth/copilot-module-api-auth";
+import { bankMovementsScopeFromAccessLevel, mustForceBankInflowOnly } from "@/lib/auth/bank-movements-scope";
 import {
   bankMovementCreateBodySchema,
   buildBankMovementInsert,
@@ -14,6 +16,7 @@ import {
   isValidBankMovementStatus,
   type BankMovement,
 } from "@/lib/bank-movements/bank-movements-types";
+import { isBankMovementUiHidden } from "@/lib/bank-movements/bank-movement-visibility";
 import { batchDeriveMovementReconciliationLevels } from "@/lib/bank/canonical/movement-reconciliation-level";
 import { auditDuplicateBankMovements } from "@/lib/bank/canonical/duplicate-import-audit.server";
 
@@ -28,6 +31,14 @@ export async function GET(request: NextRequest) {
   const { supabase, tenantCompanyId } = auth.ctx;
   const params = request.nextUrl.searchParams;
 
+  // FASE BANK-RECONCILIATION-END-TO-END-STABILIZATION-001 — `inflow_readonly`
+  // ve SOLO ingresos, sin excepción. El filtro se fuerza server-side; el
+  // parámetro `direction` del cliente se ignora por completo en ese caso
+  // (nunca confiar en el request para decidir qué egresos exponer).
+  const accessLevel = await getCopilotModuleAccessLevel(auth.ctx, "bank_movements");
+  const scope = bankMovementsScopeFromAccessLevel(accessLevel);
+  const forceInflowOnly = mustForceBankInflowOnly(scope);
+
   let query = supabase
     .from("bank_movements")
     .select("*")
@@ -40,9 +51,13 @@ export async function GET(request: NextRequest) {
   if (status && status !== "all" && isValidBankMovementStatus(status)) {
     query = query.eq("status", status);
   }
-  const direction = params.get("direction");
-  if (direction && direction !== "all" && isValidBankMovementDirection(direction)) {
-    query = query.eq("direction", direction);
+  if (forceInflowOnly) {
+    query = query.eq("direction", "inflow");
+  } else {
+    const direction = params.get("direction");
+    if (direction && direction !== "all" && isValidBankMovementDirection(direction)) {
+      query = query.eq("direction", direction);
+    }
   }
   const currency = params.get("currency");
   if (currency && currency !== "all") query = query.eq("currency", currency);
@@ -65,7 +80,15 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const rows = (data ?? []) as BankMovement[];
+  let rows = (data ?? []) as BankMovement[];
+
+  // `inflow_readonly` es una vista acotada y de solo lectura: los movimientos
+  // ocultados manualmente por Banco no aportan valor a ese lector y podrían
+  // confundir (aparecen "sueltos" sin las acciones de gestión). Se excluyen
+  // acá porque `metadata.ui_hidden` no es un filtro trivial de Postgrest.
+  if (forceInflowOnly) {
+    rows = rows.filter((r) => !isBankMovementUiHidden((r as { metadata?: Record<string, unknown> | null }).metadata));
+  }
 
   // FASE BANK-FULL-RECONCILIATION-UI-CORRECTION-001 — nivel real por movimiento
   // (solo ingresos: el triado cliente→recibo→factura no aplica a egresos, que

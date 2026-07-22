@@ -107,6 +107,39 @@ describe("PATCH /api/copilot/admin/users/:id/permissions", () => {
     );
   });
 
+  it("persiste bank_movements en inflow_readonly (FASE BANK-RECONCILIATION-END-TO-END-STABILIZATION-001)", async () => {
+    const upsertMock = vi.fn().mockResolvedValue({ error: null });
+    const admin = {
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === "app_users") {
+          return makeUserLookupChain({ id: TARGET_ID, role: "usuario" });
+        }
+        return { upsert: upsertMock };
+      }),
+    };
+    mocks.requireAdminContext.mockResolvedValue(adminAuthOk(admin));
+
+    const res = await PATCH(
+      makeRequest({ permissions: [{ moduleKey: "bank_movements", accessLevel: "inflow_readonly" }] }),
+      { params: Promise.resolve({ id: TARGET_ID }) }
+    );
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.ok).toBe(true);
+    expect(upsertMock).toHaveBeenCalledWith(
+      [
+        {
+          workspace_id: TENANT,
+          user_id: TARGET_ID,
+          module_key: "bank_movements",
+          access_level: "inflow_readonly",
+        },
+      ],
+      { onConflict: "workspace_id,user_id,module_key" }
+    );
+  });
+
   it("rechaza moduleKey inválido sin llamar upsert", async () => {
     const upsertMock = vi.fn();
     const admin = {

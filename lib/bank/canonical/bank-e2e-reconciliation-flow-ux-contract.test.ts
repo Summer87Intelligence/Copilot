@@ -50,7 +50,7 @@ describe("Foco exacto de movimiento", () => {
     expect(focused).toContain("canonical-suggestions?workspace=income&movementIds=");
     expect(focused).toContain("Confirmar con recibo");
     expect(focused).not.toContain("status: \"pendientes\"");
-    expect(unified).toContain("onOpenReceipt(row.movementId)");
+    expect(unified).toContain("openReceiptWithHints(row.movementId)");
     expect(unified).toContain("data-focused-movement");
   });
 
@@ -62,21 +62,34 @@ describe("Foco exacto de movimiento", () => {
   });
 
   it("no usa Confirmar cliente en N cuando el cliente ya está identificado", () => {
-    expect(unified).toContain("Confirmar {detail.batchEligibleMovementIds.length} con recibo");
     expect(unified).not.toContain("Confirmar cliente en ${");
     expect(unified).not.toContain("Confirmar cliente en ");
     expect(unified).toContain("Confirmar cliente");
     expect(unified).toContain("clientAlreadyIdentified");
   });
+
+  it("lote de listos-para-confirmar dice 'Revisar N listos', nunca la CTA masiva 'Confirmar N con recibo' (FASE BANK-RECONCILIATION-END-TO-END-STABILIZATION-001)", () => {
+    expect(unified).toContain("Revisar {detail.batchEligibleMovementIds.length} listos");
+    expect(unified).not.toMatch(/Confirmar \{[^}]*\}\s*con recibo/);
+    expect(unified).not.toContain("Confirmar {detail.batchEligibleMovementIds.length} con recibo");
+    expect(unified).toContain("startReviewQueue");
+    expect(unified).toContain("reviewIndex");
+  });
 });
 
 describe("Facturas y estados honestos", () => {
-  it("factura sin aplicación Zeta usa copy honesto, no guión vacío", () => {
-    expect(caseEngine).toContain(
-      "No encontramos en la API de Zeta qué factura fue aplicada por este recibo."
+  it("factura sin aplicación Zeta usa copy honesto, no guión vacío (fuente: canonical-reconciliation-movement-view)", () => {
+    const canonicalView = readFileSync(
+      join(process.cwd(), "lib", "bank", "canonical", "canonical-reconciliation-movement-view.ts"),
+      "utf8"
     );
-    expect(caseEngine).toContain('return "Factura pendiente"');
-    expect(caseEngine).toContain('return "Factura comprobada"');
+    expect(caseEngine).toContain("deriveInvoiceContextKind");
+    expect(caseEngine).toContain("invoiceContextLabel");
+    expect(canonicalView).toContain(
+      "Zeta no informa por API qué factura fue aplicada por este recibo."
+    );
+    expect(canonicalView).toContain('factura_pendiente: "Factura pendiente"');
+    expect(canonicalView).toContain('factura_comprobada: "Factura comprobada"');
   });
 
   it("CTA final del evidence drawer dice Confirmar con recibo", () => {

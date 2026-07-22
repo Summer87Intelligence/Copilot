@@ -458,10 +458,101 @@ describe("getUnifiedReconciliationCaseDetail", () => {
     });
 
     expect(result!.rows.find((r) => r.movementId === "r1")!.invoiceContextLabel).toBe(
-      "No encontramos en la API de Zeta qué factura fue aplicada por este recibo."
+      "Zeta no informa por API qué factura fue aplicada por este recibo."
     );
     expect(result!.rows.find((r) => r.movementId === "r2")!.invoiceContextLabel).toBe("Factura comprobada");
     expect(result!.status).toBe("conciliado");
+  });
+
+  it("passes receiptCandidate/receiptCandidatesCount through from the cluster movement when present", async () => {
+    getPayerClusterDetail.mockResolvedValueOnce({
+      clusterKey: "CANDID",
+      displayName: "Candid Co",
+      months: ["2026-04"],
+      currencies: ["UYU"],
+      totalByCurrency: { UYU: 500 },
+      movementCount: 1,
+      movementIds: ["c1"],
+      clientMatches: [{ clientCompanyId: "c1", clientName: "Candid Co", matchType: "exact" }],
+      evidence: "strong",
+      compatibleReceiptCount: 1,
+      missingReceiptCount: 0,
+      alreadyIdentifiedCount: 1,
+      movements: [
+        {
+          movementId: "c1",
+          date: "2026-04-01",
+          amount: 500,
+          currency: "UYU",
+          referenceMasked: null,
+          hasCompatibleReceipt: true,
+          hasFinancialLink: false,
+          alreadyIdentifiedClientId: "c1",
+          level: "client_identified" as const,
+          receiptCandidate: { receiptId: "receipt-9", amount: 500, currency: "UYU", date: "2026-04-01" },
+          receiptCandidatesCount: 2,
+        },
+      ],
+    });
+    auditDuplicateBankMovements.mockResolvedValueOnce([]);
+
+    const result = await getUnifiedReconciliationCaseDetail(fakeSb, {
+      workspaceId: WS,
+      from: "2026-04-01",
+      to: "2026-04-30",
+      clusterKey: "CANDID",
+    });
+
+    const row = result!.rows.find((r) => r.movementId === "c1")!;
+    expect(row.receiptCandidate).toEqual({
+      receiptId: "receipt-9",
+      amount: 500,
+      currency: "UYU",
+      date: "2026-04-01",
+    });
+    expect(row.receiptCandidatesCount).toBe(2);
+  });
+
+  it("defaults receiptCandidate to null and receiptCandidatesCount to 0 when the cluster movement omits them", async () => {
+    getPayerClusterDetail.mockResolvedValueOnce({
+      clusterKey: "NOCAND",
+      displayName: "No Candidate",
+      months: ["2026-04"],
+      currencies: ["UYU"],
+      totalByCurrency: { UYU: 500 },
+      movementCount: 1,
+      movementIds: ["n1"],
+      clientMatches: [],
+      evidence: "none",
+      compatibleReceiptCount: 0,
+      missingReceiptCount: 1,
+      alreadyIdentifiedCount: 0,
+      movements: [
+        {
+          movementId: "n1",
+          date: "2026-04-01",
+          amount: 500,
+          currency: "UYU",
+          referenceMasked: null,
+          hasCompatibleReceipt: false,
+          hasFinancialLink: false,
+          alreadyIdentifiedClientId: null,
+          level: "unidentified" as const,
+        },
+      ],
+    });
+    auditDuplicateBankMovements.mockResolvedValueOnce([]);
+
+    const result = await getUnifiedReconciliationCaseDetail(fakeSb, {
+      workspaceId: WS,
+      from: "2026-04-01",
+      to: "2026-04-30",
+      clusterKey: "NOCAND",
+    });
+
+    const row = result!.rows.find((r) => r.movementId === "n1")!;
+    expect(row.receiptCandidate).toBeNull();
+    expect(row.receiptCandidatesCount).toBe(0);
   });
 
   it("passes the cluster's own movement date range to the duplicate audit, not the full workspace window", async () => {

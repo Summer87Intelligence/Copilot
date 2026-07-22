@@ -26,55 +26,84 @@ type IncomeWorkspaceRowDTO = {
   evidence: EvidenceItem | null;
 };
 
+/** Estado explícito de carga — nunca afirmar "falta recibo" mientras loading. */
+export type FocusedReceiptDrawerLoadState = "loading" | "ready" | "empty" | "error";
+
 /**
  * FASE BANK-END-TO-END-RECONCILIATION-FLOW-UX-CORRECTION-001 —
  * Confirmar con recibo abre SOLO el movimiento pedido. Nunca la bandeja
  * general de pendientes (BankIncomeWorkspace).
+ *
+ * FASE BANK-RECONCILIATION-END-TO-END-STABILIZATION-001 — estados explícitos
+ * loading|ready|empty|error. Mientras `loading`, nunca se afirma "falta
+ * recibo" ni "no hay recibo": el mensaje es siempre "Cargando evidencia…".
+ * Si el cluster de pagador (motor B) ya vio un recibo compatible para este
+ * cliente (`expectedHasCompatibleReceipt`) pero la evidencia canónica (motor
+ * D) todavía no expone una sugerencia lista para confirmar, el mensaje lo
+ * dice explícitamente en vez de mentir "falta recibo en Zeta" — ofrece
+ * "Revisá opciones" (retry) en su lugar.
  */
 export function FocusedReceiptConfirmDrawer({
   movementId,
   onClose,
   onChanged,
+  expectedHasCompatibleReceipt = false,
+  clientLabel,
 }: {
   movementId: string;
   onClose: () => void;
   onChanged?: () => void;
+  /** El cluster de pagador ya vio un recibo compatible para este cliente/moneda/monto. */
+  expectedHasCompatibleReceipt?: boolean;
+  /** Nombre de cliente ya identificado (si lo hay), solo para contexto visual. */
+  clientLabel?: string;
 }) {
-  const [loading, setLoading] = useState(true);
+  const [state, setState] = useState<FocusedReceiptDrawerLoadState>("loading");
   const [error, setError] = useState<string | null>(null);
   const [row, setRow] = useState<IncomeWorkspaceRowDTO | null>(null);
   const [mutating, setMutating] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    setState("loading");
     setError(null);
     try {
       const res = await fetch(
         `/api/copilot/bank-movements/canonical-suggestions?workspace=income&movementIds=${encodeURIComponent(movementId)}`
       );
       if (res.status === 404) {
-        setError("No encontramos este movimiento.");
         setRow(null);
+        setError("No encontramos este movimiento.");
+        setState("error");
         return;
       }
       if (!res.ok) {
-        setError(res.status >= 500 ? "Error del servidor al cargar la evidencia." : "No se pudo cargar este movimiento.");
         setRow(null);
+        setError(
+          res.status >= 500 ? "Error del servidor al cargar la evidencia." : "No se pudo cargar este movimiento."
+        );
+        setState("error");
         return;
       }
       const json = (await res.json()) as { ok?: boolean; data?: IncomeWorkspaceRowDTO[]; error?: string };
       if (!json.ok) {
-        setError(json.error ?? "No se pudo cargar este movimiento.");
         setRow(null);
+        setError(json.error ?? "No se pudo cargar este movimiento.");
+        setState("error");
         return;
       }
-      setRow(json.data?.[0] ?? null);
+      const nextRow = json.data?.[0] ?? null;
+      setRow(nextRow);
+      if (!nextRow) {
+        setError("No encontramos este movimiento.");
+        setState("error");
+        return;
+      }
+      setState(nextRow.evidence ? "ready" : "empty");
     } catch {
-      setError("No se pudo conectar con el servidor.");
       setRow(null);
-    } finally {
-      setLoading(false);
+      setError("No se pudo conectar con el servidor.");
+      setState("error");
     }
   }, [movementId]);
 
@@ -108,7 +137,10 @@ export function FocusedReceiptConfirmDrawer({
     onClose();
   };
 
-  if (row?.evidence) {
+  // Estado `ready` con evidencia: delega en el drawer canónico compartido.
+  // `ReconciliationEvidenceDrawer.canConfirm` ya exige `item.receipt != null`
+  // — nunca ofrece "Confirmar" sin un receipt_id concreto.
+  if (state === "ready" && row?.evidence) {
     return (
       <InlineErrorBoundary fallbackMessage="No se pudo mostrar la evidencia." onError={onClose}>
         <ReconciliationEvidenceDrawer
@@ -133,23 +165,52 @@ export function FocusedReceiptConfirmDrawer({
         </button>
       </div>
       <div className="space-y-3 p-4">
-        {loading ? <p className={copilotCaptionClass}>Cargando movimiento…</p> : null}
-        {error ? <p className="text-sm text-[var(--copilot-danger-text-strong)]">{error}</p> : null}
-        {!loading && !error && row ? (
+        {clientLabel ? <p className={copilotCaptionClass}>Cliente: {clientLabel}</p> : null}
+
+        {/* Nunca afirmar falta/no hay recibo mientras carga. */}
+        {state === "loading" ? <p className={copilotCaptionClass}>Cargando evidencia…</p> : null}
+
+        {state === "error" ? (
+          <>
+            <p className="text-sm text-[var(--copilot-danger-text-strong)]">{error}</p>
+            <button
+              type="button"
+              onClick={() => void load()}
+              className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+            >
+              Reintentar
+            </button>
+          </>
+        ) : null}
+
+        {state === "empty" && row ? (
           <>
             <p className="text-sm font-medium text-[var(--copilot-text)]">
               {row.movement.currency}{" "}
               {row.movement.amount.toLocaleString("es-UY", { minimumFractionDigits: 2 })} · {row.movement.date.slice(0, 10)}
             </p>
             <p className={copilotCaptionClass}>{row.movement.descriptionMasked}</p>
-            <p className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] px-3 py-2 text-sm text-[var(--copilot-text)]">
-              Todavía no hay un recibo compatible listo para confirmar en este movimiento. Revisá el detalle del cliente o
-              dejalo pendiente.
-            </p>
+            {expectedHasCompatibleReceipt ? (
+              <>
+                <p className="rounded-lg border border-[var(--copilot-warning-border)] bg-[var(--copilot-tone-warning-bg)] px-3 py-2 text-sm text-[var(--copilot-warning-text-strong)]">
+                  Vimos un recibo compatible para este cliente, pero la sugerencia canónica todavía no está lista para
+                  confirmar acá. Revisá las opciones o intentá de nuevo en unos segundos.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void load()}
+                  className={copilotButtonClassName({ variant: "primary", size: "sm" })}
+                >
+                  Revisá opciones
+                </button>
+              </>
+            ) : (
+              <p className="rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] px-3 py-2 text-sm text-[var(--copilot-text)]">
+                Falta recibo en Zeta. Todavía no encontramos un recibo compatible con este movimiento — dejalo
+                pendiente hasta que aparezca.
+              </p>
+            )}
           </>
-        ) : null}
-        {!loading && !error && !row ? (
-          <p className="text-sm text-[var(--copilot-danger-text-strong)]">No encontramos este movimiento.</p>
         ) : null}
       </div>
     </BankDrawerShell>

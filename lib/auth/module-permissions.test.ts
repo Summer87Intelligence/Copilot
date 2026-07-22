@@ -207,6 +207,7 @@ describe("sidebar visibility (admin group)", () => {
 describe("validators", () => {
   it("isValidAccessLevel acepta valores válidos", () => {
     expect(isValidAccessLevel("none")).toBe(true);
+    expect(isValidAccessLevel("inflow_readonly")).toBe(true);
     expect(isValidAccessLevel("read")).toBe(true);
     expect(isValidAccessLevel("write")).toBe(true);
     expect(isValidAccessLevel("admin")).toBe(true);
@@ -389,6 +390,27 @@ describe("buildCopilotNavItemGroups — filtrado por módulo", () => {
     const groups = buildCopilotNavItemGroups(false, perms);
     const allItems = groups.flatMap((g) => g.items);
     expect(allItems.some((i) => i.href === "/copilot/cobranza")).toBe(false);
+  });
+});
+
+// ─── inflow_readonly (FASE BANK-RECONCILIATION-END-TO-END-STABILIZATION-001) ──
+
+describe("inflow_readonly access level", () => {
+  it("es un rank intermedio: menor que 'read', mayor que 'none'", () => {
+    const overrideNone: ModulePermission[] = [{ moduleKey: "bank_movements", accessLevel: "inflow_readonly" }];
+    const perms = resolveEffectivePermissions("usuario", presetPerms("usuario"), overrideNone);
+    // canReadModule exige rank >= 'read'; inflow_readonly es un nivel propio de
+    // bank_movements que el RBAC genérico NO trata como "read" completo — la
+    // lógica de habilitación de lectura para ese módulo vive en
+    // copilot-module-api-auth.ts (bank-movements-scope), no acá.
+    expect(canReadModule("usuario", perms, "bank_movements")).toBe(false);
+    expect(canAccessModule("usuario", perms, "bank_movements")).toBe(true);
+    expect(canWriteModule("usuario", perms, "bank_movements")).toBe(false);
+  });
+
+  it("accessLevelLabel etiqueta inflow_readonly", async () => {
+    const { accessLevelLabel } = await import("@/lib/auth/module-permissions");
+    expect(accessLevelLabel("inflow_readonly")).toBe("Solo ingresos · Solo lectura");
   });
 });
 
