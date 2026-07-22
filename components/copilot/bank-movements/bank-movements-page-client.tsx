@@ -9,6 +9,7 @@ import { BankMovementsImportPanel } from "@/components/copilot/bank-movements/ba
 import { BankMovementsReconciliationPanel } from "@/components/copilot/bank-movements/bank-movements-reconciliation-panel";
 import { ClusterReviewDrawer } from "@/components/copilot/bank-movements/bank-client-identification-workspace";
 import { FocusedReceiptConfirmDrawer } from "@/components/copilot/bank-movements/focused-receipt-confirm-drawer";
+import { SimpleMovementAssociationPanel } from "@/components/copilot/bank-movements/simple-movement-association-panel";
 import {
   UnifiedReconciliationWorkspace,
   type OpenReceiptHints,
@@ -44,11 +45,12 @@ import {
 import { isBankMovementUiHidden } from "@/lib/bank-movements/bank-movement-visibility";
 import { isBankMovementHistorical } from "@/lib/bank/canonical/historical-policy";
 import { derivePayerClusterKey } from "@/lib/bank/canonical/bank-payer-identification";
-import {
-  MOVEMENT_LEVEL_LABEL,
-  type MovementReconciliationLevel,
-} from "@/lib/bank/canonical/movement-reconciliation-level-labels";
+import type { MovementReconciliationLevel } from "@/lib/bank/canonical/movement-reconciliation-level-labels";
 import { DUPLICATE_OF_IMPORT_LABEL } from "@/lib/bank/canonical/duplicate-import-audit-labels";
+import {
+  deriveSimpleMovementState,
+  SIMPLE_MOVEMENT_STATE_LABEL,
+} from "@/lib/bank-movements/simple-movement-association";
 import { resolveImportedBankMovementAmount } from "@/lib/bank-movements/santander-excel-amount";
 import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 import {
@@ -179,6 +181,19 @@ export function BankMovementsPageClient() {
   const [focusMovementId, setFocusMovementId] = useState<string | null>(null);
   const [receiptFocusMovementId, setReceiptFocusMovementId] = useState<string | null>(null);
   const [receiptFocusHints, setReceiptFocusHints] = useState<OpenReceiptHints | undefined>(undefined);
+  // FASE BANK-SIMPLE-MOVEMENT-TO-CLIENT-RESET-001 — panel simple de
+  // asociación movimiento→cliente. Se abre directo desde Movimientos, sin
+  // cambiar de pestaña. Nunca convive con los otros drawers de Conciliación
+  // (mismo criterio de exclusividad que evitó el bug de drawers cruzados).
+  const [simpleAssociationMovementId, setSimpleAssociationMovementId] = useState<string | null>(null);
+  const openSimpleAssociation = useCallback((movementId: string) => {
+    setIdentifyClusterKey(null);
+    setReceiptFocusMovementId(null);
+    setReceiptFocusHints(undefined);
+    setFocusClusterKey(null);
+    setFocusMovementId(null);
+    setSimpleAssociationMovementId(movementId);
+  }, []);
   const returnToMovimientosRef = useRef(false);
   const savedScrollY = useRef(0);
   const [tesoreriaOpen, setTesoreriaOpen] = useState(false);
@@ -548,59 +563,40 @@ export function BankMovementsPageClient() {
   // archivo/parser) nunca muestra el estado de reconciliación normal: no es
   // una operación real separada, así que ni "Sin identificar" ni ningún otro
   // nivel aplica.
+  // FASE BANK-SIMPLE-MOVEMENT-TO-CLIENT-RESET-001 — la columna Estado usa el
+  // vocabulario simple (sección 5), no los 8 niveles técnicos del motor real
+  // (esos siguen existiendo y siguen alimentando Conciliación/Cliente 360,
+  // solo dejan de ser lo primero que ve el usuario en Movimientos).
   const movementStatusLabel = (m: BankMovement): string => {
     if (movementDuplicates[m.id]) return DUPLICATE_OF_IMPORT_LABEL;
-    if (m.direction !== "inflow" || m.status === "ignored") return BANK_MOVEMENT_STATUS_LABELS[m.status];
-    const level = movementLevels[m.id];
-    return level ? MOVEMENT_LEVEL_LABEL[level] : BANK_MOVEMENT_STATUS_LABELS[m.status];
+    if (m.direction !== "inflow") return BANK_MOVEMENT_STATUS_LABELS[m.status];
+    const simple = deriveSimpleMovementState({
+      direction: m.direction,
+      status: m.status,
+      isDuplicate: false,
+      isHidden: false,
+      level: movementLevels[m.id],
+    });
+    return simple ? SIMPLE_MOVEMENT_STATE_LABEL[simple] : BANK_MOVEMENT_STATUS_LABELS[m.status];
   };
 
-  // Acción exacta por nivel (sección 2). "Ver conciliación"/"Ver detalle completo"
-  // son solo lectura — no ofrecen "Reabrir": no existe todavía un flujo seguro
-  // y completo de reversión del link financiero + allocations reales.
+  // FASE BANK-SIMPLE-MOVEMENT-TO-CLIENT-RESET-001 — la acción principal de
+  // Movimientos ya no navega a la Conciliación por niveles técnicos
+  // (identificado/falta recibo/conciliación completa/etc.): abre directo el
+  // panel simple movimiento→cliente (sección 7). El detalle de recibo/factura
+  // sigue existiendo y sigue accesible desde la pestaña Conciliación — solo
+  // deja de ser la acción por defecto desde Movimientos.
   const renderInflowLevelAction = (m: BankMovement, level: MovementReconciliationLevel) => {
-    switch (level) {
-      case "unidentified":
-        return (
-          <button type="button" onClick={() => goToReconciliationForMovement(m.id, level)} className={copilotButtonClassName({ variant: "ghost", size: "sm" })}>
-            Identificar cliente
-          </button>
-        );
-      case "client_identified":
-        return (
-          <button type="button" onClick={() => goToReconciliationForMovement(m.id, level)} className={copilotButtonClassName({ variant: "ghost", size: "sm" })}>
-            Vincular recibo
-          </button>
-        );
-      case "missing_receipt":
-        return (
-          <button type="button" onClick={() => goToReconciliationForMovement(m.id, level)} className={copilotButtonClassName({ variant: "ghost", size: "sm" })}>
-            Revisar cuando aparezca el recibo
-          </button>
-        );
-      case "reconciled_with_receipt":
-        return (
-          <button type="button" onClick={() => goToReconciliationForMovement(m.id, level)} className={copilotButtonClassName({ variant: "ghost", size: "sm" })}>
-            Ver conciliación
-          </button>
-        );
-      case "full_reconciliation":
-        return (
-          <button type="button" onClick={() => goToReconciliationForMovement(m.id, level)} className={copilotButtonClassName({ variant: "ghost", size: "sm" })}>
-            Ver detalle completo
-          </button>
-        );
-      case "third_party":
-      case "shared_account":
-      case "requires_review":
-        return (
-          <button type="button" onClick={() => goToReconciliationForMovement(m.id, level)} className={copilotButtonClassName({ variant: "ghost", size: "sm" })}>
-            Revisar
-          </button>
-        );
-      default:
-        return null;
-    }
+    const isUnidentified = level === "unidentified";
+    return (
+      <button
+        type="button"
+        onClick={() => openSimpleAssociation(m.id)}
+        className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+      >
+        {isUnidentified ? "Asignar cliente" : "Ver asociación"}
+      </button>
+    );
   };
 
   const renderMovementActions = (m: BankMovement) => {
@@ -1005,10 +1001,12 @@ export function BankMovementsPageClient() {
             onOpenIdentify={(clusterKey) => {
               setReceiptFocusMovementId(null);
               setReceiptFocusHints(undefined);
+              setSimpleAssociationMovementId(null);
               setIdentifyClusterKey(clusterKey);
             }}
             onOpenReceipt={(movementId, hints) => {
               setIdentifyClusterKey(null);
+              setSimpleAssociationMovementId(null);
               setReceiptFocusHints(hints);
               setReceiptFocusMovementId(movementId);
             }}
@@ -1048,6 +1046,14 @@ export function BankMovementsPageClient() {
       ) : null}
 
       {tab === "historial" ? <BankHistoryPanel imports={imports} loading={loading} /> : null}
+
+      {simpleAssociationMovementId ? (
+        <SimpleMovementAssociationPanel
+          movementId={simpleAssociationMovementId}
+          onClose={() => setSimpleAssociationMovementId(null)}
+          onChanged={() => void load()}
+        />
+      ) : null}
     </div>
   );
 }

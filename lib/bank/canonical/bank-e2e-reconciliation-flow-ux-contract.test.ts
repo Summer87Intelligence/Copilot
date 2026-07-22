@@ -103,7 +103,7 @@ describe("Un solo drawer a la vez (sin estado cruzado entre movimientos)", () =>
 
   it("onOpenIdentify / onOpenReceipt del workspace unificado limpian el drawer opuesto (identificar vs recibo)", () => {
     expect(pageClient).toMatch(
-      /onOpenIdentify=\{\(clusterKey\) => \{\s*setReceiptFocusMovementId\(null\);\s*setReceiptFocusHints\(undefined\);\s*setIdentifyClusterKey\(clusterKey\);/
+      /onOpenIdentify=\{\(clusterKey\) => \{\s*setReceiptFocusMovementId\(null\);\s*setReceiptFocusHints\(undefined\);(\s*setSimpleAssociationMovementId\(null\);)?\s*setIdentifyClusterKey\(clusterKey\);/
     );
     expect(pageClient).toMatch(/onOpenReceipt=\{\(movementId, hints\) => \{\s*setIdentifyClusterKey\(null\);/);
   });

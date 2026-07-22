@@ -125,6 +125,24 @@ export async function confirmBatchClientIdentification(
   return { ok: true, created, alreadyIdentifiedSameClient, conflicts, blockedNonInflow, alreadyReconciled };
 }
 
+export type RevokeResult = { ok: true; revokedId: string };
+
+/**
+ * FASE BANK-SIMPLE-MOVEMENT-TO-CLIENT-RESET-001 — "Revocar asociación" desde
+ * el panel simple de movimiento. A diferencia de `reassignClientIdentification`
+ * (que revoca Y crea una nueva), esta solo revoca: el movimiento vuelve a
+ * "Sin cliente", sin asignar ningún reemplazo.
+ */
+export async function revokeClientIdentificationForMovement(
+  supabase: SupabaseClient,
+  input: { workspaceId: string; actorUserId: string; movementId: string }
+): Promise<RevokeResult> {
+  const existing = await getActiveIdentificationForMovement(supabase, input.workspaceId, input.movementId);
+  if (!existing) throw new Error("NO_ACTIVE_IDENTIFICATION_TO_REVOKE");
+  await revokeIdentification(supabase, input.workspaceId, existing.id, input.actorUserId);
+  return { ok: true, revokedId: existing.id };
+}
+
 export type ReassignResult = { ok: true; revokedId: string; created: ClientIdentificationRow };
 
 /**
