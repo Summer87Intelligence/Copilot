@@ -22,7 +22,15 @@ describe("Movimientos → Conciliación unificada (deep-link)", () => {
     expect(pageClient).toContain("initialMovementId={focusMovementId}");
     expect(pageClient).toContain("FocusedReceiptConfirmDrawer");
     expect(pageClient).toContain("receiptFocusMovementId");
-    expect(pageClient).not.toMatch(/goToReconciliationForMovement[\s\S]{0,400}setReceiptFocusMovementId/);
+    // El drawer de recibo solo puede abrirse (setReceiptFocusMovementId con el
+    // movementId real) DESPUÉS de intentar derivar el cluster — nunca antes.
+    // Limpiarlo defensivamente con `(null)` al entrar a la función (para que
+    // dos movimientos distintos nunca queden con drawers cruzados) sí está
+    // permitido y ocurre antes de `derivePayerClusterKey`.
+    const clusterKeyIndex = pageClient.indexOf("derivePayerClusterKey({");
+    const openReceiptIndex = pageClient.indexOf("setReceiptFocusMovementId(movementId)");
+    expect(clusterKeyIndex).toBeGreaterThan(-1);
+    expect(openReceiptIndex).toBeGreaterThan(clusterKeyIndex);
     expect(pageClient).not.toContain("BankIncomeWorkspace");
   });
 

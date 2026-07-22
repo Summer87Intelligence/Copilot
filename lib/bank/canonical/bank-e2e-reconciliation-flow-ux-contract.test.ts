@@ -77,6 +77,32 @@ describe("Foco exacto de movimiento", () => {
   });
 });
 
+describe("Un solo drawer a la vez (sin estado cruzado entre movimientos)", () => {
+  it("Identificar cliente sin cluster derivable abre el drawer de recibo Y cambia a la pestaña Conciliación (bug: quedaba como no-op silencioso, el drawer solo se monta bajo tab==='conciliacion')", () => {
+    const noClusterBranch = pageClient.match(
+      /if \(!clusterKey\) \{[\s\S]*?setTab\("conciliacion"\);\s*return;\s*\}/
+    );
+    expect(noClusterBranch).not.toBeNull();
+    expect(noClusterBranch![0]).toContain("setFocusMovementId(null)");
+    expect(noClusterBranch![0]).toContain("setFocusClusterKey(null)");
+    expect(noClusterBranch![0]).toContain("setReceiptFocusMovementId(movementId)");
+  });
+
+  it("Identificar cliente con cluster derivable limpia cualquier drawer de recibo previo antes de abrir el caso unificado", () => {
+    const clusterBranch = pageClient.match(
+      /setReceiptFocusMovementId\(null\);\s*setReceiptFocusHints\(undefined\);\s*setFocusMovementId\(movementId\);\s*setFocusClusterKey\(clusterKey\);/
+    );
+    expect(clusterBranch).not.toBeNull();
+  });
+
+  it("onOpenIdentify / onOpenReceipt del workspace unificado limpian el drawer opuesto (identificar vs recibo)", () => {
+    expect(pageClient).toMatch(
+      /onOpenIdentify=\{\(clusterKey\) => \{\s*setReceiptFocusMovementId\(null\);\s*setReceiptFocusHints\(undefined\);\s*setIdentifyClusterKey\(clusterKey\);/
+    );
+    expect(pageClient).toMatch(/onOpenReceipt=\{\(movementId, hints\) => \{\s*setIdentifyClusterKey\(null\);/);
+  });
+});
+
 describe("Facturas y estados honestos", () => {
   it("factura sin aplicación Zeta usa copy honesto, no guión vacío (fuente: canonical-reconciliation-movement-view)", () => {
     const canonicalView = readFileSync(

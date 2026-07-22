@@ -393,6 +393,8 @@ export function BankMovementsPageClient() {
       if (!m) {
         savedScrollY.current = typeof window !== "undefined" ? window.scrollY : 0;
         returnToMovimientosRef.current = true;
+        setReceiptFocusMovementId(null);
+        setReceiptFocusHints(undefined);
         setFocusMovementId(movementId);
         setFocusClusterKey(null);
         setTab("conciliacion");
@@ -411,18 +413,27 @@ export function BankMovementsPageClient() {
         bankReference: m.bank_reference,
         bankName: null,
       });
-      // FASE BANK-RECONCILIATION-END-TO-END-STABILIZATION-001 — sin cluster
-      // derivable (nombre de pagador no extraíble) no hay caso de Conciliación
-      // unificada que mostrar. En vez de dejar al usuario en una pestaña sin
-      // nada relevante, abrimos directo el drawer de confirmar recibo de este
-      // movimiento puntual.
+      // FASE BANK-RECONCILIATION-FULL-SYSTEM-AUDIT-AND-SIMPLIFICATION-001 — el
+      // drawer de recibo enfocado solo se monta dentro del bloque `tab ===
+      // "conciliacion"`. Sin este `setTab`, el click quedaba en Movimientos
+      // como no-op silencioso (bug reproducido: "Identificar cliente" no
+      // llevaba a ningún lado para pagadores sin nombre derivable). También
+      // limpiamos el foco de cluster/movimiento previo para que nunca queden
+      // dos drawers de movimientos distintos montados a la vez.
       if (!clusterKey) {
+        savedScrollY.current = typeof window !== "undefined" ? window.scrollY : 0;
+        returnToMovimientosRef.current = true;
+        setFocusMovementId(null);
+        setFocusClusterKey(null);
         setReceiptFocusHints(undefined);
         setReceiptFocusMovementId(movementId);
+        setTab("conciliacion");
         return;
       }
       savedScrollY.current = typeof window !== "undefined" ? window.scrollY : 0;
       returnToMovimientosRef.current = true;
+      setReceiptFocusMovementId(null);
+      setReceiptFocusHints(undefined);
       setFocusMovementId(movementId);
       setFocusClusterKey(clusterKey);
       setTab("conciliacion");
@@ -991,8 +1002,13 @@ export function BankMovementsPageClient() {
         <div className="space-y-3">
           <UnifiedReconciliationWorkspace
             onChanged={load}
-            onOpenIdentify={(clusterKey) => setIdentifyClusterKey(clusterKey)}
+            onOpenIdentify={(clusterKey) => {
+              setReceiptFocusMovementId(null);
+              setReceiptFocusHints(undefined);
+              setIdentifyClusterKey(clusterKey);
+            }}
             onOpenReceipt={(movementId, hints) => {
+              setIdentifyClusterKey(null);
               setReceiptFocusHints(hints);
               setReceiptFocusMovementId(movementId);
             }}
