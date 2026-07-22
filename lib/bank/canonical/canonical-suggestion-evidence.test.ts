@@ -259,3 +259,170 @@ describe("listCanonicalOperationalEvidence — evidencia completa desde el motor
     expect(wroteAnything).toBe(false);
   });
 });
+
+describe("BANK-RECONCILIATION-TRIAD-ALIGNMENT-001 — nivel real vía payment_allocations", () => {
+  function confirmedSuggestion(overrides: Row = {}): Row {
+    return {
+      id: "sugg-c",
+      workspace_id: WS,
+      bank_movement_id: "mov-c",
+      payer_identity_id: null,
+      proposed_client_id: "client-1",
+      proposed_receipt_id: "receipt-1",
+      confidence: 95,
+      reasons: [],
+      warnings: [],
+      recommended_action: "AUTO_RECONCILE_CANDIDATE",
+      engine_version: 1,
+      status: "confirmed",
+      confirmed_link_id: "link-1",
+      suggestion_scope: "operational",
+      created_at: "2026-07-18T00:00:00Z",
+      updated_at: "2026-07-18T00:00:00Z",
+      ...overrides,
+    };
+  }
+
+  const baseTables: Tables = {
+    bank_movements: [
+      {
+        id: "mov-c",
+        workspace_id: WS,
+        bank_name: "Santander",
+        account_label: null,
+        movement_date: "2026-07-09",
+        description: "TRANSF",
+        raw_description: null,
+        amount: 10004,
+        currency: "UYU",
+        direction: "inflow",
+        bank_reference: null,
+        status: "matched",
+        metadata: {},
+      },
+    ],
+    proto_companies: [{ id: "client-1", workspace_company_id: WS, name: "Botica del Señor SRL", is_active: true }],
+    proto_receipts: [
+      {
+        id: "receipt-1",
+        workspace_company_id: WS,
+        company_id: "client-1",
+        amount: 10004,
+        currency_code: "UYU",
+        receipt_date: "2026-07-09",
+        status: "issued",
+      },
+    ],
+  };
+
+  it("recibo sin aplicaciones reales → reconciled_with_receipt, sin inventar facturas aplicadas", async () => {
+    const client = fakeClient({
+      ...baseTables,
+      bank_reconciliation_suggestions: [confirmedSuggestion()],
+      payment_allocations: [],
+    });
+    const result = await listCanonicalOperationalEvidence(client as never, WS, { statuses: ["confirmed"] });
+    const ev = result.items[0]!;
+    expect(ev.reconciliationLevel).toBe("reconciled_with_receipt");
+    expect(ev.appliedAllocations).toHaveLength(0);
+  });
+
+  it("recibo con una aplicación real (una factura) → full_reconciliation", async () => {
+    const client = fakeClient({
+      ...baseTables,
+      bank_reconciliation_suggestions: [confirmedSuggestion()],
+      payment_allocations: [
+        {
+          workspace_id: WS,
+          reconciliation_link_id: "link-1",
+          invoice_id: "inv-1",
+          applied_amount: 10004,
+          currency: "UYU",
+          status: "active",
+          proto_invoices: { invoice_number: "A-842" },
+        },
+      ],
+    });
+    const result = await listCanonicalOperationalEvidence(client as never, WS, { statuses: ["confirmed"] });
+    const ev = result.items[0]!;
+    expect(ev.reconciliationLevel).toBe("full_reconciliation");
+    expect(ev.appliedAllocations).toEqual([
+      { invoiceId: "inv-1", invoiceNumber: "A-842", appliedAmount: 10004, currencyCode: "UYU" },
+    ]);
+  });
+
+  it("recibo con varias aplicaciones (varias facturas) → todas listadas", async () => {
+    const client = fakeClient({
+      ...baseTables,
+      bank_reconciliation_suggestions: [confirmedSuggestion()],
+      payment_allocations: [
+        {
+          workspace_id: WS,
+          reconciliation_link_id: "link-1",
+          invoice_id: "inv-1",
+          applied_amount: 6000,
+          currency: "UYU",
+          status: "active",
+          proto_invoices: { invoice_number: "A-842" },
+        },
+        {
+          workspace_id: WS,
+          reconciliation_link_id: "link-1",
+          invoice_id: "inv-2",
+          applied_amount: 4004,
+          currency: "UYU",
+          status: "active",
+          proto_invoices: { invoice_number: "A-850" },
+        },
+      ],
+    });
+    const result = await listCanonicalOperationalEvidence(client as never, WS, { statuses: ["confirmed"] });
+    const ev = result.items[0]!;
+    expect(ev.reconciliationLevel).toBe("full_reconciliation");
+    expect(ev.appliedAllocations).toHaveLength(2);
+  });
+
+  it("aplicación anulada (status<>active) no cuenta como full_reconciliation", async () => {
+    const client = fakeClient({
+      ...baseTables,
+      bank_reconciliation_suggestions: [confirmedSuggestion()],
+      payment_allocations: [
+        {
+          workspace_id: WS,
+          reconciliation_link_id: "link-1",
+          invoice_id: "inv-1",
+          applied_amount: 10004,
+          currency: "UYU",
+          status: "reversed",
+          proto_invoices: { invoice_number: "A-842" },
+        },
+      ],
+    });
+    const result = await listCanonicalOperationalEvidence(client as never, WS, { statuses: ["confirmed"] });
+    const ev = result.items[0]!;
+    expect(ev.reconciliationLevel).toBe("reconciled_with_receipt");
+    expect(ev.appliedAllocations).toHaveLength(0);
+  });
+
+  it("sugerencia pendiente (no confirmada) nunca tiene reconciliationLevel ni appliedAllocations", async () => {
+    const client = fakeClient({
+      ...baseTables,
+      bank_reconciliation_suggestions: [confirmedSuggestion({ status: "generated", confirmed_link_id: null })],
+      payment_allocations: [
+        {
+          workspace_id: WS,
+          reconciliation_link_id: "link-1",
+          invoice_id: "inv-1",
+          applied_amount: 10004,
+          currency: "UYU",
+          status: "active",
+          proto_invoices: { invoice_number: "A-842" },
+        },
+      ],
+    });
+    const result = await listCanonicalOperationalEvidence(client as never, WS);
+    const ev = result.items[0]!;
+    expect(ev.reconciliationLevel).toBeNull();
+    expect(ev.appliedAllocations).toHaveLength(0);
+  });
+});

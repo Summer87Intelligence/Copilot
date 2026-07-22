@@ -84,6 +84,44 @@ export type CanonicalSuggestionCandidateInvoice = {
   dueDate: string | null;
 };
 
+/** Aplicación REAL persistida en `payment_allocations` — a diferencia de
+ * `candidateInvoices` (facturas abiertas sugeridas, nunca confirmadas), esto
+ * representa que un humano efectivamente aplicó el recibo a esta factura. */
+export type CanonicalSuggestionAppliedAllocation = {
+  invoiceId: string;
+  invoiceNumber: string | null;
+  appliedAmount: number;
+  currencyCode: string;
+};
+
+/** Nivel de conciliación visible — ver contrato BANK-RECONCILIATION-TRIAD-ALIGNMENT-001. */
+export type ReconciliationLevel = "reconciled_with_receipt" | "full_reconciliation";
+
+/** Trae las aplicaciones reales (no candidatas) de un link ya confirmado. 100% lectura. */
+async function getAppliedAllocationsForLink(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  linkId: string
+): Promise<CanonicalSuggestionAppliedAllocation[]> {
+  const { data, error } = await supabase
+    .from("payment_allocations")
+    .select("invoice_id, applied_amount, currency, proto_invoices(invoice_number)")
+    .eq("workspace_id", workspaceId)
+    .eq("reconciliation_link_id", linkId)
+    .eq("status", "active");
+  if (error || !data) return [];
+  return data.map((row) => {
+    const invoiceRel = (row as { proto_invoices?: { invoice_number: string | null } | { invoice_number: string | null }[] | null }).proto_invoices;
+    const invoiceNumber = Array.isArray(invoiceRel) ? invoiceRel[0]?.invoice_number ?? null : invoiceRel?.invoice_number ?? null;
+    return {
+      invoiceId: String(row.invoice_id),
+      invoiceNumber,
+      appliedAmount: typeof row.applied_amount === "number" ? row.applied_amount : parseFloat(String(row.applied_amount)) || 0,
+      currencyCode: String(row.currency ?? ""),
+    };
+  });
+}
+
 export type CanonicalSuggestionEvidence = {
   suggestionId: string;
   status: ShadowSuggestionStatus;
@@ -116,6 +154,10 @@ export type CanonicalSuggestionEvidence = {
     status: string | null;
   } | null;
   candidateInvoices: CanonicalSuggestionCandidateInvoice[];
+  /** Solo poblado cuando status==='confirmed': aplicaciones reales de `payment_allocations`. */
+  appliedAllocations: CanonicalSuggestionAppliedAllocation[];
+  /** Solo poblado cuando status==='confirmed' y hay receipt. */
+  reconciliationLevel: ReconciliationLevel | null;
 };
 
 /** Enmascara la descripción bancaria cruda para no exponer datos completos en UI. */
@@ -163,6 +205,13 @@ async function buildOneEvidence(
     }));
   }
 
+  let appliedAllocations: CanonicalSuggestionAppliedAllocation[] = [];
+  let reconciliationLevel: ReconciliationLevel | null = null;
+  if (suggestion.status === "confirmed" && suggestion.confirmedLinkId) {
+    appliedAllocations = await getAppliedAllocationsForLink(supabase, workspaceId, suggestion.confirmedLinkId);
+    reconciliationLevel = appliedAllocations.length > 0 ? "full_reconciliation" : "reconciled_with_receipt";
+  }
+
   return {
     suggestionId: suggestion.id,
     status: suggestion.status,
@@ -197,6 +246,8 @@ async function buildOneEvidence(
       ? { id: receipt.id, amount: receipt.amount, currency: receipt.currencyCode, date: receipt.receiptDate, status: receipt.status }
       : null,
     candidateInvoices,
+    appliedAllocations,
+    reconciliationLevel,
   };
 }
 

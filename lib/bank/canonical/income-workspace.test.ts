@@ -51,6 +51,8 @@ function evidence(overrides: Partial<CanonicalSuggestionEvidence>): CanonicalSug
     client: null,
     receipt: null,
     candidateInvoices: [],
+    appliedAllocations: [],
+    reconciliationLevel: null,
     ...overrides,
   };
 }

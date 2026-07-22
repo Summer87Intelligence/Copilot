@@ -33,6 +33,9 @@ export type EvidenceItem = {
   client: { id: string; name: string } | null;
   receipt: { id: string; amount: number; currency: string; date: string; status: string | null } | null;
   candidateInvoices: Array<{ invoiceId: string; balanceAmount: number; currencyCode: string; issueDate: string | null; dueDate: string | null }>;
+  /** Solo poblado para status==='confirmed': aplicaciones reales, no candidatas. */
+  appliedAllocations: Array<{ invoiceId: string; invoiceNumber: string | null; appliedAmount: number; currencyCode: string }>;
+  reconciliationLevel: "reconciled_with_receipt" | "full_reconciliation" | null;
 };
 
 const dateFormatter = new Intl.DateTimeFormat("es-UY", { dateStyle: "medium" });

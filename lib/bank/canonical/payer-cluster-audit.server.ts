@@ -60,6 +60,7 @@ type ComputedContext = {
   clients: ClientCandidate[];
   receiptsByClient: Map<string, { amount: number; currency: string }[]>;
   linkedMovementIds: Set<string>;
+  movementIdsWithAllocations: Set<string>;
   identifiedByMovement: Map<string, string>;
 };
 
@@ -102,7 +103,7 @@ async function computeContext(supabase: SupabaseClient, input: WorkspaceWindow):
         .limit(20000),
       supabase
         .from("bank_movement_reconciliation_links")
-        .select("bank_movement_id")
+        .select("id, bank_movement_id")
         .eq("workspace_id", workspaceId)
         .is("archived_at", null)
         .limit(20000),
@@ -119,7 +120,27 @@ async function computeContext(supabase: SupabaseClient, input: WorkspaceWindow):
   if (linkErr) throw new Error(`PAYER_CLUSTER_AUDIT_LINKS_FAILED: ${linkErr.message}`);
   if (identErr) throw new Error(`PAYER_CLUSTER_AUDIT_IDENTIFICATIONS_FAILED: ${identErr.message}`);
 
-  const linkedMovementIds = new Set((linkRows ?? []).map((l) => l.bank_movement_id as string));
+  const links = (linkRows ?? []) as Array<{ id: string; bank_movement_id: string }>;
+  const linkedMovementIds = new Set(links.map((l) => l.bank_movement_id));
+  const linkIds = links.map((l) => l.id);
+  const movementIdByLinkId = new Map(links.map((l) => [l.id, l.bank_movement_id]));
+
+  const movementIdsWithAllocations = new Set<string>();
+  if (linkIds.length > 0) {
+    const { data: allocRows, error: allocErr } = await supabase
+      .from("payment_allocations")
+      .select("reconciliation_link_id")
+      .eq("workspace_id", workspaceId)
+      .eq("status", "active")
+      .in("reconciliation_link_id", linkIds)
+      .limit(20000);
+    if (allocErr) throw new Error(`PAYER_CLUSTER_AUDIT_ALLOCATIONS_FAILED: ${allocErr.message}`);
+    for (const a of allocRows ?? []) {
+      const movementId = movementIdByLinkId.get(a.reconciliation_link_id as string);
+      if (movementId) movementIdsWithAllocations.add(movementId);
+    }
+  }
+
   const identifiedByMovement = new Map<string, string>();
   for (const r of identRows ?? []) {
     identifiedByMovement.set(r.movement_id as string, r.client_company_id as string);
@@ -149,7 +170,7 @@ async function computeContext(supabase: SupabaseClient, input: WorkspaceWindow):
     clientName: c.name as string,
   }));
 
-  return { clusters, clients, receiptsByClient, linkedMovementIds, identifiedByMovement };
+  return { clusters, clients, receiptsByClient, linkedMovementIds, movementIdsWithAllocations, identifiedByMovement };
 }
 
 function summarize(cluster: PayerCluster, ctx: ComputedContext): PayerClusterSummary {
@@ -251,7 +272,7 @@ export async function getPayerClusterDetail(
       clientConfirmed: alreadyIdentifiedClientId !== null,
       hasCompatibleReceipt,
       hasFinancialLink,
-      hasInvoiceAllocations: false,
+      hasInvoiceAllocations: ctx.movementIdsWithAllocations.has(m.movementId),
     });
     return {
       movementId: m.movementId,

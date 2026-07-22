@@ -32,7 +32,16 @@ describe("BankHistoryPanel — decisiones recientes, solo lectura, sin reversió
   });
 
   it("muestra estados terminales confirmed/rejected con etiquetas en español", () => {
-    expect(historyPanel).toContain('confirmed: "Conciliado"');
+    expect(historyPanel).toContain('confirmed: "Conciliado con recibo"');
     expect(historyPanel).toContain('rejected: "Rechazado"');
+  });
+
+  it("BANK-RECONCILIATION-TRIAD-ALIGNMENT-001: distingue conciliado-con-recibo de conciliación completa, nunca inventa facturas aplicadas", () => {
+    expect(historyPanel).toContain("reconciled_with_receipt");
+    expect(historyPanel).toContain("full_reconciliation");
+    expect(historyPanel).toContain("No encontramos una aplicación de este recibo a facturas en Zeta.");
+    // No debe usar candidateInvoices (facturas abiertas candidatas) para representar
+    // lo realmente aplicado — solo appliedAllocations (payment_allocations reales).
+    expect(historyPanel).not.toMatch(/candidateInvoices/);
   });
 });

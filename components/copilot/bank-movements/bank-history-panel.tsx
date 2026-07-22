@@ -146,8 +146,13 @@ function RecentIdentifications() {
 }
 
 const STATUS_LABEL: Record<string, string> = {
-  confirmed: "Conciliado",
+  confirmed: "Conciliado con recibo",
   rejected: "Rechazado",
+};
+
+const RECONCILIATION_LEVEL_LABEL: Record<"reconciled_with_receipt" | "full_reconciliation", string> = {
+  reconciled_with_receipt: "Conciliado con recibo",
+  full_reconciliation: "Conciliación completa",
 };
 
 const STATUS_STYLE: Record<string, string> = {
@@ -197,17 +202,28 @@ function RecentDecisions() {
                   {item.client ? item.client.name : "Cliente sin identificar"} · {money(item.movement.currency, item.movement.amount)}
                 </p>
                 <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${STATUS_STYLE[item.status] ?? ""}`}>
-                  {STATUS_LABEL[item.status] ?? item.status}
+                  {item.status === "confirmed" && item.reconciliationLevel
+                    ? RECONCILIATION_LEVEL_LABEL[item.reconciliationLevel]
+                    : STATUS_LABEL[item.status] ?? item.status}
                 </span>
               </div>
               <p className={copilotCaptionClass}>
                 {formatDate(item.movement.date)} · {item.movement.descriptionMasked}
                 {item.receipt ? ` · Recibo ${money(item.receipt.currency, item.receipt.amount)}` : ""}
               </p>
-              {item.candidateInvoices.length > 0 ? (
-                <p className={copilotCaptionClass}>
-                  Facturas: {item.candidateInvoices.map((inv) => money(inv.currencyCode, inv.balanceAmount)).join(", ")}
-                </p>
+              {item.status === "confirmed" && item.receipt ? (
+                item.appliedAllocations.length > 0 ? (
+                  <p className={copilotCaptionClass}>
+                    Facturas aplicadas:{" "}
+                    {item.appliedAllocations
+                      .map((a) => `${a.invoiceNumber ?? a.invoiceId} (${money(a.currencyCode, a.appliedAmount)})`)
+                      .join(", ")}
+                  </p>
+                ) : (
+                  <p className={copilotCaptionClass}>
+                    No encontramos una aplicación de este recibo a facturas en Zeta.
+                  </p>
+                )
               ) : null}
             </li>
           ))}
