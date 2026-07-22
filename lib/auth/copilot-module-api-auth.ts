@@ -179,7 +179,15 @@ export async function requireCopilotModuleAccessAny(
   return auth;
 }
 
-/** RBAC write: minAccess write + bloqueo demo_readonly (misma regla que requireCopilotWriteContext). */
+/**
+ * RBAC write canónico (DB-aware):
+ * 1) permiso efectivo del módulo ≥ write (preset + overrides);
+ * 2) bloqueo global solo para `demo_readonly` (`isReadOnlyRole`).
+ *
+ * Un rol base (p. ej. `usuario`) con override write en el módulo DEBE poder
+ * mutar. Nunca devolver READ_ONLY_USER solo por el nombre del rol cuando el
+ * permiso efectivo es write.
+ */
 export async function requireCopilotModuleWriteAccess(
   request: NextRequest,
   moduleKey: ModuleKey,

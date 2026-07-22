@@ -295,4 +295,85 @@ describe("requireCopilotModuleWriteAccess", () => {
       expect(body.error).toBe("READ_ONLY_USER");
     }
   });
+
+  it("permite hide/restore con rol usuario + override bank_movements write", async () => {
+    tenantCtx.supabase = mockPermissionsSupabase([
+      { module_key: "bank_movements", access_level: "write" },
+    ]);
+    requireCopilotTenantContext.mockResolvedValue({
+      ok: true,
+      ctx: {
+        ...tenantCtx,
+        appUser: { ...tenantCtx.appUser, role: "usuario" },
+      },
+    });
+    const req = new NextRequest(
+      "http://localhost/api/copilot/bank-movements/00000000-0000-4000-8000-000000000001/restore",
+      { method: "POST" }
+    );
+    const auth = await requireCopilotModuleWriteAccess(req, "bank_movements");
+    expect(auth.ok).toBe(true);
+  });
+
+  it("no retorna READ_ONLY_USER por rol usuario cuando hay write efectivo", async () => {
+    tenantCtx.supabase = mockPermissionsSupabase([
+      { module_key: "bank_movements", access_level: "write" },
+    ]);
+    requireCopilotTenantContext.mockResolvedValue({
+      ok: true,
+      ctx: {
+        ...tenantCtx,
+        appUser: { ...tenantCtx.appUser, role: "usuario", email: "any@example.com" },
+      },
+    });
+    const auth = await requireCopilotModuleWriteAccess(
+      new NextRequest("http://localhost/api/copilot/bank-movements/x/hide", { method: "POST" }),
+      "bank_movements"
+    );
+    expect(auth.ok).toBe(true);
+  });
+
+  it("403 FORBIDDEN_MODULE con rol usuario + bank_movements read", async () => {
+    tenantCtx.supabase = mockPermissionsSupabase([
+      { module_key: "bank_movements", access_level: "read" },
+    ]);
+    requireCopilotTenantContext.mockResolvedValue({
+      ok: true,
+      ctx: {
+        ...tenantCtx,
+        appUser: { ...tenantCtx.appUser, role: "usuario" },
+      },
+    });
+    const auth = await requireCopilotModuleWriteAccess(
+      new NextRequest("http://localhost/api/copilot/bank-movements/x/hide", { method: "POST" }),
+      "bank_movements"
+    );
+    expect(auth.ok).toBe(false);
+    if (!auth.ok) {
+      expect(auth.response.status).toBe(403);
+      const body = await auth.response.json();
+      expect(body.code).toBe("FORBIDDEN_MODULE");
+      expect(body.error).not.toBe("READ_ONLY_USER");
+    }
+  });
+
+  it("403 FORBIDDEN_MODULE sin permiso bank_movements (preset usuario = none)", async () => {
+    tenantCtx.supabase = mockPermissionsSupabase([]);
+    requireCopilotTenantContext.mockResolvedValue({
+      ok: true,
+      ctx: {
+        ...tenantCtx,
+        appUser: { ...tenantCtx.appUser, role: "usuario" },
+      },
+    });
+    const auth = await requireCopilotModuleWriteAccess(
+      new NextRequest("http://localhost/api/copilot/bank-movements/x/hide", { method: "POST" }),
+      "bank_movements"
+    );
+    expect(auth.ok).toBe(false);
+    if (!auth.ok) {
+      const body = await auth.response.json();
+      expect(body.code).toBe("FORBIDDEN_MODULE");
+    }
+  });
 });

@@ -47,6 +47,8 @@ export type PayerClusterSummary = {
   currencies: string[];
   totalByCurrency: Record<string, number>;
   movementCount: number;
+  /** IDs de movimientos del cluster (para excluir duplicados en la capa unificada). */
+  movementIds: string[];
   clientMatches: ClientMatch[];
   evidence: EvidenceLevel;
   compatibleReceiptCount: number;
@@ -202,6 +204,7 @@ function summarize(cluster: PayerCluster, ctx: ComputedContext): PayerClusterSum
     currencies: cluster.currencies,
     totalByCurrency: cluster.totalByCurrency,
     movementCount: cluster.movements.length,
+    movementIds: cluster.movements.map((m) => m.movementId),
     clientMatches,
     evidence,
     compatibleReceiptCount,

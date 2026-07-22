@@ -1,5 +1,27 @@
 # Project Context
 
+## BANK — RBAC visibilidad + conteos Nirmex (local, sin push) — 2026-07-22
+
+**FASE BANK-VISIBILITY-RBAC-AND-NIRMEX-COUNT-CORRECTION-001:** corrige `READ_ONLY_USER` para rol `usuario` con override write (hide/restore) y semántica Nirmex 13 reales + 1 duplicado excluido.
+
+- **RBAC:** `isReadOnlyRole` solo `demo_readonly`; escritura vía permiso efectivo de módulo. Proxy + `requireCopilotModuleWriteAccess` alineados.
+- **Nirmex:** tarjeta/detalle con `movementCount` operativo, `duplicateExcludedCount`, totales/lote sin dup; UI con sección colapsada de duplicados.
+- **Gates:** tsc OK, eslint fase OK, vitest 5215, build OK.
+- **Sin push.** Prod sigue en `5a7de5e` / `dpl_4QGjHJxEjuucjqxSy7sABNjSNsiQ`.
+- **Veredicto:** `READY_FOR_BANK_VISIBILITY_RBAC_AND_COUNT_DEPLOY`.
+
+## BANK — Deploy + QA corrección unificada y visibilidad — 2026-07-22
+
+**FASE BANK-UNIFIED-CORRECTION-AND-VISIBILITY-DEPLOY-QA-001:** push `5a7de5e` → `origin/main` (0/0); Vercel production READY `dpl_4QGjHJxEjuucjqxSy7sABNjSNsiQ`, alias `copilot-pro.vercel.app`, `aliasError=null`.
+
+- **Clustering**: sin tarjetas `-- N of M --` / `page N of M`.
+- **Nirmex**: badge `5 listos · 8 pendientes` (+1 duplicado en detalle; tarjeta agrega ~14 filas); CTA “Revisar movimientos”; lote elegible 5; sin confirm.
+- **Actor Historial**: `daniel superadmin` (no UUID).
+- **Identificar→Conciliación**: deep-link unificado OK (sin legacy).
+- **Hide/restore QA**: `b92ca232…` UYU 15.921 (17-jul) ocultado y restaurado; integridad final = previa (mov 1004, BMCI 64, links 2, events 17, ui_hidden 0).
+- **Camila**: oculto invisible por default/búsqueda/Conciliación; ve filtros Ocultos/Todos (`bank_movements=write`); restore API 403 `READ_ONLY_USER` (rol `usuario` bloqueado en `requireCopilotModuleWriteAccess`) — limitación de contrato UI vs API.
+- **Veredicto**: `READY_FOR_BANK_UNIFIED_CORRECTION_AND_VISIBILITY` / `GO_FOR_BANK_VISIBILITY_DEPLOY_CORRECTION` / `GO_FOR_BANK_UNIFIED_RECONCILIATION_CORRECTION`.
+
 ## BANK — Corrección unificada + visibilidad de movimientos (local) — 2026-07-22
 
 **FASE BANK-UNIFIED-RECONCILIATION-CORRECTION-AND-MOVEMENT-VISIBILITY-001 (commit local, sin push):** corrige clustering por marcadores PDF (`-- N of M --`), semántica de tarjeta mixta (`revision_parcial` / Nirmex 5+8), actor legible en Historial (batch `app_users`), deep-link Movimientos→Conciliación unificada, y Ocultar/Volver a mostrar vía `metadata.ui_hidden` (sin DDL).

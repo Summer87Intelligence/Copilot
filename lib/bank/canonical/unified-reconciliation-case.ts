@@ -102,9 +102,13 @@ export type UnifiedReconciliationCaseSummary = {
   suggestedClientId: string | null;
   suggestedClientName: string | null;
   evidence: EvidenceLevel;
+  /** Movimientos operativos (excluye duplicados de importación). */
   movementCount: number;
+  /** Duplicados técnicos excluidos de totales, lote y pendientes. */
+  duplicateExcludedCount: number;
   months: string[];
   currencies: string[];
+  /** Totales operativos: no incluyen importes de filas duplicadas. */
   totalByCurrency: Record<string, number>;
   receiptsFoundCount: number;
   missingReceiptCount: number;
@@ -119,16 +123,71 @@ function bestSuggestedClient(summary: PayerClusterSummary): { id: string | null;
   return { id: first?.clientCompanyId ?? null, name: first?.clientName ?? null };
 }
 
-function summaryToCase(summary: PayerClusterSummary): UnifiedReconciliationCaseSummary {
+type DuplicateAuditGroup = {
+  duplicateMovementIds: string[];
+  canonicalMovementId: string;
+  amount: number;
+  currency: string;
+};
+
+/** Resta importes de filas duplicadas del total del cluster. */
+export function totalsExcludingDuplicateMovements(
+  totalByCurrency: Record<string, number>,
+  clusterMovementIds: readonly string[],
+  duplicateGroups: readonly DuplicateAuditGroup[]
+): Record<string, number> {
+  const inCluster = new Set(clusterMovementIds);
+  const next: Record<string, number> = { ...totalByCurrency };
+  for (const group of duplicateGroups) {
+    for (const dupId of group.duplicateMovementIds) {
+      if (!inCluster.has(dupId)) continue;
+      const cur = group.currency;
+      next[cur] = Number(((next[cur] ?? 0) - group.amount).toFixed(2));
+      if (Math.abs(next[cur]!) < 0.005) delete next[cur];
+    }
+  }
+  return next;
+}
+
+/**
+ * Ajusta recibos listos/pendientes excluyendo duplicados del universo operativo.
+ * Preferimos restar del bucket "sin recibo" primero (los dups técnicos suelen
+ * no ser la fila operativa con recibo elegible).
+ */
+export function operationalReceiptCounts(input: {
+  compatibleReceiptCount: number;
+  missingReceiptCount: number;
+  duplicateExcludedCount: number;
+}): { receiptsFoundCount: number; missingReceiptCount: number } {
+  let receipts = input.compatibleReceiptCount;
+  let missing = input.missingReceiptCount;
+  let dups = input.duplicateExcludedCount;
+  const fromMissing = Math.min(missing, dups);
+  missing -= fromMissing;
+  dups -= fromMissing;
+  receipts = Math.max(0, receipts - dups);
+  return { receiptsFoundCount: receipts, missingReceiptCount: missing };
+}
+
+function summaryToCase(
+  summary: PayerClusterSummary,
+  duplicateMovementIds: ReadonlySet<string> = new Set(),
+  duplicateGroups: readonly DuplicateAuditGroup[] = []
+): UnifiedReconciliationCaseSummary {
   const suggested = bestSuggestedClient(summary);
-  // A nivel de resumen (sin IDs de movimiento por fila, ver limitación en el
-  // informe) se aproxima el estado agregando por evidencia + conteos ya
-  // calculados por el motor de clustering, sin necesidad de otra consulta.
+  const duplicateExcludedCount = summary.movementIds.filter((id) => duplicateMovementIds.has(id)).length;
+  const operationalCount = Math.max(0, summary.movementCount - duplicateExcludedCount);
+  const { receiptsFoundCount, missingReceiptCount } = operationalReceiptCounts({
+    compatibleReceiptCount: summary.compatibleReceiptCount,
+    missingReceiptCount: summary.missingReceiptCount,
+    duplicateExcludedCount,
+  });
+
   const approxRowStatuses: UnifiedRowStatus[] = [
-    ...Array(summary.compatibleReceiptCount).fill(
+    ...Array(receiptsFoundCount).fill(
       summary.evidence === "ambiguous" ? "requiere_revision" : summary.evidence === "none" ? "sin_cliente" : "listo_para_confirmar"
     ),
-    ...Array(summary.missingReceiptCount).fill(
+    ...Array(missingReceiptCount).fill(
       summary.evidence === "ambiguous" ? "requiere_revision" : summary.evidence === "none" ? "sin_cliente" : "falta_recibo"
     ),
   ] as UnifiedRowStatus[];
@@ -140,13 +199,18 @@ function summaryToCase(summary: PayerClusterSummary): UnifiedReconciliationCaseS
     suggestedClientId: suggested.id,
     suggestedClientName: suggested.name,
     evidence: summary.evidence,
-    movementCount: summary.movementCount,
+    movementCount: operationalCount,
+    duplicateExcludedCount,
     months: summary.months,
     currencies: summary.currencies,
-    totalByCurrency: summary.totalByCurrency,
-    receiptsFoundCount: summary.compatibleReceiptCount,
-    missingReceiptCount: summary.missingReceiptCount,
-    alreadyIdentifiedCount: summary.alreadyIdentifiedCount,
+    totalByCurrency: totalsExcludingDuplicateMovements(
+      summary.totalByCurrency,
+      summary.movementIds,
+      duplicateGroups
+    ),
+    receiptsFoundCount,
+    missingReceiptCount,
+    alreadyIdentifiedCount: Math.min(summary.alreadyIdentifiedCount, operationalCount),
     status,
     recommendedAction: UNIFIED_CASE_RECOMMENDED_ACTION[status],
   };
@@ -164,25 +228,27 @@ export type ListUnifiedCasesResult = {
 };
 
 /**
- * Lista paginada de casos unificados — una llamada a listPayerClusterSummaries
- * (ya paginada/filtrada server-side), sin consultas adicionales. El filtro por
- * `status` se aplica en memoria sobre la página ya resumida (el mismo patrón
- * que ya usa listPayerClusterSummaries para `search`/`evidence`).
+ * Lista paginada de casos unificados — listPayerClusterSummaries + auditoría de
+ * duplicados en la ventana. Conteos/totales operativos excluyen duplicados.
  */
 export async function listUnifiedReconciliationCases(
   supabase: SupabaseClient,
   input: ListUnifiedCasesInput
 ): Promise<ListUnifiedCasesResult> {
-  // Se pide una página más grande para poder filtrar por status en memoria sin
-  // perder resultados reales de la página pedida por el usuario; con el volumen
-  // actual (decenas de clusters, nunca miles) esto no es un problema de N+1 ni
-  // de payload — sigue siendo 2 consultas fijas (movimientos + empresas).
   const raw = await listPayerClusterSummaries(supabase, {
     ...input,
     page: 1,
     pageSize: 5000,
   });
-  let cases = raw.clusters.map(summaryToCase);
+  const duplicateGroups = await auditDuplicateBankMovements(
+    supabase,
+    input.workspaceId,
+    input.from,
+    input.to
+  );
+  const duplicateMovementIds = new Set(duplicateGroups.flatMap((g) => g.duplicateMovementIds));
+
+  let cases = raw.clusters.map((c) => summaryToCase(c, duplicateMovementIds, duplicateGroups));
   if (input.status) {
     cases = cases.filter((c) => c.status === input.status);
   }
@@ -208,6 +274,8 @@ export type UnifiedReconciliationRow = {
   hasCompatibleReceipt: boolean;
   hasFinancialLink: boolean;
   alreadyIdentifiedClientId: string | null;
+  /** Solo filas `duplicado`: movimiento canónico del grupo. */
+  canonicalMovementId: string | null;
 };
 
 export type UnifiedReconciliationCaseDetail = UnifiedReconciliationCaseSummary & {
@@ -223,11 +291,8 @@ function invoiceContextFromLevel(level: PayerClusterMovementView["level"]): stri
 }
 
 /**
- * Detalle de un caso puntual — reusa getPayerClusterDetail (lazy, ya trae
- * movimientos + nivel por movimiento) y le suma el único dato que faltaba
- * para el flujo unificado: qué filas son duplicados de importación (sección
- * 6F), vía auditDuplicateBankMovements acotada a la ventana de fechas real
- * del propio cluster — nunca la ventana completa del workspace.
+ * Detalle de un caso puntual — reusa getPayerClusterDetail y auditoría de
+ * duplicados. Conteos/totales/lote son operativos (sin duplicados).
  */
 export async function getUnifiedReconciliationCaseDetail(
   supabase: SupabaseClient,
@@ -238,8 +303,16 @@ export async function getUnifiedReconciliationCaseDetail(
 
   const dates = detail.movements.map((m) => m.date).sort();
   const duplicateGroups =
-    dates.length > 0 ? await auditDuplicateBankMovements(supabase, input.workspaceId, dates[0]!, dates[dates.length - 1]!) : [];
+    dates.length > 0
+      ? await auditDuplicateBankMovements(supabase, input.workspaceId, dates[0]!, dates[dates.length - 1]!)
+      : [];
   const duplicateMovementIds = new Set(duplicateGroups.flatMap((g) => g.duplicateMovementIds));
+  const canonicalByDuplicate = new Map<string, string>();
+  for (const group of duplicateGroups) {
+    for (const dupId of group.duplicateMovementIds) {
+      canonicalByDuplicate.set(dupId, group.canonicalMovementId);
+    }
+  }
   const suggested = bestSuggestedClient(detail);
 
   const rows: UnifiedReconciliationRow[] = detail.movements.map((m) => {
@@ -263,23 +336,34 @@ export async function getUnifiedReconciliationCaseDetail(
       hasCompatibleReceipt: m.hasCompatibleReceipt,
       hasFinancialLink: m.hasFinancialLink,
       alreadyIdentifiedClientId: m.alreadyIdentifiedClientId,
+      canonicalMovementId: canonicalByDuplicate.get(m.movementId) ?? null,
     };
   });
 
-  const caseSummary = summaryToCase(detail);
-  // El resumen exacto (a diferencia de la aproximación de listUnifiedReconciliationCases)
-  // ahora puede recalcularse con las filas reales, incluyendo duplicados excluidos.
   const nonDuplicateRows = rows.filter((r) => r.status !== "duplicado");
   const status = deriveCaseStatus(
     nonDuplicateRows.map((r) => r.status),
     detail.evidence
   );
+  const totalByCurrency: Record<string, number> = {};
+  for (const row of nonDuplicateRows) {
+    totalByCurrency[row.currency] = Number(((totalByCurrency[row.currency] ?? 0) + row.amount).toFixed(2));
+  }
 
   return {
-    ...caseSummary,
+    clusterKey: detail.clusterKey,
+    payerDisplayName: detail.displayName,
+    suggestedClientId: suggested.id,
+    suggestedClientName: suggested.name,
+    evidence: detail.evidence,
     movementCount: nonDuplicateRows.length,
+    duplicateExcludedCount: rows.length - nonDuplicateRows.length,
+    months: detail.months,
+    currencies: detail.currencies,
+    totalByCurrency,
     receiptsFoundCount: nonDuplicateRows.filter((r) => r.hasCompatibleReceipt).length,
     missingReceiptCount: nonDuplicateRows.filter((r) => !r.hasCompatibleReceipt).length,
+    alreadyIdentifiedCount: nonDuplicateRows.filter((r) => r.alreadyIdentifiedClientId).length,
     status,
     recommendedAction: UNIFIED_CASE_RECOMMENDED_ACTION[status],
     rows,

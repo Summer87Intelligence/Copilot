@@ -32,13 +32,13 @@ describe("permissions", () => {
       expect(isReadOnlyRole("demo_readonly")).toBe(true);
       expect(isReadOnlyRole(ROLE_DEMO_READONLY)).toBe(true);
     });
-    it("devuelve true para usuario", () => {
-      expect(isReadOnlyRole("usuario")).toBe(true);
-      expect(isReadOnlyRole(ROLE_USUARIO)).toBe(true);
+    it("no trata usuario como read-only global (RBAC por módulo)", () => {
+      expect(isReadOnlyRole("usuario")).toBe(false);
+      expect(isReadOnlyRole(ROLE_USUARIO)).toBe(false);
+      expect(isReadOnlyRole("USUARIO")).toBe(false);
     });
-    it("es case-insensitive", () => {
+    it("es case-insensitive para demo_readonly", () => {
       expect(isReadOnlyRole("DEMO_READONLY")).toBe(true);
-      expect(isReadOnlyRole("USUARIO")).toBe(true);
     });
     it("devuelve false para otros roles", () => {
       expect(isReadOnlyRole("superadmin")).toBe(false);
@@ -97,8 +97,8 @@ describe("permissions", () => {
     it("usuario puede leer", () => {
       expect(canRead(ROLE_USUARIO)).toBe(true);
     });
-    it("usuario es rol readonly", () => {
-      expect(isReadOnlyRole(ROLE_USUARIO)).toBe(true);
+    it("usuario no es read-only global; escritura se decide por módulo", () => {
+      expect(isReadOnlyRole(ROLE_USUARIO)).toBe(false);
     });
   });
 });

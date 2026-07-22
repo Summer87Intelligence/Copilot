@@ -98,6 +98,6 @@ export const COPILOT_MANUAL_EXTRA_GLOSSARY: Array<{
   {
     term: "Solo lectura",
     definition:
-      "Roles usuario y demo_readonly: pueden navegar, consultar y descargar PDFs; escritura devuelve 403 READ_ONLY_USER.",
+      "Roles usuario y demo_readonly: pueden navegar y consultar; las mutaciones se autorizan por permiso efectivo de módulo (salvo demo_readonly, siempre read-only).",
   },
 ];

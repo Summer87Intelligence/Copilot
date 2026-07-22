@@ -11,12 +11,14 @@ export function isSuperAdmin(role: string): boolean {
 
 /**
  * Roles que bloquean TODAS las mutaciones a nivel de middleware.
- * Los roles operativos (cobranza, tesoreria, contador) no están aquí:
- * sus restricciones se aplican por módulo a nivel de route handler.
+ * Solo `demo_readonly`: cuenta de demostración sin escritura real.
+ *
+ * El rol base `usuario` NO es read-only global: sus mutaciones se
+ * autorizan por permiso efectivo de módulo (preset + `app_user_permissions`).
+ * Los roles operativos (cobranza, tesoreria, contador) tampoco están aquí.
  */
 export function isReadOnlyRole(role: string): boolean {
-  const r = role.toLowerCase();
-  return r === ROLE_DEMO_READONLY || r === ROLE_USUARIO;
+  return role.toLowerCase() === ROLE_DEMO_READONLY;
 }
 
 export function canWrite(role: string): boolean {

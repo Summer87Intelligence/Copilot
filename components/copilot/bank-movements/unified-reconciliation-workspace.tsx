@@ -38,6 +38,7 @@ type CaseSummary = {
   suggestedClientName: string | null;
   evidence: "strong" | "probable" | "ambiguous" | "none";
   movementCount: number;
+  duplicateExcludedCount: number;
   months: string[];
   currencies: string[];
   totalByCurrency: Record<string, number>;
@@ -62,6 +63,7 @@ type CaseRow = {
   hasCompatibleReceipt: boolean;
   hasFinancialLink: boolean;
   alreadyIdentifiedClientId: string | null;
+  canonicalMovementId: string | null;
 };
 
 type CaseDetail = CaseSummary & { rows: CaseRow[]; batchEligibleMovementIds: string[] };
@@ -302,11 +304,15 @@ function CaseCard({ unifiedCase, onOpen }: { unifiedCase: CaseSummary; onOpen: (
       </div>
 
       <p className={`${copilotCaptionClass} mt-2`}>
-        {unifiedCase.movementCount} transferencia{unifiedCase.movementCount === 1 ? "" : "s"} · {formatMonthRange(unifiedCase.months)}
+        {unifiedCase.movementCount} movimiento{unifiedCase.movementCount === 1 ? "" : "s"} reales
+        {unifiedCase.duplicateExcludedCount > 0
+          ? ` · ${unifiedCase.duplicateExcludedCount} duplicado${unifiedCase.duplicateExcludedCount === 1 ? "" : "s"} excluido${unifiedCase.duplicateExcludedCount === 1 ? "" : "s"}`
+          : ""}{" "}
+        · {formatMonthRange(unifiedCase.months)}
       </p>
       <p className="mt-1 text-sm font-medium text-[var(--copilot-text)]">{formatAmount(unifiedCase.totalByCurrency)}</p>
       <p className={`${copilotCaptionClass} mt-1`}>
-        {unifiedCase.receiptsFoundCount} con recibo · {unifiedCase.missingReceiptCount} sin recibo
+        {unifiedCase.receiptsFoundCount} listos para confirmar · {unifiedCase.missingReceiptCount} pendientes de recibo
       </p>
 
       <p className={`mt-2 text-sm font-medium ${STATUS_TONE[unifiedCase.status]}`}>{statusLabel}</p>
@@ -446,7 +452,7 @@ function UnifiedCaseDrawer({
             {detail.batchEligibleMovementIds.length >= 1 && detail.suggestedClientId ? (
               <div className="mt-3 flex items-center gap-3 rounded-lg border border-[var(--copilot-border)] p-3">
                 <p className="text-sm text-[var(--copilot-text)]">
-                  Lote elegible: {detail.batchEligibleMovementIds.length} con recibo (no incluye pendientes de recibo).
+                  Lote elegible: {detail.batchEligibleMovementIds.length} con recibo (no incluye pendientes ni duplicados).
                 </p>
                 <button
                   type="button"
@@ -459,65 +465,104 @@ function UnifiedCaseDrawer({
               </div>
             ) : null}
 
-            <div className="mt-4 space-y-3 md:hidden">
-              {detail.rows.map((row) => (
-                <div
-                  key={row.movementId}
-                  className={highlightMovementId === row.movementId ? "rounded-xl ring-2 ring-[var(--copilot-accent)]" : ""}
-                >
-                  <UnifiedRowCard
-                    row={row}
-                    onIdentify={() => onOpenIdentify(detail.clusterKey)}
-                    onReceipt={() => onOpenReceipt(row.movementId)}
-                  />
-                </div>
-              ))}
-            </div>
+            {(() => {
+              const operationalRows = detail.rows.filter((r) => r.status !== "duplicado");
+              const duplicateRows = detail.rows.filter((r) => r.status === "duplicado");
+              return (
+                <>
+                  <p className={`${copilotCaptionClass} mt-4 font-medium text-[var(--copilot-text)]`}>
+                    Movimientos operativos ({operationalRows.length})
+                    {detail.duplicateExcludedCount > 0
+                      ? ` · ${detail.duplicateExcludedCount} duplicado${detail.duplicateExcludedCount === 1 ? "" : "s"} excluido${detail.duplicateExcludedCount === 1 ? "" : "s"}`
+                      : ""}
+                  </p>
 
-            <div className="mt-4 hidden overflow-x-auto md:block">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="text-left text-[var(--copilot-muted)]">
-                    <th className="py-1 pr-2">Fecha</th>
-                    <th className="py-1 pr-2">Banco</th>
-                    <th className="py-1 pr-2">Cliente</th>
-                    <th className="py-1 pr-2">Recibo</th>
-                    <th className="py-1 pr-2">Factura</th>
-                    <th className="py-1 pr-2">Estado</th>
-                    <th className="py-1">Acción</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {detail.rows.map((row) => (
-                    <tr
-                      key={row.movementId}
-                      className={`border-t border-[var(--copilot-border)] ${
-                        highlightMovementId === row.movementId ? "bg-[var(--copilot-soft-bg)]" : ""
-                      }`}
-                    >
-                      <td className="py-1.5 pr-2 whitespace-nowrap">{row.date}</td>
-                      <td className="py-1.5 pr-2 whitespace-nowrap">
-                        {row.currency} {row.amount.toLocaleString("es-UY")}
-                        {row.referenceMasked ? (
-                          <span className={`block ${copilotCaptionClass}`}>{row.referenceMasked}</span>
-                        ) : null}
-                      </td>
-                      <td className="py-1.5 pr-2">{row.clientLabel}</td>
-                      <td className="py-1.5 pr-2">{row.hasCompatibleReceipt ? "Recibo encontrado" : "Sin recibo"}</td>
-                      <td className="py-1.5 pr-2">{row.invoiceContextLabel}</td>
-                      <td className="py-1.5 pr-2">{row.statusLabel}</td>
-                      <td className="py-1.5">
-                        <UnifiedRowActions
+                  <div className="mt-2 space-y-3 md:hidden">
+                    {operationalRows.map((row) => (
+                      <div
+                        key={row.movementId}
+                        className={highlightMovementId === row.movementId ? "rounded-xl ring-2 ring-[var(--copilot-accent)]" : ""}
+                      >
+                        <UnifiedRowCard
                           row={row}
                           onIdentify={() => onOpenIdentify(detail.clusterKey)}
                           onReceipt={() => onOpenReceipt(row.movementId)}
                         />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-2 hidden overflow-x-auto md:block">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="text-left text-[var(--copilot-muted)]">
+                          <th className="py-1 pr-2">Fecha</th>
+                          <th className="py-1 pr-2">Banco</th>
+                          <th className="py-1 pr-2">Cliente</th>
+                          <th className="py-1 pr-2">Recibo</th>
+                          <th className="py-1 pr-2">Factura</th>
+                          <th className="py-1 pr-2">Estado</th>
+                          <th className="py-1">Acción</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {operationalRows.map((row) => (
+                          <tr
+                            key={row.movementId}
+                            className={`border-t border-[var(--copilot-border)] ${
+                              highlightMovementId === row.movementId ? "bg-[var(--copilot-soft-bg)]" : ""
+                            }`}
+                          >
+                            <td className="py-1.5 pr-2 whitespace-nowrap">{row.date}</td>
+                            <td className="py-1.5 pr-2 whitespace-nowrap">
+                              {row.currency} {row.amount.toLocaleString("es-UY")}
+                              {row.referenceMasked ? (
+                                <span className={`block ${copilotCaptionClass}`}>{row.referenceMasked}</span>
+                              ) : null}
+                            </td>
+                            <td className="py-1.5 pr-2">{row.clientLabel}</td>
+                            <td className="py-1.5 pr-2">{row.hasCompatibleReceipt ? "Recibo encontrado" : "Sin recibo"}</td>
+                            <td className="py-1.5 pr-2">{row.invoiceContextLabel}</td>
+                            <td className="py-1.5 pr-2">{row.statusLabel}</td>
+                            <td className="py-1.5">
+                              <UnifiedRowActions
+                                row={row}
+                                onIdentify={() => onOpenIdentify(detail.clusterKey)}
+                                onReceipt={() => onOpenReceipt(row.movementId)}
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {duplicateRows.length > 0 ? (
+                    <details className="mt-4 rounded-lg border border-[var(--copilot-border)] p-3">
+                      <summary className="cursor-pointer text-sm font-medium text-[var(--copilot-text)]">
+                        Duplicados excluidos ({duplicateRows.length})
+                      </summary>
+                      <ul className="mt-3 space-y-2">
+                        {duplicateRows.map((row) => (
+                          <li key={row.movementId} className={`${copilotCaptionClass} rounded-md bg-[var(--copilot-soft-bg)] p-2`}>
+                            <span className="font-medium text-[var(--copilot-text)]">Duplicado de importación</span>
+                            {" · "}
+                            {row.date} · {row.currency} {row.amount.toLocaleString("es-UY")}
+                            {row.referenceMasked ? ` · ${row.referenceMasked}` : ""}
+                            {row.canonicalMovementId ? (
+                              <span className="block mt-0.5">
+                                Canónico: {row.canonicalMovementId.slice(0, 8)}…
+                              </span>
+                            ) : null}
+                            <span className="block mt-0.5">Sin acción operativa · no entra al lote ni a totales</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  ) : null}
+                </>
+              );
+            })()}
 
             {detail.rows.some((r) => r.hasFinancialLink) ? (
               <p className={`${copilotCaptionClass} mt-3`}>

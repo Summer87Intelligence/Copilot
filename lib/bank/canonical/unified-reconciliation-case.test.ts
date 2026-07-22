@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
@@ -21,6 +21,8 @@ const {
   unifiedRowStatusLabel,
   listUnifiedReconciliationCases,
   getUnifiedReconciliationCaseDetail,
+  operationalReceiptCounts,
+  totalsExcludingDuplicateMovements,
 } = await import("@/lib/bank/canonical/unified-reconciliation-case");
 
 const WS = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
@@ -153,8 +155,36 @@ describe("unifiedRowStatusLabel", () => {
   });
 });
 
+describe("operationalReceiptCounts / totalsExcludingDuplicateMovements", () => {
+  it("subtracts duplicates from missing first (Nirmex 5+9+1dup → 5+8)", () => {
+    expect(
+      operationalReceiptCounts({
+        compatibleReceiptCount: 5,
+        missingReceiptCount: 9,
+        duplicateExcludedCount: 1,
+      })
+    ).toEqual({ receiptsFoundCount: 5, missingReceiptCount: 8 });
+  });
+
+  it("excludes duplicate amounts from totals", () => {
+    expect(
+      totalsExcludingDuplicateMovements(
+        { UYU: 160207 },
+        ["m0", "m-dup", "m1"],
+        [{ duplicateMovementIds: ["m-dup"], canonicalMovementId: "m0", amount: 7567, currency: "UYU" }]
+      )
+    ).toEqual({ UYU: 152640 });
+  });
+});
+
 describe("listUnifiedReconciliationCases", () => {
-  it("composes listPayerClusterSummaries without adding queries (workspace isolation passthrough)", async () => {
+  beforeEach(() => {
+    listPayerClusterSummaries.mockReset();
+    auditDuplicateBankMovements.mockReset();
+  });
+
+  it("excludes import duplicates from card counts and totals (Nirmex 14→13)", async () => {
+    const movementIds = Array.from({ length: 14 }, (_, i) => (i === 13 ? "m-dup" : `m${i}`));
     listPayerClusterSummaries.mockResolvedValueOnce({
       clusters: [
         {
@@ -163,32 +193,59 @@ describe("listUnifiedReconciliationCases", () => {
           months: ["2026-01", "2026-07"],
           currencies: ["UYU"],
           totalByCurrency: { UYU: 160207 },
-          movementCount: 13,
+          movementCount: 14,
+          movementIds,
           clientMatches: [{ clientCompanyId: "client-1", clientName: "Nirmex S.A.", matchType: "contains" }],
           evidence: "probable",
-          compatibleReceiptCount: 12,
-          missingReceiptCount: 1,
-          alreadyIdentifiedCount: 12,
+          compatibleReceiptCount: 5,
+          missingReceiptCount: 9,
+          alreadyIdentifiedCount: 5,
         },
       ],
       total: 1,
       page: 1,
       pageSize: 5000,
     });
+    auditDuplicateBankMovements.mockResolvedValueOnce([
+      {
+        fingerprint: "fp1",
+        movementIds: ["m0", "m-dup"],
+        canonicalMovementId: "m0",
+        duplicateMovementIds: ["m-dup"],
+        canonicalReason: "has_identification" as const,
+        movementDate: "2026-04-10",
+        amount: 7567,
+        currency: "UYU",
+        bankReference: "TR0082544541",
+      },
+    ]);
 
-    const result = await listUnifiedReconciliationCases(fakeSb, { workspaceId: WS, from: "2026-01-01", to: "2026-07-31", page: 1, pageSize: 25 });
+    const result = await listUnifiedReconciliationCases(fakeSb, {
+      workspaceId: WS,
+      from: "2026-01-01",
+      to: "2026-07-31",
+      page: 1,
+      pageSize: 25,
+    });
 
     expect(listPayerClusterSummaries).toHaveBeenCalledWith(fakeSb, expect.objectContaining({ workspaceId: WS }));
+    expect(auditDuplicateBankMovements).toHaveBeenCalled();
     expect(result.cases).toHaveLength(1);
     expect(result.cases[0]).toMatchObject({
       clusterKey: "NIRMEX",
       suggestedClientName: "Nirmex S.A.",
       status: "revision_parcial",
       recommendedAction: "Revisar movimientos",
+      movementCount: 13,
+      duplicateExcludedCount: 1,
+      receiptsFoundCount: 5,
+      missingReceiptCount: 8,
+      totalByCurrency: { UYU: 152640 },
     });
   });
 
   it("filters by status in memory after composing summaries", async () => {
+    auditDuplicateBankMovements.mockResolvedValueOnce([]);
     listPayerClusterSummaries.mockResolvedValueOnce({
       clusters: [
         {
@@ -198,6 +255,7 @@ describe("listUnifiedReconciliationCases", () => {
           currencies: ["UYU"],
           totalByCurrency: {},
           movementCount: 1,
+          movementIds: ["a1"],
           clientMatches: [],
           evidence: "none" as const,
           compatibleReceiptCount: 0,
@@ -211,6 +269,7 @@ describe("listUnifiedReconciliationCases", () => {
           currencies: ["UYU"],
           totalByCurrency: {},
           movementCount: 1,
+          movementIds: ["b1"],
           clientMatches: [{ clientCompanyId: "c2", clientName: "B Client", matchType: "exact" as const }],
           evidence: "strong" as const,
           compatibleReceiptCount: 1,
@@ -238,6 +297,11 @@ describe("listUnifiedReconciliationCases", () => {
 });
 
 describe("getUnifiedReconciliationCaseDetail", () => {
+  beforeEach(() => {
+    getPayerClusterDetail.mockReset();
+    auditDuplicateBankMovements.mockReset();
+  });
+
   it("returns null when the cluster no longer exists", async () => {
     getPayerClusterDetail.mockResolvedValueOnce(null);
     const result = await getUnifiedReconciliationCaseDetail(fakeSb, { workspaceId: WS, from: "2026-01-01", to: "2026-07-31", clusterKey: "GONE" });
@@ -288,6 +352,7 @@ describe("getUnifiedReconciliationCaseDetail", () => {
       currencies: ["UYU"],
       totalByCurrency: { UYU: 7567 * 14 },
       movementCount: 14,
+      movementIds: movements.map((m) => m.movementId),
       clientMatches: [{ clientCompanyId: "client-1", clientName: "Nirmex S.A.", matchType: "contains" }],
       evidence: "probable",
       compatibleReceiptCount: 13,
@@ -321,8 +386,13 @@ describe("getUnifiedReconciliationCaseDetail", () => {
     const dupRow = result!.rows.find((r) => r.movementId === "m-dup")!;
     expect(dupRow.status).toBe("duplicado");
     expect(dupRow.action).toBe("ninguna");
+    expect(dupRow.canonicalMovementId).toBe("m0");
     // Case-level counts recomputed WITHOUT the duplicate.
     expect(result!.movementCount).toBe(13);
+    expect(result!.duplicateExcludedCount).toBe(1);
+    expect(result!.totalByCurrency).toEqual({ UYU: 7567 * 13 });
+    expect(result!.receiptsFoundCount).toBe(12);
+    expect(result!.missingReceiptCount).toBe(1);
     expect(result!.batchEligibleMovementIds).not.toContain("m-dup");
     const readyIds = result!.rows.filter((r) => r.status === "listo_para_confirmar").map((r) => r.movementId);
     expect(readyIds).toHaveLength(12);
@@ -347,6 +417,7 @@ describe("getUnifiedReconciliationCaseDetail", () => {
       currencies: ["UYU"],
       totalByCurrency: { UYU: 1000 },
       movementCount: 2,
+      movementIds: ["r1", "r2"],
       clientMatches: [{ clientCompanyId: "c1", clientName: "Botica", matchType: "exact" }],
       evidence: "strong",
       compatibleReceiptCount: 2,
@@ -399,6 +470,7 @@ describe("getUnifiedReconciliationCaseDetail", () => {
       currencies: ["UYU"],
       totalByCurrency: {},
       movementCount: 2,
+      movementIds: ["a", "b"],
       clientMatches: [],
       evidence: "none",
       compatibleReceiptCount: 0,
