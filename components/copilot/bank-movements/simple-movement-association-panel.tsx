@@ -32,11 +32,12 @@ type MovementDTO = {
 };
 
 type AssociationDTO = {
-  id: string;
+  id: string | null;
   clientCompanyId: string;
   clientName: string | null;
-  status: string;
+  status: string | null;
   confirmedAt: string | null;
+  source: "identification" | "financial_link" | null;
 } | null;
 
 type ClientOption = { id: string; name: string };
@@ -273,7 +274,21 @@ export function SimpleMovementAssociationPanel({
                   <p className="text-sm font-medium text-[var(--copilot-text)]">{association?.clientName ?? "—"}</p>
                 </div>
 
-                {!pickedClientId ? (
+                {association?.source === "financial_link" ? (
+                  <div className="space-y-2">
+                    <p className={copilotCaptionClass}>
+                      Este movimiento ya está conciliado financieramente con un recibo real de Zeta. Cambiar o
+                      revocar el cliente no está disponible acá — eso afectaría una conciliación financiera real,
+                      fuera de alcance de este panel.
+                    </p>
+                    <a
+                      href={`/copilot/clientes/${association.clientCompanyId}`}
+                      className={copilotButtonClassName({ variant: "primary", size: "sm" })}
+                    >
+                      Ver ficha del cliente
+                    </a>
+                  </div>
+                ) : !pickedClientId ? (
                   <div className="flex flex-wrap gap-2">
                     <a
                       href={association ? `/copilot/clientes/${association.clientCompanyId}` : "#"}

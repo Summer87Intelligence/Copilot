@@ -13,9 +13,20 @@ type RouteParams = { params: Promise<{ id: string }> };
 /**
  * GET /api/copilot/bank-reconciliation/movements/[id]/association
  *
- * FASE BANK-SIMPLE-MOVEMENT-TO-CLIENT-RESET-001 — datos mínimos para el panel
- * simple de asociación movimiento→cliente: el movimiento y, si existe, la
- * identificación activa con el nombre del cliente. Solo lectura.
+ * FASE BANK-SIMPLE-FLOW-COMPLETION-001 — datos mínimos para el panel simple
+ * de asociación movimiento→cliente. Solo lectura. Un movimiento puede estar
+ * "asociado" por dos vías reales: una identificación de
+ * `bank_movement_client_identifications`, O un link financiero real
+ * (`bank_movement_reconciliation_links`) creado por el flujo de recibo —
+ * ese caso NUNCA tiene fila de identificación propia
+ * (`confirmBatchClientIdentification` se niega a crear una redundante). Sin
+ * este fallback, un movimiento ya conciliado financieramente aparecía
+ * "Asociado" en la lista pero "Sin cliente" en este panel — mismo bug de
+ * "estados distintos para el mismo movimiento" que esta fase existe para
+ * eliminar. Cuando el origen es un link financiero, el panel debe mostrar
+ * el cliente en solo lectura (Cambiar/Revocar no aplican: no hay
+ * identificación que reasignar o revocar, y esta pantalla nunca toca
+ * conciliación financiera real).
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
@@ -41,12 +52,39 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 
   const identification = await getActiveIdentificationForMovement(supabase, tenantCompanyId, id);
+  let clientCompanyId: string | null = identification?.clientCompanyId ?? null;
+  let source: "identification" | "financial_link" | null = identification ? "identification" : null;
+
+  if (!clientCompanyId) {
+    const { data: link } = await supabase
+      .from("bank_movement_reconciliation_links")
+      .select("target_id, target_type")
+      .eq("workspace_id", tenantCompanyId)
+      .eq("bank_movement_id", id)
+      .eq("target_type", "receipt")
+      .is("archived_at", null)
+      .maybeSingle();
+    const receiptId = (link as { target_id: string | null } | null)?.target_id ?? null;
+    if (receiptId) {
+      const { data: receipt } = await supabase
+        .from("proto_receipts")
+        .select("company_id")
+        .eq("id", receiptId)
+        .maybeSingle();
+      const linkedCompanyId = (receipt as { company_id: string | null } | null)?.company_id ?? null;
+      if (linkedCompanyId) {
+        clientCompanyId = linkedCompanyId;
+        source = "financial_link";
+      }
+    }
+  }
+
   let clientName: string | null = null;
-  if (identification) {
+  if (clientCompanyId) {
     const { data: client } = await supabase
       .from("proto_companies")
       .select("name")
-      .eq("id", identification.clientCompanyId)
+      .eq("id", clientCompanyId)
       .maybeSingle();
     clientName = (client as { name: string } | null)?.name ?? null;
   }
@@ -55,13 +93,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     ok: true as const,
     data: {
       movement: movement as BankMovement,
-      identification: identification
+      identification: clientCompanyId
         ? {
-            id: identification.id,
-            clientCompanyId: identification.clientCompanyId,
+            id: identification?.id ?? null,
+            clientCompanyId,
             clientName,
-            status: identification.status,
-            confirmedAt: identification.confirmedAt,
+            status: identification?.status ?? null,
+            confirmedAt: identification?.confirmedAt ?? null,
+            source,
           }
         : null,
     },
