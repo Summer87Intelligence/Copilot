@@ -112,7 +112,7 @@ function matchesFilter(action: CopilotAction, filter: BandejaFilter): boolean {
 
 export default function CopilotAccionesPage() {
   const { modulePermissions } = useCopilotPermissions();
-  if (modulePermissions["acciones"] === "none") return <AccessDeniedCard />;
+  if ((modulePermissions["acciones"] ?? "none") === "none") return <AccessDeniedCard />;
   return (
     <Suspense
       fallback={

@@ -311,7 +311,7 @@ export default function ManualPage() {
     });
   }
 
-  if (modulePermissions["manual"] === "none") return <AccessDeniedCard />;
+  if ((modulePermissions["manual"] ?? "none") === "none") return <AccessDeniedCard />;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">

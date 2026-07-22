@@ -7,8 +7,7 @@ import {
 } from "@/lib/copilot-session-cookie-edge";
 import { isReadOnlyRole, isSuperAdmin } from "@/lib/auth/permissions";
 import { shouldBlockReadOnlyApiMutation } from "@/lib/auth/read-only-post-allowed";
-import { getDefaultAccessLevel, getDefaultPermissionsForRole } from "@/lib/auth/role-permission-presets";
-import type { ModuleKey } from "@/lib/auth/module-permissions";
+import { getDefaultPermissionsForRole } from "@/lib/auth/role-permission-presets";
 import { getDefaultLandingForUser } from "@/lib/auth/default-landing";
 import {
   isZetaApiPath,
@@ -16,47 +15,11 @@ import {
   zetaApiUnauthenticatedResponse,
 } from "@/lib/integrations/zeta/zeta-api-auth-edge";
 
-/**
- * Mapa de prefijos de ruta Copilot a clave de módulo.
- * Usado para bloquear acceso a módulos con access_level = 'none' según preset del rol.
- * El guard usa solo el preset (sin DB) para ser Edge-compatible y sin round-trip.
- * Los DB overrides se manejan en la capa de servidor/cliente.
- * hoy SÍ está gateada (USER-ACCESS-LANDING-PERMISSIONS-001): es el dashboard
- * ejecutivo, reservado a admin/acceso total. El destino de fallback ya no es
- * un path fijo — se resuelve con getDefaultLandingForUser() para evitar loops.
- */
-const COPILOT_MODULE_ROUTE_PREFIXES: Array<[string, string]> = [
-  ["/copilot/hoy", "hoy"],
-  ["/copilot/tareas-diarias", "daily_tasks"],
-  ["/copilot/dashboard", "dashboard"],
-  ["/copilot/tesoreria", "tesoreria"],
-  ["/copilot/movimientos-bancarios", "bank_movements"],
-  ["/copilot/acciones", "acciones"],
-  ["/copilot/clientes", "clientes"],
-  ["/copilot/cartera", "cartera"],
-  ["/copilot/cobranza", "cobranza"],
-  ["/copilot/finanzas", "finanzas"],
-  ["/copilot/reportes", "reportes"],
-  ["/copilot/datos", "datos"],
-  ["/copilot/agentes", "agentes"],
-  ["/copilot/mesa-de-ayuda", "helpdesk"],
-  ["/copilot/manual", "manual"],
-];
-
 /** Preset del rol como Record module_key → access_level (Edge, sin DB). */
 function presetPermissionsRecord(role: string): Record<string, string> {
   return Object.fromEntries(
     getDefaultPermissionsForRole(role).map((p) => [p.moduleKey, p.accessLevel])
   );
-}
-
-function getModuleKeyForPath(pathname: string): string | null {
-  for (const [prefix, moduleKey] of COPILOT_MODULE_ROUTE_PREFIXES) {
-    if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
-      return moduleKey;
-    }
-  }
-  return null;
 }
 
 /** Rutas del módulo Copilot y APIs (excepto login/logout públicos). */
@@ -157,22 +120,17 @@ export async function proxy(request: NextRequest) {
       }
     }
 
-    // Guard de módulo: bloquea rutas con access_level = 'none' según preset del rol.
-    // Solo aplica a páginas (no a APIs — las APIs tienen su propio guard de aplicación).
-    const moduleKey = getModuleKeyForPath(pathname);
-    if (moduleKey && !pathname.startsWith("/api/")) {
-      const parsed = await parseCopilotSessionValueAsync(sessionCookieValue);
-      if (parsed && !isSuperAdmin(parsed.role ?? "")) {
-        const role = parsed.role ?? "";
-        const accessLevel = getDefaultAccessLevel(role, moduleKey as ModuleKey);
-        if (accessLevel === "none") {
-          const redirectUrl = request.nextUrl.clone();
-          redirectUrl.pathname = getDefaultLandingForUser(role, presetPermissionsRecord(role));
-          redirectUrl.searchParams.set("blocked", "module-access");
-          return NextResponse.redirect(redirectUrl);
-        }
-      }
-    }
+    // Guard de módulo por página: NO se resuelve acá. El preset del rol (sin
+    // DB) no refleja los overrides explícitos de app_user_permissions que
+    // guarda Configuración, así que bloquear en Edge contra el preset produce
+    // falsos negativos — un admin habilita Banco (u otro módulo) para un
+    // usuario, el override se persiste correctamente, pero el preset del rol
+    // sigue diciendo 'none' y este middleware redirigía igual (RBAC-BANK-
+    // ACCESS-URGENT-FIX-001). Cada página bajo /copilot/* ya resuelve su
+    // propio guard server-side contra permisos efectivos reales (preset +
+    // overrides DB) vía isModuleAccessDenied()/getServerEffectivePermissions()
+    // — ver lib/auth/server-module-permissions.ts — y es la única fuente de
+    // verdad para "puede ver este módulo". No duplicar ese chequeo acá.
   }
 
   // FASE 1 — Cerrar acceso anónimo SSR en /admin/* y /account.
