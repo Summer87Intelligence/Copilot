@@ -406,12 +406,19 @@ export function ClusterReviewDrawer({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/30" role="dialog" aria-modal="true">
-      <div className="h-full w-full max-w-2xl overflow-y-auto bg-[var(--copilot-card-bg)] p-5 shadow-xl">
+    <div
+      className="fixed inset-x-0 bottom-0 top-0 z-[60] flex justify-end bg-black/30 pt-[3.25rem] sm:pt-[3.5rem]"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="relative h-full w-full max-w-2xl overflow-y-auto border-l border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-5 shadow-xl">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-semibold text-[var(--copilot-text)]">
-            {detail?.displayName ?? "Revisar movimientos"}
-          </h3>
+          <div className="min-w-0">
+            <p className={copilotCaptionClass}>Banco → Conciliación</p>
+            <h3 className="text-base font-semibold text-[var(--copilot-text)]">
+              {detail?.displayName ?? "Identificar cliente"}
+            </h3>
+          </div>
           <button type="button" onClick={onClose} className={copilotButtonClassName({ variant: "ghost", size: "sm" })}>
             Cerrar
           </button>

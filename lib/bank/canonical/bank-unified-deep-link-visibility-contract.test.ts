@@ -20,10 +20,10 @@ describe("Movimientos → Conciliación unificada (deep-link)", () => {
     expect(pageClient).toContain('setTab("conciliacion")');
     expect(pageClient).toContain("initialClusterKey={focusClusterKey}");
     expect(pageClient).toContain("initialMovementId={focusMovementId}");
-    // BankIncomeWorkspace solo vía receiptFocusMovementId (vincular recibo contextual).
+    expect(pageClient).toContain("FocusedReceiptConfirmDrawer");
     expect(pageClient).toContain("receiptFocusMovementId");
-    expect(pageClient).toContain("setReceiptFocusMovementId");
     expect(pageClient).not.toMatch(/goToReconciliationForMovement[\s\S]{0,400}setReceiptFocusMovementId/);
+    expect(pageClient).not.toContain("BankIncomeWorkspace");
   });
 
   it("Identificar cliente no hace router.push a ruta legacy", () => {

@@ -236,6 +236,7 @@ export function ReconciliationEvidenceDrawer({
   onClose,
   onConfirm,
   onReject,
+  confirmLabel = "Confirmar con recibo",
 }: {
   item: EvidenceItem;
   mutating: boolean;
@@ -243,6 +244,8 @@ export function ReconciliationEvidenceDrawer({
   onClose: () => void;
   onConfirm: (input: ConfirmDrawerInput) => void;
   onReject: (reason: string) => void;
+  /** CTA final del drawer (default: Confirmar con recibo). */
+  confirmLabel?: string;
 }) {
   const [selected, setSelected] = useState<Record<string, number>>({});
   const [reason, setReason] = useState("");
@@ -271,10 +274,17 @@ export function ReconciliationEvidenceDrawer({
   const canConfirm = !isTerminal && item.receipt != null && !overAllocated;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-stretch justify-end bg-black/30" role="dialog" aria-modal="true">
+    <div
+      className="fixed inset-x-0 bottom-0 top-0 z-[65] flex items-stretch justify-end bg-black/30 pt-[3.25rem] sm:pt-[3.5rem]"
+      role="dialog"
+      aria-modal="true"
+    >
       <div className="flex w-full max-w-lg flex-col overflow-y-auto border-l border-[var(--copilot-border)] bg-[var(--copilot-card)] shadow-xl">
         <div className="flex items-center justify-between border-b border-[var(--copilot-border)] px-4 py-3">
-          <h3 className="text-sm font-semibold text-[var(--copilot-text)]">Evidencia de conciliación</h3>
+          <div className="min-w-0">
+            <p className={copilotCaptionClass}>Banco → Conciliación</p>
+            <h3 className="text-sm font-semibold text-[var(--copilot-text)]">Confirmar con recibo</h3>
+          </div>
           <button type="button" onClick={onClose} className="rounded-md p-1 hover:bg-[var(--copilot-soft-bg)]" aria-label="Cerrar">
             <X className="h-4 w-4" aria-hidden />
           </button>
@@ -406,7 +416,11 @@ export function ReconciliationEvidenceDrawer({
               disabled={mutating || !canConfirm}
               className={copilotButtonClassName({ variant: "primary", size: "sm" })}
             >
-              {mutating ? "Confirmando…" : allocations.length > 0 ? "Confirmar con estas facturas" : "Confirmar conciliación"}
+              {mutating
+                ? "Confirmando…"
+                : allocations.length > 0
+                  ? "Confirmar con estas facturas"
+                  : confirmLabel}
             </button>
           ) : null}
         </div>

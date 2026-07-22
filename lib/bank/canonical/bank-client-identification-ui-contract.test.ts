@@ -35,7 +35,8 @@ describe("Conciliación: vista única unificada, sin tabs principales nuevos", (
     expect(pageClient).not.toContain(">Vincular recibos<");
     expect(pageClient).toContain("UnifiedReconciliationWorkspace");
     expect(pageClient).toContain("ClusterReviewDrawer");
-    expect(pageClient).toContain("BankIncomeWorkspace");
+    expect(pageClient).toContain("FocusedReceiptConfirmDrawer");
+    expect(pageClient).not.toMatch(/fixed inset-0[\s\S]{0,200}BankIncomeWorkspace/);
   });
 
   it("la vista unificada nunca reimplementa el clustering/matching: compone las mismas APIs read-only ya existentes", () => {
@@ -53,12 +54,12 @@ describe("Conciliación: vista única unificada, sin tabs principales nuevos", (
       "utf8"
     );
     expect(unifiedWorkspace).toContain(">Factura<");
-    expect(unifiedWorkspace).toContain(">Cliente<");
+    expect(unifiedWorkspace).toMatch(/Cliente\s*[·•]/);
     expect(unifiedWorkspace).toContain("invoiceContextLabel");
     expect(unifiedWorkspace).toContain("UnifiedRowCard");
     expect(unifiedWorkspace).toContain("md:hidden");
     expect(unifiedWorkspace).toContain("Cambiar cliente");
-    expect(unifiedWorkspace).toContain("Revertir (próximamente)");
+    expect(unifiedWorkspace).toContain("No hay reversión segura desde esta pantalla.");
     expect(unifiedWorkspace).not.toMatch(/>\s*clusterKey\s*</);
     expect(unifiedWorkspace).not.toMatch(/suggestion|allocation|payer identity|manual draft/i);
   });

@@ -286,8 +286,10 @@ export type UnifiedReconciliationCaseDetail = UnifiedReconciliationCaseSummary &
 
 function invoiceContextFromLevel(level: PayerClusterMovementView["level"]): string {
   if (level === "full_reconciliation") return "Factura comprobada";
-  if (level === "reconciled_with_receipt") return "Sin factura comprobada";
-  return "—";
+  if (level === "reconciled_with_receipt") {
+    return "No encontramos en la API de Zeta qué factura fue aplicada por este recibo.";
+  }
+  return "Factura pendiente";
 }
 
 /**

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { BankDrawerShell } from "@/components/copilot/bank-movements/bank-drawer-shell";
 import { copilotButtonClassName } from "@/components/copilot/ui/copilot-button";
 import {
   copilotCaptionClass,
@@ -15,18 +16,9 @@ import {
 } from "@/lib/bank/canonical/unified-reconciliation-status";
 
 /**
- * FASE BANK-RECONCILIATION-SIMPLE-UNIFIED-WORKSPACE-001 — reemplaza los dos
- * pasos manuales de Conciliación ("Identificar clientes" / "Vincular
- * recibos") por una única vista: tarjetas por cliente/pagador con un estado
- * y una acción claros, y una tabla de detalle Fecha|Banco|Recibo|Factura|
- * Estado|Acción por movimiento.
- *
- * Es una capa de lectura sobre lib/bank/canonical/unified-reconciliation-case.ts
- * (que a su vez compone los motores YA existentes de clustering/identificación
- * y auditoría de duplicados). Las acciones reales (identificar cliente,
- * vincular recibo) delegan en los flujos existentes ya probados — este
- * componente nunca escribe directamente en identificaciones de cliente
- * ni en vínculos financieros canónicos.
+ * FASE BANK-RECONCILIATION-SIMPLE-UNIFIED-WORKSPACE-001 — vista unificada.
+ * FASE BANK-END-TO-END-RECONCILIATION-FLOW-UX-CORRECTION-001 — drawers bajo
+ * chrome de Banco; Confirmar con recibo → movimiento exacto; foco deep-link.
  */
 
 export type { UnifiedCaseStatus };
@@ -116,16 +108,15 @@ export function UnifiedReconciliationWorkspace({
   initialClusterKey = null,
   initialMovementId = null,
   onInitialFocusConsumed,
+  onCaseClosed,
 }: {
   onChanged?: () => void;
-  /** Abre el flujo existente de identificación en lote (ClusterReviewDrawer) para este cluster. */
   onOpenIdentify: (clusterKey: string) => void;
-  /** Abre el flujo existente de búsqueda de recibo (BankIncomeWorkspace) para este movimiento. */
   onOpenReceipt: (movementId: string) => void;
-  /** Deep-link desde Movimientos: abre el caso exacto en la vista unificada. */
   initialClusterKey?: string | null;
   initialMovementId?: string | null;
   onInitialFocusConsumed?: () => void;
+  onCaseClosed?: () => void;
 }) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -142,11 +133,13 @@ export function UnifiedReconciliationWorkspace({
   const [appliedFocusToken, setAppliedFocusToken] = useState<string | null>(null);
 
   const incomingFocusToken =
-    initialClusterKey != null ? `c:${initialClusterKey}|m:${initialMovementId ?? ""}` : null;
+    initialClusterKey != null || initialMovementId != null
+      ? `c:${initialClusterKey ?? ""}|m:${initialMovementId ?? ""}`
+      : null;
 
   if (incomingFocusToken && incomingFocusToken !== appliedFocusToken) {
     setAppliedFocusToken(incomingFocusToken);
-    setOpenClusterKey(initialClusterKey);
+    if (initialClusterKey) setOpenClusterKey(initialClusterKey);
     setHighlightMovementId(initialMovementId);
   }
 
@@ -182,7 +175,6 @@ export function UnifiedReconciliationWorkspace({
   }, [page, debouncedSearch, statusFilter]);
 
   useEffect(() => {
-    // Fetch-on-mount/filter-change: el estado se sincroniza desde una fuente externa (API).
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
@@ -194,8 +186,14 @@ export function UnifiedReconciliationWorkspace({
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
+  const closeCase = () => {
+    setOpenClusterKey(null);
+    setHighlightMovementId(null);
+    onCaseClosed?.();
+  };
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" data-bank-unified-workspace>
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex-1 min-w-[220px]">
           <label className={copilotMetricLabelClass}>Buscar cliente o pagador</label>
@@ -263,10 +261,7 @@ export function UnifiedReconciliationWorkspace({
         <UnifiedCaseDrawer
           clusterKey={openClusterKey}
           highlightMovementId={highlightMovementId}
-          onClose={() => {
-            setOpenClusterKey(null);
-            setHighlightMovementId(null);
-          }}
+          onClose={closeCase}
           onChanged={() => {
             void load();
             onChanged?.();
@@ -329,7 +324,7 @@ function CaseCard({ unifiedCase, onOpen }: { unifiedCase: CaseSummary; onOpen: (
 const ROW_ACTION_LABEL: Record<CaseRow["action"], string> = {
   confirmar_con_recibo: "Confirmar con recibo",
   dejar_pendiente: "Dejar pendiente",
-  buscar_cliente: "Buscar cliente",
+  buscar_cliente: "Identificar cliente",
   elegir_cliente: "Elegir cliente",
   ninguna: "—",
 };
@@ -355,11 +350,19 @@ function UnifiedCaseDrawer({
   const [batchSubmitting, setBatchSubmitting] = useState(false);
   const [batchError, setBatchError] = useState<string | null>(null);
   const [batchResult, setBatchResult] = useState<string | null>(null);
+  const [focusedRowId, setFocusedRowId] = useState<string | null>(highlightMovementId ?? null);
+  const [prevHighlightMovementId, setPrevHighlightMovementId] = useState(highlightMovementId);
+  if (highlightMovementId !== prevHighlightMovementId) {
+    setPrevHighlightMovementId(highlightMovementId);
+    if (highlightMovementId) setFocusedRowId(highlightMovementId);
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const res = await fetchJson<CaseDetail>(`/api/copilot/bank-reconciliation/unified-cases/${encodeURIComponent(clusterKey)}`);
+    const res = await fetchJson<CaseDetail>(
+      `/api/copilot/bank-reconciliation/unified-cases/${encodeURIComponent(clusterKey)}`
+    );
     if (!res.ok || !res.data) {
       setError(res.error ?? "No se pudo cargar el detalle de este cliente.");
       setLoading(false);
@@ -370,13 +373,17 @@ function UnifiedCaseDrawer({
   }, [clusterKey]);
 
   useEffect(() => {
-    // Fetch-on-open: el estado se sincroniza desde una fuente externa (API).
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
 
-  const handleBatchConfirmClients = async () => {
+
+  const clientAlreadyIdentified =
+    Boolean(detail?.suggestedClientId) && (detail?.alreadyIdentifiedCount ?? 0) > 0;
+
+  const handleBatchIdentifyClients = async () => {
     if (!detail || !detail.suggestedClientId || detail.batchEligibleMovementIds.length === 0) return;
+    if (clientAlreadyIdentified) return;
     setBatchSubmitting(true);
     setBatchError(null);
     const res = await fetchJson<{ createdCount: number }>("/api/copilot/bank-reconciliation/client-identifications", {
@@ -394,26 +401,49 @@ function UnifiedCaseDrawer({
       setBatchError(res.error ?? "No se pudo confirmar el lote.");
       return;
     }
-    setBatchResult(`Cliente confirmado para ${res.data.createdCount} movimiento${res.data.createdCount === 1 ? "" : "s"}.`);
+    setBatchResult(
+      `Cliente confirmado para ${res.data.createdCount} movimiento${res.data.createdCount === 1 ? "" : "s"}.`
+    );
     void load();
     onChanged();
   };
 
+  const openFirstEligibleReceipt = () => {
+    const id = detail?.batchEligibleMovementIds[0];
+    if (!id) return;
+    setFocusedRowId(id);
+    onOpenReceipt(id);
+  };
+
+  const focusedRow = detail?.rows.find((r) => r.movementId === focusedRowId) ?? null;
+
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/30" role="dialog" aria-modal="true">
-      <div className="h-full w-full max-w-3xl overflow-y-auto bg-[var(--copilot-card-bg)] p-5 shadow-xl">
-        <div className="flex items-center justify-between">
+    <BankDrawerShell onBackdropClick={onClose} aria-label="Detalle de conciliación">
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
+            <p className={copilotCaptionClass}>Banco → Conciliación</p>
             <h3 className="truncate text-base font-semibold text-[var(--copilot-text)]">
               {detail?.suggestedClientName ?? detail?.payerDisplayName ?? "Detalle de conciliación"}
             </h3>
             {detail ? (
-              <p className={copilotCaptionClass}>
-                {unifiedCaseStatusLabel(detail.status, {
-                  ready: detail.receiptsFoundCount,
-                  missing: detail.missingReceiptCount,
-                })}
-              </p>
+              <div className={`${copilotCaptionClass} mt-1 space-y-0.5`}>
+                <p>
+                  {detail.movementCount} movimiento{detail.movementCount === 1 ? "" : "s"} reales
+                  {detail.duplicateExcludedCount > 0
+                    ? ` · ${detail.duplicateExcludedCount} duplicado${detail.duplicateExcludedCount === 1 ? "" : "s"} excluido${detail.duplicateExcludedCount === 1 ? "" : "s"}`
+                    : ""}
+                </p>
+                <p>
+                  {detail.receiptsFoundCount} listos para confirmar · {detail.missingReceiptCount} pendientes de recibo
+                </p>
+                <p className={STATUS_TONE[detail.status]}>
+                  {unifiedCaseStatusLabel(detail.status, {
+                    ready: detail.receiptsFoundCount,
+                    missing: detail.missingReceiptCount,
+                  })}
+                </p>
+              </div>
             ) : null}
           </div>
           <button type="button" onClick={onClose} className={copilotButtonClassName({ variant: "ghost", size: "sm" })}>
@@ -426,9 +456,59 @@ function UnifiedCaseDrawer({
 
         {detail ? (
           <>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {detail.batchEligibleMovementIds.length >= 1 && clientAlreadyIdentified ? (
+                <button
+                  type="button"
+                  onClick={openFirstEligibleReceipt}
+                  className={copilotButtonClassName({ variant: "primary", size: "sm" })}
+                >
+                  Confirmar {detail.batchEligibleMovementIds.length} con recibo
+                </button>
+              ) : null}
+              {detail.batchEligibleMovementIds.length >= 1 &&
+              !clientAlreadyIdentified &&
+              detail.suggestedClientId ? (
+                <button
+                  type="button"
+                  disabled={batchSubmitting}
+                  onClick={() => void handleBatchIdentifyClients()}
+                  className={copilotButtonClassName({ variant: "primary", size: "sm" })}
+                >
+                  {batchSubmitting ? "Confirmando…" : "Confirmar cliente"}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  const first = detail.rows.find((r) => r.status !== "duplicado");
+                  if (first) setFocusedRowId(first.movementId);
+                }}
+                className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+              >
+                Revisar uno por uno
+              </button>
+              <button
+                type="button"
+                onClick={() => onOpenIdentify(detail.clusterKey)}
+                className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+              >
+                Cambiar cliente
+              </button>
+              {detail.suggestedClientId ? (
+                <a
+                  href={`/copilot/clientes/${encodeURIComponent(detail.suggestedClientId)}`}
+                  className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+                >
+                  Ver ficha del cliente
+                </a>
+              ) : null}
+            </div>
+
             <p className={`${copilotCaptionClass} mt-3`}>
-              Para corregir una conciliación financiera, usá el flujo de revisión. Ocultar no modifica la conciliación.
+              La corrección financiera todavía requiere revisión. Ocultar no modifica la conciliación.
             </p>
+
             {detail.evidence === "ambiguous" || detail.evidence === "none" ? (
               <div className="mt-3 rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] p-3">
                 <p className="text-sm text-[var(--copilot-text)]">
@@ -441,7 +521,7 @@ function UnifiedCaseDrawer({
                   onClick={() => onOpenIdentify(detail.clusterKey)}
                   className={`mt-2 ${copilotButtonClassName({ variant: "primary", size: "sm" })}`}
                 >
-                  Elegir cliente
+                  Identificar cliente
                 </button>
               </div>
             ) : null}
@@ -449,19 +529,46 @@ function UnifiedCaseDrawer({
             {batchResult ? <p className="mt-3 text-sm text-[var(--copilot-success-text-strong)]">{batchResult}</p> : null}
             {batchError ? <p className="mt-3 text-sm text-[var(--copilot-danger-text-strong)]">{batchError}</p> : null}
 
-            {detail.batchEligibleMovementIds.length >= 1 && detail.suggestedClientId ? (
-              <div className="mt-3 flex items-center gap-3 rounded-lg border border-[var(--copilot-border)] p-3">
-                <p className="text-sm text-[var(--copilot-text)]">
-                  Lote elegible: {detail.batchEligibleMovementIds.length} con recibo (no incluye pendientes ni duplicados).
+            {focusedRow && focusedRow.status !== "duplicado" ? (
+              <div
+                className="mt-4 rounded-xl border-2 border-[var(--copilot-accent)] bg-[var(--copilot-soft-bg)] p-4"
+                data-focused-movement={focusedRow.movementId}
+              >
+                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-muted)]">
+                  Movimiento en foco
                 </p>
-                <button
-                  type="button"
-                  disabled={batchSubmitting}
-                  onClick={handleBatchConfirmClients}
-                  className={copilotButtonClassName({ variant: "primary", size: "sm" })}
-                >
-                  {batchSubmitting ? "Confirmando…" : `Confirmar cliente en ${detail.batchEligibleMovementIds.length}`}
-                </button>
+                <p className="mt-1 text-sm font-semibold text-[var(--copilot-text)]">
+                  {focusedRow.date} · {focusedRow.currency} {focusedRow.amount.toLocaleString("es-UY")}
+                  {focusedRow.referenceMasked ? ` · ${focusedRow.referenceMasked}` : ""}
+                </p>
+                <dl className="mt-2 grid gap-1 text-xs text-[var(--copilot-text)]">
+                  <div>
+                    <dt className="inline text-[var(--copilot-muted)]">Cliente · </dt>
+                    <dd className="inline">{focusedRow.clientLabel}</dd>
+                  </div>
+                  <div>
+                    <dt className="inline text-[var(--copilot-muted)]">Recibo · </dt>
+                    <dd className="inline">
+                      {focusedRow.hasCompatibleReceipt ? "Recibo compatible" : "Sin recibo en Zeta"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="inline text-[var(--copilot-muted)]">Factura · </dt>
+                    <dd className="inline">{focusedRow.invoiceContextLabel}</dd>
+                  </div>
+                  <div>
+                    <dt className="inline text-[var(--copilot-muted)]">Estado · </dt>
+                    <dd className="inline">{focusedRow.statusLabel}</dd>
+                  </div>
+                </dl>
+                <div className="mt-3">
+                  <UnifiedRowActions
+                    row={focusedRow}
+                    onIdentify={() => onOpenIdentify(detail.clusterKey)}
+                    onReceipt={() => onOpenReceipt(focusedRow.movementId)}
+                    onFocus={() => setFocusedRowId(focusedRow.movementId)}
+                  />
+                </div>
               </div>
             ) : null}
 
@@ -481,12 +588,20 @@ function UnifiedCaseDrawer({
                     {operationalRows.map((row) => (
                       <div
                         key={row.movementId}
-                        className={highlightMovementId === row.movementId ? "rounded-xl ring-2 ring-[var(--copilot-accent)]" : ""}
+                        className={
+                          focusedRowId === row.movementId || highlightMovementId === row.movementId
+                            ? "rounded-xl ring-2 ring-[var(--copilot-accent)]"
+                            : ""
+                        }
                       >
                         <UnifiedRowCard
                           row={row}
                           onIdentify={() => onOpenIdentify(detail.clusterKey)}
-                          onReceipt={() => onOpenReceipt(row.movementId)}
+                          onReceipt={() => {
+                            setFocusedRowId(row.movementId);
+                            onOpenReceipt(row.movementId);
+                          }}
+                          onSelect={() => setFocusedRowId(row.movementId)}
                         />
                       </div>
                     ))}
@@ -497,8 +612,7 @@ function UnifiedCaseDrawer({
                       <thead>
                         <tr className="text-left text-[var(--copilot-muted)]">
                           <th className="py-1 pr-2">Fecha</th>
-                          <th className="py-1 pr-2">Banco</th>
-                          <th className="py-1 pr-2">Cliente</th>
+                          <th className="py-1 pr-2">Movimiento</th>
                           <th className="py-1 pr-2">Recibo</th>
                           <th className="py-1 pr-2">Factura</th>
                           <th className="py-1 pr-2">Estado</th>
@@ -510,7 +624,9 @@ function UnifiedCaseDrawer({
                           <tr
                             key={row.movementId}
                             className={`border-t border-[var(--copilot-border)] ${
-                              highlightMovementId === row.movementId ? "bg-[var(--copilot-soft-bg)]" : ""
+                              focusedRowId === row.movementId || highlightMovementId === row.movementId
+                                ? "bg-[var(--copilot-soft-bg)]"
+                                : ""
                             }`}
                           >
                             <td className="py-1.5 pr-2 whitespace-nowrap">{row.date}</td>
@@ -519,16 +635,22 @@ function UnifiedCaseDrawer({
                               {row.referenceMasked ? (
                                 <span className={`block ${copilotCaptionClass}`}>{row.referenceMasked}</span>
                               ) : null}
+                              <span className={`block ${copilotCaptionClass}`}>{row.clientLabel}</span>
                             </td>
-                            <td className="py-1.5 pr-2">{row.clientLabel}</td>
-                            <td className="py-1.5 pr-2">{row.hasCompatibleReceipt ? "Recibo encontrado" : "Sin recibo"}</td>
-                            <td className="py-1.5 pr-2">{row.invoiceContextLabel}</td>
+                            <td className="py-1.5 pr-2">
+                              {row.hasCompatibleReceipt ? "Recibo encontrado" : "Sin recibo"}
+                            </td>
+                            <td className="py-1.5 pr-2 max-w-[14rem]">{row.invoiceContextLabel}</td>
                             <td className="py-1.5 pr-2">{row.statusLabel}</td>
                             <td className="py-1.5">
                               <UnifiedRowActions
                                 row={row}
                                 onIdentify={() => onOpenIdentify(detail.clusterKey)}
-                                onReceipt={() => onOpenReceipt(row.movementId)}
+                                onReceipt={() => {
+                                  setFocusedRowId(row.movementId);
+                                  onOpenReceipt(row.movementId);
+                                }}
+                                onFocus={() => setFocusedRowId(row.movementId)}
                               />
                             </td>
                           </tr>
@@ -544,17 +666,18 @@ function UnifiedCaseDrawer({
                       </summary>
                       <ul className="mt-3 space-y-2">
                         {duplicateRows.map((row) => (
-                          <li key={row.movementId} className={`${copilotCaptionClass} rounded-md bg-[var(--copilot-soft-bg)] p-2`}>
-                            <span className="font-medium text-[var(--copilot-text)]">Duplicado de importación</span>
+                          <li
+                            key={row.movementId}
+                            className={`${copilotCaptionClass} rounded-md bg-[var(--copilot-soft-bg)] p-2`}
+                          >
+                            <span className="font-medium text-[var(--copilot-text)]">Duplicado</span>
                             {" · "}
                             {row.date} · {row.currency} {row.amount.toLocaleString("es-UY")}
                             {row.referenceMasked ? ` · ${row.referenceMasked}` : ""}
                             {row.canonicalMovementId ? (
-                              <span className="block mt-0.5">
-                                Canónico: {row.canonicalMovementId.slice(0, 8)}…
-                              </span>
+                              <span className="mt-0.5 block">Canónico: {row.canonicalMovementId.slice(0, 8)}…</span>
                             ) : null}
-                            <span className="block mt-0.5">Sin acción operativa · no entra al lote ni a totales</span>
+                            <span className="mt-0.5 block">Sin acción operativa · no entra al lote ni a totales</span>
                           </li>
                         ))}
                       </ul>
@@ -566,13 +689,13 @@ function UnifiedCaseDrawer({
 
             {detail.rows.some((r) => r.hasFinancialLink) ? (
               <p className={`${copilotCaptionClass} mt-3`}>
-                Revertir una conciliación financiera ya confirmada todavía no está disponible desde esta pantalla.
+                La corrección financiera todavía requiere revisión. No hay reversión segura desde esta pantalla.
               </p>
             ) : null}
           </>
         ) : null}
       </div>
-    </div>
+    </BankDrawerShell>
   );
 }
 
@@ -580,23 +703,20 @@ function UnifiedRowActions({
   row,
   onIdentify,
   onReceipt,
+  onFocus,
 }: {
   row: CaseRow;
   onIdentify: () => void;
   onReceipt: () => void;
+  onFocus?: () => void;
 }) {
   if (row.status === "duplicado") {
-    return <span className={copilotCaptionClass}>Sin acción operativa</span>;
+    return <span className={copilotCaptionClass}>Ver evidencia (duplicado)</span>;
   }
   if (row.hasFinancialLink) {
     return (
-      <button
-        type="button"
-        disabled
-        title="La reversión financiera todavía no tiene un contrato seguro en la UI"
-        className="cursor-not-allowed text-[var(--copilot-muted)] opacity-60"
-      >
-        Revertir (próximamente)
+      <button type="button" onClick={onFocus} className={copilotButtonClassName({ variant: "ghost", size: "sm" })}>
+        Ver conciliación
       </button>
     );
   }
@@ -604,9 +724,15 @@ function UnifiedRowActions({
     return (
       <div className="flex flex-wrap gap-1">
         {row.action === "confirmar_con_recibo" ? (
-          <button type="button" onClick={onReceipt} className={copilotButtonClassName({ variant: "ghost", size: "sm" })}>
+          <button
+            type="button"
+            onClick={onReceipt}
+            className={copilotButtonClassName({ variant: "primary", size: "sm" })}
+          >
             Confirmar con recibo
           </button>
+        ) : row.action === "dejar_pendiente" ? (
+          <span className={copilotCaptionClass}>Dejar pendiente</span>
         ) : null}
         <button type="button" onClick={onIdentify} className={copilotButtonClassName({ variant: "ghost", size: "sm" })}>
           Cambiar cliente
@@ -624,7 +750,7 @@ function UnifiedRowActions({
     <button
       type="button"
       onClick={() => (row.action === "confirmar_con_recibo" ? onReceipt() : onIdentify())}
-      className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+      className={copilotButtonClassName({ variant: "primary", size: "sm" })}
     >
       {ROW_ACTION_LABEL[row.action]}
     </button>
@@ -635,25 +761,29 @@ function UnifiedRowCard({
   row,
   onIdentify,
   onReceipt,
+  onSelect,
 }: {
   row: CaseRow;
   onIdentify: () => void;
   onReceipt: () => void;
+  onSelect?: () => void;
 }) {
   return (
     <article className="rounded-xl border border-[var(--copilot-border)] p-3">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-[var(--copilot-text)]">
-            {row.currency} {row.amount.toLocaleString("es-UY")}
-          </p>
-          <p className={copilotCaptionClass}>
-            {row.date}
-            {row.referenceMasked ? ` · ${row.referenceMasked}` : ""}
-          </p>
+      <button type="button" className="w-full text-left" onClick={onSelect}>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-[var(--copilot-text)]">
+              {row.currency} {row.amount.toLocaleString("es-UY")}
+            </p>
+            <p className={copilotCaptionClass}>
+              {row.date}
+              {row.referenceMasked ? ` · ${row.referenceMasked}` : ""}
+            </p>
+          </div>
+          <p className="shrink-0 text-xs font-medium text-[var(--copilot-text)]">{row.statusLabel}</p>
         </div>
-        <p className="shrink-0 text-xs font-medium text-[var(--copilot-text)]">{row.statusLabel}</p>
-      </div>
+      </button>
       <dl className="mt-2 grid gap-1 text-xs text-[var(--copilot-text)]">
         <div>
           <dt className="inline text-[var(--copilot-muted)]">Cliente · </dt>
@@ -669,7 +799,7 @@ function UnifiedRowCard({
         </div>
       </dl>
       <div className="mt-2">
-        <UnifiedRowActions row={row} onIdentify={onIdentify} onReceipt={onReceipt} />
+        <UnifiedRowActions row={row} onIdentify={onIdentify} onReceipt={onReceipt} onFocus={onSelect} />
       </div>
     </article>
   );

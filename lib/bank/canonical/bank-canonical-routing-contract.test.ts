@@ -79,14 +79,14 @@ describe("Conciliación consume ÚNICAMENTE el motor canónico (D)", () => {
   // FASE BANK-RECONCILIATION-SIMPLE-UNIFIED-WORKSPACE-001 — reemplazó las dos
   // sub-vistas visibles ("Identificar clientes"/"Vincular recibos") por una
   // única vista (UnifiedReconciliationWorkspace); los dos motores existentes
-  // (identificación en lote, búsqueda de recibo) se reusan sin cambios, ahora
-  // como acciones contextuales (ClusterReviewDrawer / BankIncomeWorkspace)
-  // en vez de pestañas que el usuario deba elegir a mano.
+  // (identificación en lote, confirmación de recibo enfocada) se reusan sin
+  // cambios, ahora como acciones contextuales (ClusterReviewDrawer /
+  // FocusedReceiptConfirmDrawer) en vez de pestañas que el usuario deba elegir.
   it("el tab 'conciliacion' monta la vista unificada y reusa los motores existentes como acciones contextuales", () => {
     expect(pageClient).toMatch(/tab === "conciliacion" \? \(/);
     expect(pageClient).toContain("UnifiedReconciliationWorkspace");
     expect(pageClient).toContain("ClusterReviewDrawer");
-    expect(pageClient).toContain("BankIncomeWorkspace");
+    expect(pageClient).toContain("FocusedReceiptConfirmDrawer");
     expect(pageClient).not.toContain("BankClientIdentificationWorkspace");
   });
 

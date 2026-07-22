@@ -400,7 +400,7 @@ describe("getUnifiedReconciliationCaseDetail", () => {
     // Business-language row fields for the unified drawer (cliente + factura).
     expect(result!.rows[0]).toMatchObject({
       clientLabel: "Nirmex S.A.",
-      invoiceContextLabel: "—",
+      invoiceContextLabel: "Factura pendiente",
     });
     const missingReceipt = result!.rows.find((r) => r.movementId === "m12")!;
     expect(missingReceipt.status).toBe("falta_recibo");
@@ -457,7 +457,9 @@ describe("getUnifiedReconciliationCaseDetail", () => {
       clusterKey: "BOTICA",
     });
 
-    expect(result!.rows.find((r) => r.movementId === "r1")!.invoiceContextLabel).toBe("Sin factura comprobada");
+    expect(result!.rows.find((r) => r.movementId === "r1")!.invoiceContextLabel).toBe(
+      "No encontramos en la API de Zeta qué factura fue aplicada por este recibo."
+    );
     expect(result!.rows.find((r) => r.movementId === "r2")!.invoiceContextLabel).toBe("Factura comprobada");
     expect(result!.status).toBe("conciliado");
   });
