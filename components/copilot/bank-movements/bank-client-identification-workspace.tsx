@@ -277,7 +277,12 @@ function ClusterCard({ cluster, onReview }: { cluster: ClusterSummary; onReview:
 type BatchMode = "identified" | "shared_account" | "third_party";
 type ClientOption = { id: string; name: string };
 
-function ClusterReviewDrawer({
+/**
+ * FASE BANK-RECONCILIATION-SIMPLE-UNIFIED-WORKSPACE-001 — exportado para que
+ * la vista unificada de Conciliación pueda reabrirlo directamente desde una
+ * tarjeta de cliente, sin duplicar el flujo de identificación en lote.
+ */
+export function ClusterReviewDrawer({
   clusterKey,
   onClose,
   onConfirmed,

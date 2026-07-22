@@ -9,8 +9,10 @@ import {
 } from "@/components/copilot/ui/filter-bar";
 import type { FilterValues } from "@/lib/ui/filter-bar-model";
 import {
+  BANK_MOVEMENT_DUPLICATES_OPTIONS,
   BANK_MOVEMENT_PERIOD_OPTIONS,
   BANK_MOVEMENT_SCOPE_OPTIONS,
+  BANK_MOVEMENT_SOURCE_OPTIONS,
   DEFAULT_BANK_MOVEMENTS_LIST_FILTERS,
   DEFAULT_RECONCILIATION_VIEW_FILTERS,
   type BankMovementsListFilters,
@@ -81,6 +83,10 @@ function filterState(
         direction: f.direction,
         text: f.text,
         amount: f.amount,
+        amountMin: f.amountMin,
+        amountMax: f.amountMax,
+        duplicates: f.duplicates,
+        source: f.source,
       },
       defaults: {
         period: d.period,
@@ -90,6 +96,10 @@ function filterState(
         direction: d.direction,
         text: d.text,
         amount: d.amount,
+        amountMin: d.amountMin,
+        amountMax: d.amountMax,
+        duplicates: d.duplicates,
+        source: d.source,
       },
     };
   }
@@ -212,15 +222,56 @@ export function BankMovementsFiltersBar({
           />
         </FilterField>
 
-        <FilterField label="Monto" htmlFor="bank-filter-amount">
+        <FilterField label="Monto exacto" htmlFor="bank-filter-amount">
           <FilterSearchInput
             id="bank-filter-amount"
             value={filters.amount}
             onChange={(v) => update({ amount: v })}
             placeholder="Ej. 3548"
-            ariaLabel="Buscar por monto"
+            ariaLabel="Buscar por monto exacto"
           />
         </FilterField>
+
+        {mode === "movements" ? (
+          <>
+            <FilterField label="Importe mín." htmlFor="bank-filter-amount-min">
+              <FilterSearchInput
+                id="bank-filter-amount-min"
+                value={(filters as BankMovementsListFilters).amountMin}
+                onChange={(v) => update({ amountMin: v })}
+                placeholder="Desde"
+                ariaLabel="Filtrar por importe mínimo"
+              />
+            </FilterField>
+            <FilterField label="Importe máx." htmlFor="bank-filter-amount-max">
+              <FilterSearchInput
+                id="bank-filter-amount-max"
+                value={(filters as BankMovementsListFilters).amountMax}
+                onChange={(v) => update({ amountMax: v })}
+                placeholder="Hasta"
+                ariaLabel="Filtrar por importe máximo"
+              />
+            </FilterField>
+            <FilterField label="Duplicados" htmlFor="bank-filter-duplicates">
+              <FilterSelect
+                id="bank-filter-duplicates"
+                value={(filters as BankMovementsListFilters).duplicates}
+                onChange={(v) => update({ duplicates: v as BankMovementsListFilters["duplicates"] })}
+                options={BANK_MOVEMENT_DUPLICATES_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+                ariaLabel="Filtrar duplicados de importación"
+              />
+            </FilterField>
+            <FilterField label="Fuente" htmlFor="bank-filter-source">
+              <FilterSelect
+                id="bank-filter-source"
+                value={(filters as BankMovementsListFilters).source}
+                onChange={(v) => update({ source: v as BankMovementsListFilters["source"] })}
+                options={BANK_MOVEMENT_SOURCE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+                ariaLabel="Filtrar por fuente PDF Excel o CSV"
+              />
+            </FilterField>
+          </>
+        ) : null}
       </FilterBar>
 
       <p className={copilotCaptionClass}>

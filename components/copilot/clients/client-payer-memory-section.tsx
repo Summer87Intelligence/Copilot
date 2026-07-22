@@ -176,7 +176,7 @@ export function ClientPayerMemorySection({ companyId }: { companyId: string }) {
   if (cards.length === 0 && identificationsOnly.length === 0 && reconciledPayments.length === 0) {
     return (
       <div className="px-5 py-4">
-        <h3 className="text-sm font-semibold text-[var(--copilot-text)]">Pagos y cuentas utilizadas</h3>
+        <h3 className="text-sm font-semibold text-[var(--copilot-text)]">Forma habitual de pago</h3>
         <p className={`${copilotCaptionClass} mt-2`}>
           Todavía no hay pagos bancarios confirmados para este cliente.
         </p>
@@ -187,10 +187,9 @@ export function ClientPayerMemorySection({ companyId }: { companyId: string }) {
   return (
     <div className="space-y-4 px-5 py-4">
       <div>
-        <h3 className="text-sm font-semibold text-[var(--copilot-text)]">Pagos y cuentas utilizadas</h3>
+        <h3 className="text-sm font-semibold text-[var(--copilot-text)]">Forma habitual de pago</h3>
         <p className={`${copilotCaptionClass} mt-1`}>
-          Cómo suele pagar este cliente. Solo lectura — las correcciones de asociación se habilitarán
-          en una fase posterior.
+          Nombres observados, cuenta enmascarada y monedas habituales. Solo lectura — las correcciones de asociación se habilitarán cuando el contrato de UI esté completo.
         </p>
       </div>
 
@@ -319,7 +318,7 @@ export function ClientPayerMemorySection({ companyId }: { companyId: string }) {
       {history.length > 0 ? (
         <div>
           <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--copilot-muted)]">
-            Historial de conciliaciones
+            Historial bancario
           </h4>
           <ul className="mt-2 space-y-2">
             {history.map((row) => (

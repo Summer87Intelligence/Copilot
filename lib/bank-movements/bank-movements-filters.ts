@@ -21,6 +21,12 @@ export type BankMovementsPeriodFilter = "all" | "current" | `${number}-${string}
 /** Alcance temporal (FASE-3): operativo por defecto; histórico = anterior al corte. */
 export type BankMovementsScopeFilter = "operational" | "historical" | "all";
 
+/** Origen del extracto (derivado de metadata.parser / source_file). */
+export type BankMovementSourceFilter = "all" | "pdf" | "excel" | "csv";
+
+/** Filtro de duplicados de importación (misma operación vista por otro archivo). */
+export type BankMovementDuplicatesFilter = "all" | "only" | "hide";
+
 export type BankMovementsListFilters = {
   period: BankMovementsPeriodFilter;
   scope: BankMovementsScopeFilter;
@@ -28,7 +34,14 @@ export type BankMovementsListFilters = {
   status: "all" | "pending" | "matched" | "ignored";
   direction: "all" | BankMovementDirection;
   text: string;
+  /** Búsqueda por monto exacto (tolerancia de moneda). */
   amount: string;
+  /** Importe mínimo inclusive (mismo parseo flexible que `amount`). */
+  amountMin: string;
+  /** Importe máximo inclusive. */
+  amountMax: string;
+  duplicates: BankMovementDuplicatesFilter;
+  source: BankMovementSourceFilter;
 };
 
 export type ReconciliationSuggestionFilter =
@@ -70,7 +83,30 @@ export const DEFAULT_BANK_MOVEMENTS_LIST_FILTERS: BankMovementsListFilters = {
   direction: "all",
   text: "",
   amount: "",
+  amountMin: "",
+  amountMax: "",
+  duplicates: "all",
+  source: "all",
 };
+
+export const BANK_MOVEMENT_DUPLICATES_OPTIONS: ReadonlyArray<{
+  value: BankMovementDuplicatesFilter;
+  label: string;
+}> = [
+  { value: "all", label: "Todos" },
+  { value: "only", label: "Solo duplicados" },
+  { value: "hide", label: "Ocultar duplicados" },
+];
+
+export const BANK_MOVEMENT_SOURCE_OPTIONS: ReadonlyArray<{
+  value: BankMovementSourceFilter;
+  label: string;
+}> = [
+  { value: "all", label: "Todas" },
+  { value: "pdf", label: "PDF" },
+  { value: "excel", label: "Excel" },
+  { value: "csv", label: "CSV" },
+];
 
 export const BANK_MOVEMENT_SCOPE_OPTIONS: ReadonlyArray<{
   value: BankMovementsScopeFilter;
@@ -118,8 +154,44 @@ export function isBankMovementsListFiltersActive(
     filters.status !== defaults.status ||
     filters.direction !== defaults.direction ||
     filters.text.trim() !== "" ||
-    filters.amount.trim() !== ""
+    filters.amount.trim() !== "" ||
+    filters.amountMin.trim() !== "" ||
+    filters.amountMax.trim() !== "" ||
+    filters.duplicates !== defaults.duplicates ||
+    filters.source !== defaults.source
   );
+}
+
+/**
+ * Deriva el tipo de fuente del movimiento a partir de metadata del parser
+ * (sin nueva consulta). CSV es raro en Santander pero se reconoce por nombre.
+ */
+export function deriveMovementSourceKind(
+  movement: Pick<BankMovement, "metadata">
+): Exclude<BankMovementSourceFilter, "all"> | "unknown" {
+  const meta = movement.metadata && typeof movement.metadata === "object" ? movement.metadata : null;
+  const parser = meta && typeof meta.parser === "string" ? meta.parser.toLowerCase() : "";
+  const sourceFile =
+    meta && typeof (meta as { source_file?: unknown }).source_file === "string"
+      ? String((meta as { source_file: string }).source_file).toLowerCase()
+      : "";
+  const haystack = `${parser} ${sourceFile}`;
+  if (haystack.includes("csv")) return "csv";
+  if (haystack.includes("excel") || haystack.includes("xlsx") || haystack.includes("xls")) return "excel";
+  if (haystack.includes("pdf")) return "pdf";
+  return "unknown";
+}
+
+export function movementMatchesAmountRange(
+  movement: Pick<BankMovement, "amount" | "direction" | "metadata" | "currency">,
+  min: number | null,
+  max: number | null
+): boolean {
+  if (min == null && max == null) return true;
+  const resolved = resolveImportedBankMovementAmount(movement);
+  if (min != null && resolved < min) return false;
+  if (max != null && resolved > max) return false;
+  return true;
 }
 
 /** ¿El movimiento pasa el filtro de alcance temporal (operativo/histórico/todos)? */
@@ -294,9 +366,19 @@ export function movementMatchesTextSearch(
 export function filterBankMovements(
   movements: BankMovement[],
   filters: BankMovementsListFilters,
-  now: Date = new Date()
+  now: Date = new Date(),
+  /** IDs marcados como duplicado de importación (opcional; si no hay mapa, el filtro duplicates se ignora). */
+  duplicateMovementIds?: ReadonlySet<string> | Readonly<Record<string, unknown>>
 ): BankMovement[] {
   const amountQuery = normalizeAmountSearch(filters.amount);
+  const amountMin = normalizeAmountSearch(filters.amountMin);
+  const amountMax = normalizeAmountSearch(filters.amountMax);
+  const dupSet =
+    duplicateMovementIds instanceof Set
+      ? duplicateMovementIds
+      : duplicateMovementIds
+        ? new Set(Object.keys(duplicateMovementIds))
+        : null;
 
   return movements.filter((movement) => {
     if (!matchesMovementScope(movement.movement_date, filters.scope)) return false;
@@ -311,6 +393,19 @@ export function filterBankMovements(
 
     if (!movementMatchesTextSearch(movement, filters.text)) return false;
     if (amountQuery != null && !movementMatchesAmountSearch(movement, amountQuery)) return false;
+    if (!movementMatchesAmountRange(movement, amountMin, amountMax)) return false;
+
+    if (filters.source !== "all") {
+      const kind = deriveMovementSourceKind(movement);
+      if (kind !== filters.source) return false;
+    }
+
+    if (filters.duplicates !== "all" && dupSet) {
+      const isDup = dupSet.has(movement.id);
+      if (filters.duplicates === "only" && !isDup) return false;
+      if (filters.duplicates === "hide" && isDup) return false;
+    }
+
     return true;
   });
 }

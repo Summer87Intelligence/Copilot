@@ -17,22 +17,50 @@ const identificationWorkspace = readFileSync(
   "utf8"
 );
 
-describe("Conciliación: dos sub-vistas, sin tabs principales nuevos", () => {
+describe("Conciliación: vista única unificada, sin tabs principales nuevos", () => {
   it("TABS de Banco siguen siendo exactamente 4 (Importar/Movimientos/Conciliación/Historial)", () => {
     const tabsBlock = pageClient.match(/const TABS[\s\S]*?\];/)![0];
     const ids = [...tabsBlock.matchAll(/id:\s*"([a-z]+)"/g)].map((m) => m[1]);
     expect(ids).toEqual(["importar", "movimientos", "conciliacion", "historial"]);
   });
 
-  it("dentro de Conciliación existen exactamente las sub-vistas Identificar clientes / Vincular recibos", () => {
-    expect(pageClient).toContain("Identificar clientes");
-    expect(pageClient).toContain("Vincular recibos");
-    expect(pageClient).toContain("BankClientIdentificationWorkspace");
+  // FASE BANK-RECONCILIATION-SIMPLE-UNIFIED-WORKSPACE-001 — Conciliación dejó
+  // de exigir elegir manualmente entre "Identificar clientes" y "Vincular
+  // recibos"; ambos flujos existentes siguen montados (reusados, nunca
+  // duplicados) pero se abren como acciones contextuales desde la vista
+  // unificada, no como pestañas visibles que el usuario deba operar a mano.
+  it("Conciliación monta la vista unificada, y reusa (no reimplementa) los flujos existentes de identificar/vincular", () => {
+    expect(pageClient).not.toContain('useState<"identificar" | "vincular">');
+    expect(pageClient).not.toContain(">Identificar clientes<");
+    expect(pageClient).not.toContain(">Vincular recibos<");
+    expect(pageClient).toContain("UnifiedReconciliationWorkspace");
+    expect(pageClient).toContain("ClusterReviewDrawer");
     expect(pageClient).toContain("BankIncomeWorkspace");
   });
 
-  it("Identificar clientes es la sub-vista por defecto", () => {
-    expect(pageClient).toMatch(/useState<"identificar" \| "vincular">\("identificar"\)/);
+  it("la vista unificada nunca reimplementa el clustering/matching: compone las mismas APIs read-only ya existentes", () => {
+    const unifiedWorkspace = readFileSync(
+      join(COMPONENTS_ROOT, "unified-reconciliation-workspace.tsx"),
+      "utf8"
+    );
+    expect(unifiedWorkspace).toContain("/api/copilot/bank-reconciliation/unified-cases");
+    expect(unifiedWorkspace).toContain("/api/copilot/bank-reconciliation/client-identifications");
+  });
+
+  it("detalle unificado muestra cliente/recibo/factura/estado/acción y tarjetas en mobile", () => {
+    const unifiedWorkspace = readFileSync(
+      join(COMPONENTS_ROOT, "unified-reconciliation-workspace.tsx"),
+      "utf8"
+    );
+    expect(unifiedWorkspace).toContain(">Factura<");
+    expect(unifiedWorkspace).toContain(">Cliente<");
+    expect(unifiedWorkspace).toContain("invoiceContextLabel");
+    expect(unifiedWorkspace).toContain("UnifiedRowCard");
+    expect(unifiedWorkspace).toContain("md:hidden");
+    expect(unifiedWorkspace).toContain("Cambiar cliente");
+    expect(unifiedWorkspace).toContain("Revertir (próximamente)");
+    expect(unifiedWorkspace).not.toMatch(/>\s*clusterKey\s*</);
+    expect(unifiedWorkspace).not.toMatch(/suggestion|allocation|payer identity|manual draft/i);
   });
 });
 

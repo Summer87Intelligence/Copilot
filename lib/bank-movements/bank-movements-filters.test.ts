@@ -131,6 +131,42 @@ describe("bank-movements-filters helpers", () => {
       expect(result.map((row) => row.id)).toEqual(["uyu"]);
     });
 
+    it("filtra por rango de importe mínimo/máximo", () => {
+      const mid = movement({ id: "mid", description: "MEDIO", amount: 500, currency: "UYU", movement_date: "2026-07-05" });
+      const high = movement({ id: "high", description: "ALTO", amount: 5000, currency: "UYU", movement_date: "2026-07-05" });
+      const set = [...rows, mid, high];
+      const result = filterBankMovements(
+        set,
+        { ...DEFAULT_BANK_MOVEMENTS_LIST_FILTERS, amountMin: "100", amountMax: "1000" },
+        julyNow
+      );
+      expect(result.map((row) => row.id).sort()).toEqual(["matched", "mid"]);
+    });
+
+    it("filtra por fuente PDF/Excel y por duplicados", () => {
+      const pdf = movement({
+        id: "pdf1",
+        description: "PDF",
+        amount: 10,
+        movement_date: "2026-07-05",
+        metadata: { parser: "santander_pdf_v1" },
+      });
+      const resultSource = filterBankMovements(
+        [...rows, pdf],
+        { ...DEFAULT_BANK_MOVEMENTS_LIST_FILTERS, source: "pdf" },
+        julyNow
+      );
+      expect(resultSource.map((r) => r.id)).toEqual(["pdf1"]);
+
+      const resultDup = filterBankMovements(
+        [...rows, pdf],
+        { ...DEFAULT_BANK_MOVEMENTS_LIST_FILTERS, duplicates: "only" },
+        julyNow,
+        { pdf1: { canonicalMovementId: "uyu" } }
+      );
+      expect(resultDup.map((r) => r.id)).toEqual(["pdf1"]);
+    });
+
     it("filtra por estado pendiente", () => {
       const result = filterBankMovements(rows, { ...DEFAULT_BANK_MOVEMENTS_LIST_FILTERS, status: "pending" }, julyNow);
       expect(result.every((row) => row.status === "pending")).toBe(true);

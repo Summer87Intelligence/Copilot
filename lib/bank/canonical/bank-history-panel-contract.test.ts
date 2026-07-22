@@ -36,6 +36,17 @@ describe("BankHistoryPanel — decisiones recientes, solo lectura, sin reversió
     expect(historyPanel).toContain('rejected: "Rechazado"');
   });
 
+  it("BANK-RECONCILIATION-SIMPLE-UNIFIED-WORKSPACE-001: agrupa por cliente (15 por página) con avatar y detalle expandible", () => {
+    expect(historyPanel).toContain("Identificaciones por cliente");
+    expect(historyPanel).toContain("Conciliaciones por cliente");
+    expect(historyPanel).toContain("CLIENTS_PER_PAGE = 15");
+    expect(historyPanel).toContain("ClientAvatar");
+    expect(historyPanel).toContain("groupIdentificationsByClient");
+    expect(historyPanel).toContain("groupDecisionsByClient");
+    expect(historyPanel).toContain("Facturas comprobadas");
+    expect(historyPanel).not.toMatch(/sugerencia|motor can[oó]nico/i);
+  });
+
   it("BANK-RECONCILIATION-TRIAD-ALIGNMENT-001: distingue conciliado-con-recibo de conciliación completa, nunca inventa facturas aplicadas", () => {
     expect(historyPanel).toContain("reconciled_with_receipt");
     expect(historyPanel).toContain("full_reconciliation");

@@ -8,7 +8,8 @@ import { BankMovementsFiltersBar } from "@/components/copilot/bank-movements/ban
 import { BankMovementsImportPanel } from "@/components/copilot/bank-movements/bank-movements-import-panel";
 import { BankMovementsReconciliationPanel } from "@/components/copilot/bank-movements/bank-movements-reconciliation-panel";
 import { BankIncomeWorkspace } from "@/components/copilot/bank-movements/bank-income-workspace";
-import { BankClientIdentificationWorkspace } from "@/components/copilot/bank-movements/bank-client-identification-workspace";
+import { ClusterReviewDrawer } from "@/components/copilot/bank-movements/bank-client-identification-workspace";
+import { UnifiedReconciliationWorkspace } from "@/components/copilot/bank-movements/unified-reconciliation-workspace";
 import { BankHistoryPanel } from "@/components/copilot/bank-movements/bank-history-panel";
 
 import {
@@ -125,7 +126,11 @@ function formFromMovement(m: BankMovement): FormState {
 export function BankMovementsPageClient() {
   const searchParams = useSearchParams();
   const [tab, setTab] = useState<BankTab>("movimientos");
-  const [conciliacionSubView, setConciliacionSubView] = useState<"identificar" | "vincular">("identificar");
+  // FASE BANK-RECONCILIATION-SIMPLE-UNIFIED-WORKSPACE-001 — Conciliación ya no
+  // tiene dos sub-vistas separadas; ambos flujos existentes (identificación en
+  // lote, búsqueda de recibo) se abren como acciones contextuales desde la
+  // vista unificada, nunca como pestañas que el usuario deba elegir a mano.
+  const [identifyClusterKey, setIdentifyClusterKey] = useState<string | null>(null);
   const deepLinkApplied = useRef(false);
 
   // Deep link desde el cuaderno de trabajo / URLs antiguas de las pestañas
@@ -229,8 +234,8 @@ export function BankMovementsPageClient() {
   ];
 
   const filteredMovements = useMemo(
-    () => filterBankMovements(movements, movementFilters),
-    [movements, movementFilters]
+    () => filterBankMovements(movements, movementFilters, new Date(), movementDuplicates),
+    [movements, movementFilters, movementDuplicates]
   );
 
   const [movPage, setMovPage] = useState(1);
@@ -248,7 +253,11 @@ export function BankMovementsPageClient() {
     () =>
       sortRows(
         filteredMovements,
-        movSort.key === "date" ? (m) => m.movement_date : null,
+        movSort.key === "date"
+          ? (m) => m.movement_date
+          : movSort.key === "amount"
+            ? (m) => resolveImportedBankMovementAmount(m)
+            : null,
         movSort.direction
       ),
     [filteredMovements, movSort]
@@ -345,17 +354,15 @@ export function BankMovementsPageClient() {
   // resuelve exclusivamente en la pestaña Conciliación (motor canónico, nunca por
   // un toggle de estado directo acá); una salida se vincula con Tesorería
   // (abre el panel de pagos programados ya existente, sin motor nuevo).
-  // FASE BANK-FULL-RECONCILIATION-UI-CORRECTION-001 — un movimiento con link
-  // financiero real (recibo vinculado) vive en "Vincular recibos", no en
-  // "Identificar clientes" (que resuelve solo el nivel 1, sin recibo todavía).
-  const goToReconciliationForMovement = useCallback(
-    (movementId: string, level?: MovementReconciliationLevel) => {
-      setFocusMovementId(movementId);
-      setTab("conciliacion");
-      const hasFinancialLink =
-        level === "reconciled_with_receipt" || level === "full_reconciliation" || level === "requires_review";
-      setConciliacionSubView(hasFinancialLink ? "vincular" : "identificar");
-    },
+  // FASE BANK-RECONCILIATION-SIMPLE-UNIFIED-WORKSPACE-001 — Conciliación ya
+  // no tiene dos sub-vistas: cualquier deep-link desde Movimientos abre
+  // directamente el flujo de búsqueda de recibo (BankIncomeWorkspace), que ya
+  // maneja con gracia tanto un movimiento identificado como uno que todavía
+  // no tiene cliente confirmado.
+  const goToReconciliationForMovement = useCallback((movementId: string, _level?: MovementReconciliationLevel) => {
+    setFocusMovementId(movementId);
+    setTab("conciliacion");
+  },
     []
   );
 
@@ -548,6 +555,7 @@ export function BankMovementsPageClient() {
     {
       key: "in",
       header: "Entrada",
+      sortKey: "amount",
       className: "text-right",
       cellClassName: "whitespace-nowrap text-right align-top tabular-nums",
       render: (m) => (m.direction === "inflow" ? movementAmountLabel(m) : "—"),
@@ -555,6 +563,7 @@ export function BankMovementsPageClient() {
     {
       key: "out",
       header: "Salida",
+      sortKey: "amount",
       className: "text-right",
       cellClassName: "whitespace-nowrap text-right align-top tabular-nums",
       render: (m) => (m.direction === "outflow" ? movementAmountLabel(m) : "—"),
@@ -765,43 +774,44 @@ export function BankMovementsPageClient() {
 
       {tab === "conciliacion" ? (
         <div className="space-y-3">
-          <nav
-            className="flex gap-2 rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] p-1"
-            aria-label="Sub-secciones de Conciliación"
-          >
-            <button
-              type="button"
-              onClick={() => setConciliacionSubView("identificar")}
-              aria-pressed={conciliacionSubView === "identificar"}
-              className={copilotButtonClassName({
-                variant: conciliacionSubView === "identificar" ? "primary" : "ghost",
-                size: "sm",
-              })}
-            >
-              Identificar clientes
-            </button>
-            <button
-              type="button"
-              onClick={() => setConciliacionSubView("vincular")}
-              aria-pressed={conciliacionSubView === "vincular"}
-              className={copilotButtonClassName({
-                variant: conciliacionSubView === "vincular" ? "primary" : "ghost",
-                size: "sm",
-              })}
-            >
-              Vincular recibos
-            </button>
-          </nav>
+          <UnifiedReconciliationWorkspace
+            onChanged={load}
+            onOpenIdentify={(clusterKey) => setIdentifyClusterKey(clusterKey)}
+            onOpenReceipt={(movementId) => setFocusMovementId(movementId)}
+          />
 
-          {conciliacionSubView === "identificar" ? (
-            <BankClientIdentificationWorkspace onChanged={load} />
-          ) : (
-            <BankIncomeWorkspace
-              onChanged={load}
-              initialMovementId={focusMovementId}
-              onInitialMovementConsumed={() => setFocusMovementId(null)}
+          {identifyClusterKey ? (
+            <ClusterReviewDrawer
+              clusterKey={identifyClusterKey}
+              onClose={() => setIdentifyClusterKey(null)}
+              onConfirmed={() => {
+                setIdentifyClusterKey(null);
+                load();
+              }}
             />
-          )}
+          ) : null}
+
+          {focusMovementId ? (
+            <div className="fixed inset-0 z-40 overflow-y-auto bg-[var(--copilot-card-bg)]">
+              <div className="flex items-center justify-between border-b border-[var(--copilot-border)] px-4 py-3">
+                <p className="text-sm font-semibold text-[var(--copilot-text)]">Buscar cliente y recibo</p>
+                <button
+                  type="button"
+                  onClick={() => setFocusMovementId(null)}
+                  className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+                >
+                  Cerrar
+                </button>
+              </div>
+              <div className="p-4">
+                <BankIncomeWorkspace
+                  onChanged={load}
+                  initialMovementId={focusMovementId}
+                  onInitialMovementConsumed={() => {}}
+                />
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
 

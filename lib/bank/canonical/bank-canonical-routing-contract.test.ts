@@ -76,14 +76,18 @@ describe("Movimientos: sin writer directo a matched", () => {
 });
 
 describe("Conciliación consume ÚNICAMENTE el motor canónico (D)", () => {
-  it("el tab 'conciliacion' monta dos sub-vistas: Identificar clientes / Vincular recibos, sin tabs principales nuevos", () => {
+  // FASE BANK-RECONCILIATION-SIMPLE-UNIFIED-WORKSPACE-001 — reemplazó las dos
+  // sub-vistas visibles ("Identificar clientes"/"Vincular recibos") por una
+  // única vista (UnifiedReconciliationWorkspace); los dos motores existentes
+  // (identificación en lote, búsqueda de recibo) se reusan sin cambios, ahora
+  // como acciones contextuales (ClusterReviewDrawer / BankIncomeWorkspace)
+  // en vez de pestañas que el usuario deba elegir a mano.
+  it("el tab 'conciliacion' monta la vista unificada y reusa los motores existentes como acciones contextuales", () => {
     expect(pageClient).toMatch(/tab === "conciliacion" \? \(/);
-    expect(pageClient).toContain("Identificar clientes");
-    expect(pageClient).toContain("Vincular recibos");
-    expect(pageClient).toContain("BankClientIdentificationWorkspace");
-    // BankIncomeWorkspace sigue montado bajo Conciliación, ahora dentro de la sub-vista "Vincular recibos"
-    // (rama "else" del condicional identificar/vincular).
-    expect(pageClient).toMatch(/conciliacionSubView === "identificar" \? \([\s\S]{0,400}?\) : \(\s*<BankIncomeWorkspace/);
+    expect(pageClient).toContain("UnifiedReconciliationWorkspace");
+    expect(pageClient).toContain("ClusterReviewDrawer");
+    expect(pageClient).toContain("BankIncomeWorkspace");
+    expect(pageClient).not.toContain("BankClientIdentificationWorkspace");
   });
 
   it("BankMovementsReconciliationPanel (Motor A) no se monta bajo Conciliación", () => {
