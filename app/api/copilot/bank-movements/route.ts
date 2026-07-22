@@ -103,7 +103,12 @@ export async function GET(request: NextRequest) {
           duplicates[duplicateId] = { canonicalMovementId: group.canonicalMovementId };
         }
       }
-    } catch {
+    } catch (err) {
+      // Nunca romper la carga de Movimientos por esto, pero nunca tragarse el
+      // error en silencio tampoco: sin este log, un fallo de auditDuplicate
+      // BankMovements (p. ej. una consulta .in() con demasiados ids) queda
+      // invisible en Vercel y el mapa de duplicados se ve vacío sin rastro.
+      console.error("bank-movements duplicate audit failed", err);
       duplicates = {};
     }
   }

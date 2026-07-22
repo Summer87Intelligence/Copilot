@@ -239,4 +239,38 @@ describe("auditDuplicateBankMovements — idempotencia y batch", () => {
     expect(groups[0]!.canonicalMovementId).toBe("mov-1");
     expect(groups[0]!.duplicateMovementIds.sort()).toEqual(["mov-2", "mov-3"]);
   });
+
+  it("BANK-GLOBAL-DEDUPE-BACKFILL-001 (regresión producción): con 200+ movimientos, un grupo duplicado que cruza el límite de troceo del .in() sigue detectando la identificación real", async () => {
+    // Reproduce el bug real de producción: PostgREST rechaza .in() con ~400+
+    // ids (header overflow). El lector trocea en bloques de 200 — este test
+    // arma >200 movimientos y coloca el par duplicado exactamente sobre el
+    // límite del primer bloque (índices 199/200), con la identificación en
+    // la fila que cae en el SEGUNDO bloque, para probar que el merge entre
+    // bloques no pierde información.
+    const fillers = Array.from({ length: 199 }, (_, i) => ({
+      id: `filler-${i}`,
+      workspace_id: WS,
+      movement_date: "2026-01-01",
+      amount: 1,
+      currency: "UYU",
+      bank_reference: `FILLER-${i}`,
+      account_label: "Santander 000001211749 UYU",
+      created_at: "2026-01-01T00:00:00Z",
+    }));
+    const client = fakeClient({
+      bank_movements: [
+        ...fillers,
+        { id: "mov-boundary-a", workspace_id: WS, movement_date: "2026-06-04", amount: 17080, currency: "UYU", bank_reference: "TT-BOUNDARY", account_label: "Santander 000001211749 UYU", created_at: "2026-06-04T00:00:00Z" },
+        { id: "mov-boundary-b", workspace_id: WS, movement_date: "2026-06-04", amount: 17080, currency: "UYU", bank_reference: "TT-BOUNDARY", account_label: "Santander 000001211749 UYU", created_at: "2026-07-10T00:00:00Z" },
+      ],
+      bank_movement_client_identifications: [
+        { workspace_id: WS, movement_id: "mov-boundary-b", status: "identified" },
+      ],
+    });
+    const groups = await auditDuplicateBankMovements(client as never, WS, ...RANGE);
+    const group = groups.find((g) => g.movementIds.includes("mov-boundary-a"));
+    expect(group).toBeDefined();
+    expect(group!.canonicalMovementId).toBe("mov-boundary-b");
+    expect(group!.canonicalReason).toBe("has_identification");
+  });
 });

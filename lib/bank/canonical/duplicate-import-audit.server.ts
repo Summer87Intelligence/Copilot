@@ -47,6 +47,22 @@ function extractAccountNumber(accountLabel: string | null): string {
 }
 
 /**
+ * PostgREST codifica `.in("col", ids)` como parte de la URL de la request. Con
+ * ~400+ UUIDs esa URL supera el límite de headers HTTP (~16KB) y la request
+ * entera falla — confirmado en producción (995 filas con bank_reference no
+ * nulo, `.in()` sin trocear devolvía "Bad Request" / header overflow). Se
+ * trocea en bloques fijos y se corren en paralelo; sigue siendo O(n/chunk)
+ * consultas, nunca 1 por fila.
+ */
+const IN_FILTER_CHUNK_SIZE = 200;
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
+/**
  * Audita duplicados en una ventana de fechas para todo el workspace. 4
  * consultas batch fijas (movimientos, identificaciones, links, sugerencias),
  * nunca 1 por fila ni por grupo.
@@ -71,32 +87,55 @@ export async function auditDuplicateBankMovements(
   if (rows.length === 0) return [];
 
   const movementIds = rows.map((r) => r.id);
-  const [identRes, linkRes, suggRes] = await Promise.all([
-    supabase
-      .from("bank_movement_client_identifications")
-      .select("movement_id")
-      .eq("workspace_id", workspaceId)
-      .in("movement_id", movementIds)
-      .not("status", "in", '("excluded","revoked")'),
-    supabase
-      .from("bank_movement_reconciliation_links")
-      .select("bank_movement_id")
-      .eq("workspace_id", workspaceId)
-      .in("bank_movement_id", movementIds)
-      .is("archived_at", null),
-    supabase
-      .from("bank_reconciliation_suggestions")
-      .select("bank_movement_id")
-      .eq("workspace_id", workspaceId)
-      .in("bank_movement_id", movementIds),
-  ]);
-  if (identRes.error) throw new Error(`DUPLICATE_AUDIT_IDENTIFICATIONS_FAILED: ${identRes.error.message}`);
-  if (linkRes.error) throw new Error(`DUPLICATE_AUDIT_LINKS_FAILED: ${linkRes.error.message}`);
-  if (suggRes.error) throw new Error(`DUPLICATE_AUDIT_SUGGESTIONS_FAILED: ${suggRes.error.message}`);
+  const idChunks = chunk(movementIds, IN_FILTER_CHUNK_SIZE);
 
-  const identifiedIds = new Set((identRes.data ?? []).map((r) => r.movement_id as string));
-  const linkedIds = new Set((linkRes.data ?? []).map((r) => r.bank_movement_id as string));
-  const suggestedIds = new Set((suggRes.data ?? []).map((r) => r.bank_movement_id as string));
+  const [identChunks, linkChunks, suggChunks] = await Promise.all([
+    Promise.all(
+      idChunks.map((ids) =>
+        supabase
+          .from("bank_movement_client_identifications")
+          .select("movement_id")
+          .eq("workspace_id", workspaceId)
+          .in("movement_id", ids)
+          .not("status", "in", '("excluded","revoked")')
+      )
+    ),
+    Promise.all(
+      idChunks.map((ids) =>
+        supabase
+          .from("bank_movement_reconciliation_links")
+          .select("bank_movement_id")
+          .eq("workspace_id", workspaceId)
+          .in("bank_movement_id", ids)
+          .is("archived_at", null)
+      )
+    ),
+    Promise.all(
+      idChunks.map((ids) =>
+        supabase
+          .from("bank_reconciliation_suggestions")
+          .select("bank_movement_id")
+          .eq("workspace_id", workspaceId)
+          .in("bank_movement_id", ids)
+      )
+    ),
+  ]);
+
+  const identifiedIds = new Set<string>();
+  for (const res of identChunks) {
+    if (res.error) throw new Error(`DUPLICATE_AUDIT_IDENTIFICATIONS_FAILED: ${res.error.message}`);
+    for (const r of res.data ?? []) identifiedIds.add(r.movement_id as string);
+  }
+  const linkedIds = new Set<string>();
+  for (const res of linkChunks) {
+    if (res.error) throw new Error(`DUPLICATE_AUDIT_LINKS_FAILED: ${res.error.message}`);
+    for (const r of res.data ?? []) linkedIds.add(r.bank_movement_id as string);
+  }
+  const suggestedIds = new Set<string>();
+  for (const res of suggChunks) {
+    if (res.error) throw new Error(`DUPLICATE_AUDIT_SUGGESTIONS_FAILED: ${res.error.message}`);
+    for (const r of res.data ?? []) suggestedIds.add(r.bank_movement_id as string);
+  }
 
   const byFingerprint = new Map<string, MovementAuditRow[]>();
   for (const row of rows) {
