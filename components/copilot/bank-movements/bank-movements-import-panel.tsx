@@ -254,6 +254,9 @@ export function BankMovementsImportPanel({
               ? "Importación registrada. Los movimientos ya están disponibles en la pestaña Movimientos."
               : "Vista previa. Todavía no se guardó ningún movimiento."}
           </div>
+          <p className={copilotCaptionClass}>
+            La verificación de movimientos ya existentes se realiza al importar.
+          </p>
 
           <BulkSummaryGrid preview={bulkPreview} />
 
@@ -323,10 +326,10 @@ export function BankMovementsImportPanel({
                 {confirming ? (
                   <>
                     <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" aria-hidden />
-                    Guardando…
+                    Importando…
                   </>
                 ) : (
-                  "Confirmar importación"
+                  "Importar solo nuevos"
                 )}
               </button>
             </div>
@@ -352,8 +355,6 @@ function BulkSummaryGrid({ preview }: { preview: BulkPreviewData }) {
       <CurrencySummary label="Salidas UYU" currency="UYU" field="outflows" totals={preview.totals_by_currency.UYU} />
       <CurrencySummary label="Entradas USD" currency="USD" field="inflows" totals={preview.totals_by_currency.USD} />
       <CurrencySummary label="Salidas USD" currency="USD" field="outflows" totals={preview.totals_by_currency.USD} />
-      <CurrencySummary label="Neto UYU" currency="UYU" field="net" totals={preview.totals_by_currency.UYU} />
-      <CurrencySummary label="Neto USD" currency="USD" field="net" totals={preview.totals_by_currency.USD} />
     </div>
   );
 }
@@ -374,7 +375,7 @@ function CurrencySummary({
 
 function PreviewFileCard({ preview }: { preview: BulkPreviewReadyItem }) {
   const [open, setOpen] = useState(false);
-  const subtitle = `${preview.currency_code} · ${preview.movements_count} movimientos · ${formatMoney(preview.currency_code, preview.totals.net)} neto`;
+  const subtitle = `${preview.currency_code} · ${preview.movements_count} movimientos`;
 
   return (
     <div className="overflow-hidden rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)]">
@@ -399,7 +400,6 @@ function PreviewFileCard({ preview }: { preview: BulkPreviewReadyItem }) {
             />
             <MiniSummary label="Entradas" value={formatMoney(preview.currency_code, preview.totals.inflows)} />
             <MiniSummary label="Salidas" value={formatMoney(preview.currency_code, preview.totals.outflows)} />
-            <MiniSummary label="Neto" value={formatMoney(preview.currency_code, preview.totals.net)} />
             <MiniSummary label="Estado" value="Listo" />
           </div>
         </div>
@@ -471,10 +471,7 @@ function ConfirmSummary({
   const duplicateInFile = result.duplicate_in_file_count ?? 0;
   const read = result.outcomes?.read ?? result.total_preview_count;
   const invalid = result.outcomes?.invalid ?? 0;
-  const allAlreadyImported =
-    result.inserted_count === 0 &&
-    alreadyExists > 0 &&
-    result.failed_files_count === 0;
+  const noNewMovements = result.inserted_count === 0 && result.total_preview_count > 0;
 
   const newImportIds = result.results
     .filter((item) => item.inserted_count > 0)
@@ -484,9 +481,9 @@ function ConfirmSummary({
   return (
     <div className="w-full space-y-3 text-left">
       <p className="text-sm font-semibold text-[var(--copilot-text)]">Importación terminada</p>
-      {allAlreadyImported ? (
+      {noNewMovements ? (
         <p className="text-xs text-[var(--copilot-success-text-strong)]">
-          No se encontraron movimientos nuevos. Los movimientos del archivo ya estaban importados.
+          No se encontraron movimientos nuevos. Todo el contenido ya estaba registrado.
         </p>
       ) : (
         <p className="text-xs text-[var(--copilot-success-text-strong)]">
@@ -494,11 +491,15 @@ function ConfirmSummary({
         </p>
       )}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        <SummaryItem label="Movimientos leídos" value={String(read)} />
+        <SummaryItem label="Leídos" value={String(read)} />
         <SummaryItem label="Nuevos" value={String(result.inserted_count)} />
         <SummaryItem label="Ya existentes" value={String(alreadyExists)} />
         <SummaryItem label="Duplicados dentro del archivo" value={String(duplicateInFile)} />
-        <SummaryItem label="Con errores" value={String(invalid + result.failed_files_count)} />
+        <SummaryItem
+          label="Excluidos por fecha anterior a 2026"
+          value={String(result.excluded_before_2026_count ?? 0)}
+        />
+        <SummaryItem label="Errores" value={String(invalid + result.failed_files_count)} />
       </div>
       {result.inserted_count > 0 && onViewNew && newImportIds.length > 0 ? (
         <button
@@ -516,7 +517,10 @@ function ConfirmSummary({
           </p>
           <ul className="space-y-1 text-xs text-[var(--copilot-text)]">
             {result.results.map((item) => (
-              <li key={item.import_id} className="flex flex-col gap-0.5 sm:flex-row sm:justify-between">
+              <li
+                key={item.import_id || item.file_name}
+                className="flex flex-col gap-0.5 sm:flex-row sm:justify-between"
+              >
                 <span className="truncate font-medium">{item.file_name}</span>
                 <span className="text-[var(--copilot-muted)]">
                   {item.inserted_count} nuevos · {item.already_exists_count ?? item.skipped_duplicates_count}{" "}

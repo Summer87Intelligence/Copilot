@@ -23,6 +23,10 @@ import {
   type PlannedMovementInsert,
 } from "@/lib/bank-movements/santander-bank-statement-import-service";
 import {
+  BANK_EXCLUSION_REASON_BEFORE_2026,
+  isBankMovementDateHistorical,
+} from "@/lib/bank/canonical/historical-policy";
+import {
   bankAccountScopeReason,
   classifyBankAccount,
 } from "@/lib/bank-movements/bank-account-scope";
@@ -33,6 +37,7 @@ export type ConfirmSantanderImportResult = {
   skipped_duplicates_count: number;
   already_exists_count: number;
   duplicate_in_file_count: number;
+  excluded_before_2026_count: number;
   total_preview_count: number;
   outcomes: ImportOutcomeCounts;
   /** Duplicados cross-parser: misma operación real ya en DB desde otro archivo/parser. Nunca crean fila nueva. */
@@ -56,6 +61,7 @@ function toMovementRow(
   accountLabel: string,
   row: PlannedMovementInsert
 ) {
+  const beforeCutoff = isBankMovementDateHistorical(row.movement_date);
   return {
     workspace_id: workspaceId,
     import_id: importId,
@@ -70,10 +76,15 @@ function toMovementRow(
     direction: row.direction,
     bank_reference: row.bank_reference,
     status: row.status,
-    metadata: row.metadata,
+    metadata: beforeCutoff
+      ? {
+          ...row.metadata,
+          exclusion_reason: BANK_EXCLUSION_REASON_BEFORE_2026,
+        }
+      : row.metadata,
     fingerprint_v1: row.fingerprint_v1,
     fingerprint_version: row.fingerprint_version,
-    excluded_from_operations: false,
+    excluded_from_operations: beforeCutoff,
     duplicate_of: null,
   };
 }
@@ -141,6 +152,7 @@ export async function confirmSantanderBankStatementImport(params: {
       already_exists_count: 0,
       duplicate_in_file_count: 0,
       cross_parser_duplicates_count: 0,
+      excluded_before_2026_count: 0,
       total_preview_count: preview.movements.length,
       outcomes: emptyImportOutcomeCounts(preview.movements.length),
       blocked: {
@@ -219,6 +231,23 @@ async function confirmWithExisting(
     parserId
   );
 
+  // Reimport sin filas nuevas: no crear import batch vacío (el resultado de
+  // confirmación ya audita leídos / ya existentes / duplicados en archivo).
+  if (plan.to_insert.length === 0) {
+    return {
+      import_id: null,
+      inserted_count: 0,
+      skipped_duplicates_count: plan.skipped_duplicates_count,
+      already_exists_count: plan.already_exists_count,
+      duplicate_in_file_count: plan.duplicate_in_file_count,
+      excluded_before_2026_count: 0,
+      cross_parser_duplicates_count: plan.cross_parser_duplicates.filter((d) => d.existingMovementId)
+        .length,
+      total_preview_count: plan.total_preview_count,
+      outcomes: { ...plan.outcomes, inserted: 0 },
+    };
+  }
+
   const importInsert = buildStatementImportRecord({
     workspaceId,
     importedBy,
@@ -249,37 +278,25 @@ async function confirmWithExisting(
   let insertedCount = 0;
   let racedAlreadyExists = 0;
 
-  if (plan.to_insert.length > 0) {
-    if (params.writeFingerprintColumns) {
-      const result = await insertMovementsIdempotent({
-        supabase,
-        workspaceId,
-        importId,
-        accountLabel: plan.account_label,
-        rows: plan.to_insert,
-      });
-      insertedCount = result.inserted;
-      racedAlreadyExists = result.racedAlreadyExists;
-    } else {
-      const movementRows = plan.to_insert.map((row) => ({
-        workspace_id: workspaceId,
-        import_id: importId,
-        bank_name: "Santander",
-        account_label: plan.account_label,
-        movement_date: row.movement_date,
-        description: row.description,
-        raw_description: row.raw_description,
-        amount: row.amount,
-        currency: row.currency,
-        direction: row.direction,
-        bank_reference: row.bank_reference,
-        status: row.status,
-        metadata: row.metadata,
-      }));
-      const { error: movementsError } = await supabase.from("bank_movements").insert(movementRows);
-      if (movementsError) throw new Error("MOVEMENTS_INSERT_FAILED");
-      insertedCount = movementRows.length;
-    }
+  if (params.writeFingerprintColumns) {
+    const result = await insertMovementsIdempotent({
+      supabase,
+      workspaceId,
+      importId,
+      accountLabel: plan.account_label,
+      rows: plan.to_insert,
+    });
+    insertedCount = result.inserted;
+    racedAlreadyExists = result.racedAlreadyExists;
+  } else {
+    const movementRows = plan.to_insert.map((row) => {
+      const full = toMovementRow(workspaceId, importId, plan.account_label, row);
+      const { fingerprint_v1: _fp, fingerprint_version: _ver, ...legacy } = full;
+      return legacy;
+    });
+    const { error: movementsError } = await supabase.from("bank_movements").insert(movementRows);
+    if (movementsError) throw new Error("MOVEMENTS_INSERT_FAILED");
+    insertedCount = movementRows.length;
   }
 
   const crossParserDuplicates = plan.cross_parser_duplicates.filter((d) => d.existingMovementId);
@@ -314,6 +331,9 @@ async function confirmWithExisting(
   }
 
   const alreadyExists = plan.already_exists_count + racedAlreadyExists;
+  const excludedBefore2026 = plan.to_insert.filter((row) =>
+    isBankMovementDateHistorical(row.movement_date)
+  ).length;
   const outcomes: ImportOutcomeCounts = {
     ...plan.outcomes,
     inserted: insertedCount,
@@ -326,6 +346,7 @@ async function confirmWithExisting(
     skipped_duplicates_count: alreadyExists + plan.duplicate_in_file_count,
     already_exists_count: alreadyExists,
     duplicate_in_file_count: plan.duplicate_in_file_count,
+    excluded_before_2026_count: excludedBefore2026,
     cross_parser_duplicates_count: crossParserDuplicates.length,
     total_preview_count: plan.total_preview_count,
     outcomes,
@@ -345,6 +366,7 @@ export async function confirmSantanderBankStatementImportsBulk(params: {
   let skipped_duplicates_count = 0;
   let already_exists_count = 0;
   let duplicate_in_file_count = 0;
+  let excluded_before_2026_count = 0;
   let total_preview_count = 0;
   let imported_files_count = 0;
   let failed_files_count = 0;
@@ -378,6 +400,7 @@ export async function confirmSantanderBankStatementImportsBulk(params: {
       skipped_duplicates_count += result.skipped_duplicates_count;
       already_exists_count += result.already_exists_count;
       duplicate_in_file_count += result.duplicate_in_file_count;
+      excluded_before_2026_count += result.excluded_before_2026_count;
       total_preview_count += result.total_preview_count;
       outcomes.read += result.outcomes.read;
       outcomes.inserted += result.outcomes.inserted;
@@ -394,6 +417,7 @@ export async function confirmSantanderBankStatementImportsBulk(params: {
         skipped_duplicates_count: result.skipped_duplicates_count,
         already_exists_count: result.already_exists_count,
         duplicate_in_file_count: result.duplicate_in_file_count,
+        excluded_before_2026_count: result.excluded_before_2026_count,
         total_preview_count: result.total_preview_count,
         outcomes: result.outcomes,
         status: resolveImportFileStatus(result.inserted_count, result.skipped_duplicates_count),
@@ -418,6 +442,7 @@ export async function confirmSantanderBankStatementImportsBulk(params: {
     skipped_duplicates_count,
     already_exists_count,
     duplicate_in_file_count,
+    excluded_before_2026_count,
     outcomes,
     results,
     errors,

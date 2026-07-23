@@ -69,6 +69,8 @@ export type BankStatementImport = {
   imported_at: string;
   status: BankImportStatus;
   row_count: number;
+  /** Contadores de lectura/insert/idempotencia (persistidos al confirmar). */
+  metadata?: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 };

@@ -65,6 +65,7 @@ export type BulkConfirmResultItem = {
   skipped_duplicates_count: number;
   already_exists_count?: number;
   duplicate_in_file_count?: number;
+  excluded_before_2026_count?: number;
   total_preview_count: number;
   outcomes?: {
     read: number;
@@ -103,6 +104,7 @@ export type BulkConfirmData = {
   skipped_duplicates_count: number;
   already_exists_count?: number;
   duplicate_in_file_count?: number;
+  excluded_before_2026_count?: number;
   outcomes?: {
     read: number;
     inserted: number;

@@ -1,5 +1,16 @@
 # Project Context
 
+## BANK — Cleanup UI historial/importación — 2026-07-23
+
+**FASE BANK-2026-CLEANUP-UI-001** (local, **sin push**):
+
+- `bank-history-panel.tsx`: removida por completo la sección `Conciliaciones por cliente`; Historial queda solo con `Identificaciones por cliente` + `Importaciones`.
+- Identificaciones: copy alineado a “asociaciones” (no “conciliado”), header por cliente con conteo de eventos y totales UYU/USD best-effort parseados desde `amountLabel`.
+- Importaciones: título corto `Importaciones`, lista limpia con fecha + archivo + `row_count` como leídos, caption de confirmación y paginación 15 por página.
+- `bank-movements-import-panel.tsx`: resumen primario sin labels ambiguos `Neto`; confirmación “Importar solo nuevos”; caption de verificación de existentes; mensaje explícito cuando `inserted_count === 0`.
+- Contrato `lib/bank/canonical/bank-history-panel-contract.test.ts` alineado al nuevo alcance: sin sección de conciliaciones, sin botón/ruta/RPC de reverse.
+- Validación: intenté correr `tsc` y Vitest dirigido, pero la shell del entorno no devolvió exit status; quedó pendiente re-ejecutarlo cuando el terminal responda normal.
+
 ## BANK — Filtros/KPI/Historial usabilidad — 2026-07-23
 
 **FASE BANK-FILTERS-KPI-AND-HISTORY-USABILITY-001** (local, **sin push**):

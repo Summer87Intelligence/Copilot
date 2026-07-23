@@ -3,11 +3,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
- * FASE BANK-UNIFIED-INCOME-RECONCILIATION-WORKSPACE-001, sección 17 —
- * Historial ahora también muestra decisiones terminales (confirmadas/
- * rechazadas), pero la reversión sigue explícitamente fuera de alcance: sin
- * botón activo, sin llamada a `reverse_bank_reconciliation_v1` ni a ningún
- * endpoint de reversión.
+ * FASE BANK-2026-CLEANUP UI —
+ * Historial mantiene Identificaciones + Importaciones como vista read-only.
+ * No hay reversión financiera activa, ni botón de revertir, ni llamadas a
+ * RPC/rutas de reverse.
  */
 
 const historyPanel = readFileSync(
@@ -15,9 +14,9 @@ const historyPanel = readFileSync(
   "utf8"
 );
 
-describe("BankHistoryPanel — decisiones recientes, solo lectura, sin reversión", () => {
-  it("lee únicamente el modo workspace=history del endpoint canónico (GET, sin body de escritura)", () => {
-    expect(historyPanel).toContain("canonical-suggestions?workspace=history");
+describe("BankHistoryPanel — identificaciones e importaciones, solo lectura, sin reversión", () => {
+  it("usa solo lecturas GET y no contiene escrituras directas en el panel", () => {
+    expect(historyPanel).toContain("/api/copilot/bank-reconciliation/client-identifications/recent?limit=50");
     expect(historyPanel).not.toMatch(/method:\s*["'](POST|PATCH|DELETE)["']/);
   });
 
@@ -26,33 +25,29 @@ describe("BankHistoryPanel — decisiones recientes, solo lectura, sin reversió
     expect(historyPanel).not.toMatch(/\/reverse/);
   });
 
-  it("el botón de reversión está deshabilitado (fuera de alcance esta fase)", () => {
-    const buttonBlock = historyPanel.match(/<button[\s\S]*?Revertir[\s\S]*?<\/button>/)![0];
-    expect(buttonBlock).toContain("disabled");
+  it("no expone botón de reversión en esta fase", () => {
+    expect(historyPanel).not.toMatch(/Revertir/);
   });
 
-  it("muestra estados terminales confirmed/rejected con etiquetas en español", () => {
-    expect(historyPanel).toContain('confirmed: "Conciliado con recibo"');
-    expect(historyPanel).toContain('rejected: "Rechazado"');
-  });
-
-  it("BANK-RECONCILIATION-SIMPLE-UNIFIED-WORKSPACE-001: agrupa por cliente (15 por página) con avatar y detalle expandible", () => {
+  it("BANK-2026-CLEANUP UI: agrupa identificaciones por cliente (15 por página) con avatar y detalle expandible", () => {
     expect(historyPanel).toContain("Identificaciones por cliente");
-    expect(historyPanel).toContain("Conciliaciones por cliente");
+    expect(historyPanel).toContain("Movimientos bancarios asociados a cada cliente y correcciones realizadas.");
+    expect(historyPanel).not.toContain("Conciliaciones por cliente");
+    expect(historyPanel).toContain("Importaciones");
     expect(historyPanel).toContain("CLIENTS_PER_PAGE = 15");
     expect(historyPanel).toContain("ClientAvatar");
     expect(historyPanel).toContain("groupIdentificationsByClient");
-    expect(historyPanel).toContain("groupDecisionsByClient");
-    expect(historyPanel).toContain("Facturas comprobadas");
-    expect(historyPanel).not.toMatch(/sugerencia|motor can[oó]nico/i);
+    expect(historyPanel).toContain("Totales asociados:");
+    expect(historyPanel).not.toContain("groupDecisionsByClient");
+    expect(historyPanel).not.toContain("Facturas comprobadas");
   });
 
-  it("BANK-RECONCILIATION-TRIAD-ALIGNMENT-001: distingue conciliado-con-recibo de conciliación completa, nunca inventa facturas aplicadas", () => {
-    expect(historyPanel).toContain("reconciled_with_receipt");
-    expect(historyPanel).toContain("full_reconciliation");
-    expect(historyPanel).toContain("No encontramos una aplicación de este recibo a facturas en Zeta.");
-    // No debe usar candidateInvoices (facturas abiertas candidatas) para representar
-    // lo realmente aplicado — solo appliedAllocations (payment_allocations reales).
-    expect(historyPanel).not.toMatch(/candidateInvoices/);
+  it("BANK-2026-CLEANUP UI: usa TablePagination canónica y reset declarativo (sin setPage en effect)", () => {
+    expect(historyPanel).toContain('from "@/components/copilot/ui/table-pagination"');
+    expect(historyPanel).toContain("TablePagination");
+    expect(historyPanel).toContain("resolveKeyedPage");
+    expect(historyPanel).toContain("keyedPageAt");
+    expect(historyPanel).not.toMatch(/useEffect\(\s*\(\)\s*=>\s*\{[^}]*setImportsPage/);
+    expect(historyPanel).not.toMatch(/useEffect\(\s*\(\)\s*=>\s*\{[^}]*setPage\(1\)/);
   });
 });

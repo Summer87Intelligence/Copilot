@@ -9,18 +9,24 @@ import {
   copilotSectionTitleClass,
 } from "@/components/copilot/ui/copilot-visual-system";
 import { EmptyState as DsEmptyState } from "@/components/copilot/ui/empty-state";
-import { formatDate, money, type EvidenceItem } from "@/components/copilot/bank-movements/canonical-evidence-ui";
+import { TablePagination } from "@/components/copilot/ui/table-pagination";
+import { formatDate } from "@/components/copilot/bank-movements/canonical-evidence-ui";
+import {
+  collapseZeroNewImportRetries,
+  resolveImportHistoryStats,
+} from "@/lib/bank-movements/bank-import-history-display";
 import type { BankStatementImport } from "@/lib/bank-movements/bank-movements-types";
-import { BANK_MOVEMENT_DESCRIPTION_CLASS } from "@/lib/bank-movements/bank-movement-display";
 import { movementDateInInclusiveRange } from "@/lib/bank-movements/bank-period";
+import { keyedPageAt, resolveKeyedPage, type KeyedPageState } from "@/lib/ui/keyed-pagination";
 
 const CLIENTS_PER_PAGE = 15;
+const IMPORTS_PER_PAGE = 15;
 
 /**
  * FASE BANK-RECONCILIATION-SIMPLE-UNIFIED-WORKSPACE-001 — Historial agrupado
  * por cliente/lote (una fila por cliente, no N eventos repetidos). Reutiliza
  * los mismos endpoints de lectura ya existentes. Reversión financiera sigue
- * explícitamente fuera de alcance (botón deshabilitado).
+ * explícitamente fuera de alcance.
  *
  * descriptionMasked (API legada): ahora es la descripción Santander canónica
  * con enmascarado selectivo solo de cuentas/tokens (≥8 dígitos). El concepto y
@@ -41,6 +47,26 @@ export function BankHistoryPanel({
   dateTo?: string;
   periodLabel?: string;
 }) {
+  // Key incluye datos + filtros: al cambiar período/búsqueda, página efectiva = 1 (sin useEffect).
+  const importsKey = [
+    imports.map((item) => item.id).join(","),
+    searchQuery,
+    dateFrom ?? "",
+    dateTo ?? "",
+  ].join("\0");
+  const [importsPageState, setImportsPageState] = useState<KeyedPageState>(() =>
+    keyedPageAt(importsKey, 1)
+  );
+  const importsPage = resolveKeyedPage(importsPageState, importsKey);
+  const setImportsPage = (next: number) => setImportsPageState(keyedPageAt(importsKey, next));
+  const displayImports = useMemo(() => collapseZeroNewImportRetries(imports), [imports]);
+  const importTotalPages = Math.max(1, Math.ceil(displayImports.length / IMPORTS_PER_PAGE));
+  const currentImportsPage = Math.min(importsPage, importTotalPages);
+  const paginatedImports = displayImports.slice(
+    (currentImportsPage - 1) * IMPORTS_PER_PAGE,
+    currentImportsPage * IMPORTS_PER_PAGE
+  );
+
   return (
     <div className="space-y-4" data-testid="bank-history-panel">
       {periodLabel ? (
@@ -51,11 +77,13 @@ export function BankHistoryPanel({
       ) : null}
 
       <GroupedIdentifications searchQuery={searchQuery} dateFrom={dateFrom} dateTo={dateTo} />
-      <GroupedDecisions searchQuery={searchQuery} dateFrom={dateFrom} dateTo={dateTo} />
 
       <section className={copilotCardStandardClass}>
-        <h2 className={copilotSectionTitleClass}>Importaciones realizadas</h2>
-        {imports.length === 0 ? (
+        <h2 className={copilotSectionTitleClass}>Importaciones</h2>
+        <p className={`${copilotCaptionClass} mt-1`}>
+          Fecha, archivo, leídos, nuevos, ya existentes, errores y actor.
+        </p>
+        {displayImports.length === 0 ? (
           <div className="mt-3">
             <DsEmptyState
               variant="compact"
@@ -69,19 +97,45 @@ export function BankHistoryPanel({
           </div>
         ) : (
           <ul className="mt-3 space-y-2">
-            {imports.map((item) => (
-              <li key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--copilot-border)] px-3 py-2 text-sm">
-                <span className="flex min-w-0 items-center gap-2">
-                  <Landmark className="h-4 w-4 shrink-0 text-[var(--copilot-muted)]" aria-hidden />
-                  <span className="truncate">
-                    {item.file_name ?? item.bank_name} · {item.row_count} movimientos
+            {paginatedImports.map((item) => {
+              const stats = resolveImportHistoryStats(item);
+              return (
+                <li
+                  key={item.id}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-[var(--copilot-border)] px-3 py-2 text-sm"
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    <Landmark className="h-4 w-4 shrink-0 text-[var(--copilot-muted)]" aria-hidden />
+                    <span className="min-w-0">
+                      <span className="block truncate text-[var(--copilot-text)]">
+                        {item.file_name?.trim() || item.bank_name || "Importación bancaria"}
+                      </span>
+                      <span className={copilotCaptionClass}>
+                        {stats.read} leídos · {stats.inserted} nuevos · {stats.alreadyExists} ya existentes
+                        {stats.errors > 0 ? ` · ${stats.errors} errores` : ""}
+                        {stats.actor ? ` · ${stats.actor}` : ""}
+                        {stats.retryCount > 1 ? ` · ${stats.retryCount} reintentos sin nuevos` : ""}
+                      </span>
+                    </span>
                   </span>
-                </span>
-                <span className={`${copilotCaptionClass} whitespace-nowrap`}>{formatDate(item.imported_at)}</span>
-              </li>
-            ))}
+                  <span className={`${copilotCaptionClass} whitespace-nowrap`}>{formatDate(item.imported_at)}</span>
+                </li>
+              );
+            })}
           </ul>
         )}
+        {displayImports.length > IMPORTS_PER_PAGE ? (
+          <TablePagination
+            className="mt-3"
+            page={currentImportsPage}
+            totalPages={importTotalPages}
+            from={(currentImportsPage - 1) * IMPORTS_PER_PAGE + 1}
+            to={Math.min(currentImportsPage * IMPORTS_PER_PAGE, displayImports.length)}
+            total={displayImports.length}
+            itemLabel="importaciones"
+            onPageChange={setImportsPage}
+          />
+        ) : null}
       </section>
     </div>
   );
@@ -106,6 +160,8 @@ type ClientIdentificationGroup = {
   lastEventAt: string | null;
   lastMovementDate: string | null;
   statusSummary: string;
+  eventCountLabel: string;
+  amountSummary: string | null;
 };
 
 function normalizeHistorySearch(value: string): string {
@@ -155,28 +211,6 @@ function filterIdentificationEvents(
   });
 }
 
-function filterDecisionItems(
-  items: EvidenceItem[],
-  searchQuery: string,
-  dateFrom?: string,
-  dateTo?: string
-): EvidenceItem[] {
-  return items.filter((item) => {
-    if (!movementDateMatchesHistoryRange(item.movement.date, dateFrom, dateTo)) return false;
-    return historySearchMatches(
-      [
-        item.client?.name,
-        item.movement.descriptionMasked,
-        item.payer?.normalizedName,
-        item.payer?.maskedAccount,
-        item.receipt?.id,
-        item.reasons.join(" "),
-      ],
-      searchQuery
-    );
-  });
-}
-
 function groupIdentificationsByClient(events: IdentificationEvent[]): ClientIdentificationGroup[] {
   const byClient = new Map<string, IdentificationEvent[]>();
   for (const ev of events) {
@@ -191,7 +225,7 @@ function groupIdentificationsByClient(events: IdentificationEvent[]): ClientIden
     const sorted = [...list].sort((a, b) => String(b.eventAt ?? b.date ?? "").localeCompare(String(a.eventAt ?? a.date ?? "")));
     const corrections = list.filter((e) => e.status === "revoked" || e.reason).length;
     const identified = list.filter((e) => e.status === "identified" || e.status === "shared_account" || e.status === "third_party").length;
-    let statusSummary = `${identified} movimiento${identified === 1 ? "" : "s"} identificado${identified === 1 ? "" : "s"}`;
+    let statusSummary = `${identified} movimiento${identified === 1 ? "" : "s"} asociado${identified === 1 ? "" : "s"}`;
     if (corrections > 0) statusSummary += ` · ${corrections} corrección${corrections === 1 ? "" : "es"}`;
     groups.push({
       clientName,
@@ -199,10 +233,52 @@ function groupIdentificationsByClient(events: IdentificationEvent[]): ClientIden
       lastEventAt: sorted[0]?.eventAt ?? null,
       lastMovementDate: sorted[0]?.date ?? null,
       statusSummary,
+      eventCountLabel: `${list.length} evento${list.length === 1 ? "" : "s"}`,
+      amountSummary: summarizeIdentificationAmounts(list),
     });
   }
 
   return groups.sort((a, b) => String(b.lastEventAt ?? b.lastMovementDate ?? "").localeCompare(String(a.lastEventAt ?? a.lastMovementDate ?? "")));
+}
+
+function parseAmountLabel(amountLabel: string | null): { currency: "UYU" | "USD"; amount: number } | null {
+  if (!amountLabel) return null;
+  const match = amountLabel.match(/\b(UYU|USD)\b\s*([+-]?[0-9.,\s]+)/i);
+  if (!match) return null;
+  const currency = match[1]?.toUpperCase();
+  const rawAmount = match[2]?.replace(/\s+/g, "") ?? "";
+  if (currency !== "UYU" && currency !== "USD") return null;
+  if (!rawAmount) return null;
+
+  let normalized = rawAmount;
+  if (normalized.includes(".") && normalized.includes(",")) {
+    normalized = normalized.replace(/\./g, "").replace(",", ".");
+  } else if (normalized.includes(",")) {
+    normalized = normalized.replace(",", ".");
+  }
+
+  const amount = Number(normalized);
+  if (!Number.isFinite(amount)) return null;
+  return { currency, amount };
+}
+
+function summarizeIdentificationAmounts(events: IdentificationEvent[]): string | null {
+  const totals: Record<"UYU" | "USD", number> = { UYU: 0, USD: 0 };
+  let hasAnyAmount = false;
+
+  for (const event of events) {
+    const parsed = parseAmountLabel(event.amountLabel);
+    if (!parsed) continue;
+    totals[parsed.currency] += parsed.amount;
+    hasAnyAmount = true;
+  }
+
+  if (!hasAnyAmount) return null;
+
+  return (["UYU", "USD"] as const)
+    .filter((currency) => totals[currency] !== 0)
+    .map((currency) => `${currency} ${totals[currency].toLocaleString("es-UY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
+    .join(" · ");
 }
 
 function ClientAvatar({ name }: { name: string }) {
@@ -231,7 +307,10 @@ function GroupedIdentifications({
 }) {
   const [events, setEvents] = useState<IdentificationEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
+  const filterKey = `${searchQuery}\0${dateFrom ?? ""}\0${dateTo ?? ""}`;
+  const [pageState, setPageState] = useState<KeyedPageState>(() => keyedPageAt(filterKey, 1));
+  const page = resolveKeyedPage(pageState, filterKey);
+  const setPage = (next: number) => setPageState(keyedPageAt(filterKey, next));
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -271,7 +350,7 @@ function GroupedIdentifications({
     <section className={copilotCardStandardClass}>
       <h2 className={copilotSectionTitleClass}>Identificaciones por cliente</h2>
       <p className={`${copilotCaptionClass} mt-1`}>
-        Una fila por cliente. Expandí para ver movimientos, referencias, actor y correcciones. Identificar cliente no implica recibo ni factura pagada.
+        Movimientos bancarios asociados a cada cliente y correcciones realizadas.
       </p>
 
       {loading ? (
@@ -305,8 +384,12 @@ function GroupedIdentifications({
                     <p className="text-sm font-semibold text-[var(--copilot-text)]">{group.clientName}</p>
                     <p className={copilotCaptionClass}>{group.statusSummary}</p>
                     <p className={copilotCaptionClass}>
+                      {group.eventCountLabel}
+                      {group.amountSummary ? ` · Totales asociados: ${group.amountSummary}` : ""}
+                    </p>
+                    <p className={copilotCaptionClass}>
                       Último movimiento: {formatDate(group.lastMovementDate)}
-                      {group.lastEventAt ? ` · Decisión: ${formatDate(group.lastEventAt)}` : ""}
+                      {group.lastEventAt ? ` · Última actualización: ${formatDate(group.lastEventAt)}` : ""}
                     </p>
                   </div>
                   <span className="mt-1 shrink-0 text-[var(--copilot-muted)]">
@@ -340,250 +423,17 @@ function GroupedIdentifications({
       )}
 
       {groups.length > CLIENTS_PER_PAGE ? (
-        <nav className="mt-3 flex items-center justify-center gap-3">
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="rounded-lg border border-[var(--copilot-border)] px-3 py-1 text-xs font-semibold text-[var(--copilot-text)] disabled:opacity-50"
-          >
-            Anterior
-          </button>
-          <span className={copilotCaptionClass}>
-            Página {currentPage} / {totalPages}
-          </span>
-          <button
-            type="button"
-            disabled={currentPage >= totalPages}
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            className="rounded-lg border border-[var(--copilot-border)] px-3 py-1 text-xs font-semibold text-[var(--copilot-text)] disabled:opacity-50"
-          >
-            Siguiente
-          </button>
-        </nav>
+        <TablePagination
+          className="mt-3"
+          page={currentPage}
+          totalPages={totalPages}
+          from={(currentPage - 1) * CLIENTS_PER_PAGE + 1}
+          to={Math.min(currentPage * CLIENTS_PER_PAGE, groups.length)}
+          total={groups.length}
+          itemLabel="clientes"
+          onPageChange={setPage}
+        />
       ) : null}
-    </section>
-  );
-}
-
-const STATUS_LABEL: Record<string, string> = {
-  confirmed: "Conciliado con recibo",
-  rejected: "Rechazado",
-};
-
-const RECONCILIATION_LEVEL_LABEL: Record<"reconciled_with_receipt" | "full_reconciliation", string> = {
-  reconciled_with_receipt: "Conciliado con recibo",
-  full_reconciliation: "Conciliación completa",
-};
-
-const STATUS_STYLE: Record<string, string> = {
-  confirmed: "border-[var(--copilot-success-border)] bg-[var(--copilot-tone-positive-bg)] text-[var(--copilot-success-text-strong)]",
-  rejected: "border-[var(--copilot-danger-border)] bg-[var(--copilot-tone-danger-bg)] text-[var(--copilot-danger-text-strong)]",
-};
-
-type DecisionGroup = {
-  clientName: string;
-  items: EvidenceItem[];
-  lastDate: string | null;
-  statusSummary: string;
-};
-
-function groupDecisionsByClient(items: EvidenceItem[]): DecisionGroup[] {
-  const byClient = new Map<string, EvidenceItem[]>();
-  for (const item of items) {
-    const key = item.client?.name ?? "Cliente sin identificar";
-    const list = byClient.get(key) ?? [];
-    list.push(item);
-    byClient.set(key, list);
-  }
-  const groups: DecisionGroup[] = [];
-  for (const [clientName, list] of byClient) {
-    const sorted = [...list].sort((a, b) => b.movement.date.localeCompare(a.movement.date));
-    const confirmed = list.filter((i) => i.status === "confirmed").length;
-    const rejected = list.filter((i) => i.status === "rejected").length;
-    const parts: string[] = [];
-    if (confirmed > 0) parts.push(`${confirmed} conciliado${confirmed === 1 ? "" : "s"}`);
-    if (rejected > 0) parts.push(`${rejected} rechazado${rejected === 1 ? "" : "s"}`);
-    groups.push({
-      clientName,
-      items: sorted,
-      lastDate: sorted[0]?.movement.date ?? null,
-      statusSummary: parts.join(" · ") || `${list.length} decisión${list.length === 1 ? "" : "es"}`,
-    });
-  }
-  return groups.sort((a, b) => String(b.lastDate ?? "").localeCompare(String(a.lastDate ?? "")));
-}
-
-function GroupedDecisions({
-  searchQuery,
-  dateFrom,
-  dateTo,
-}: {
-  searchQuery: string;
-  dateFrom?: string;
-  dateTo?: string;
-}) {
-  const [items, setItems] = useState<EvidenceItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/copilot/bank-movements/canonical-suggestions?workspace=history&limit=50")
-      .then((r) => r.json())
-      .then((json: { ok?: boolean; data?: EvidenceItem[] }) => {
-        if (!cancelled && json.ok) setItems(json.data ?? []);
-      })
-      .catch(() => {
-        if (!cancelled) setItems([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const filteredItems = useMemo(
-    () => filterDecisionItems(items, searchQuery, dateFrom, dateTo),
-    [dateFrom, dateTo, items, searchQuery]
-  );
-  const groups = useMemo(() => groupDecisionsByClient(filteredItems), [filteredItems]);
-  const totalPages = Math.max(1, Math.ceil(groups.length / CLIENTS_PER_PAGE));
-  const currentPage = Math.min(page, totalPages);
-  const pageGroups = groups.slice(
-    (currentPage - 1) * CLIENTS_PER_PAGE,
-    currentPage * CLIENTS_PER_PAGE
-  );
-
-  return (
-    <section className={copilotCardStandardClass}>
-      <h2 className={copilotSectionTitleClass}>Conciliaciones por cliente</h2>
-      <p className={`${copilotCaptionClass} mt-1`}>
-        Decisiones ya tomadas (confirmadas o rechazadas), agrupadas por cliente. Revertir una conciliación financiera todavía no está disponible.
-      </p>
-
-      {loading ? (
-        <p className={`${copilotCaptionClass} mt-3`}>Cargando conciliaciones…</p>
-      ) : groups.length === 0 ? (
-        searchQuery.trim() || dateFrom || dateTo ? (
-          <div className="mt-3">
-            <DsEmptyState
-              variant="compact"
-              title={
-                searchQuery.trim()
-                  ? "No hay resultados para esta búsqueda"
-                  : "No hay conciliaciones en este período"
-              }
-              description="Probá con otro período o quitá la búsqueda para ver más decisiones."
-            />
-          </div>
-        ) : (
-          <p className={`${copilotCaptionClass} mt-3`}>
-            Todavía no hay conciliaciones confirmadas ni rechazos.
-          </p>
-        )
-      ) : (
-        <ul className="mt-3 space-y-2">
-          {pageGroups.map((group) => {
-            const open = Boolean(expanded[group.clientName]);
-            return (
-              <li key={group.clientName} className="rounded-xl border border-[var(--copilot-border)]">
-                <button
-                  type="button"
-                  className="flex w-full items-start gap-3 px-3 py-2.5 text-left"
-                  aria-expanded={open}
-                  onClick={() => setExpanded((prev) => ({ ...prev, [group.clientName]: !open }))}
-                >
-                  <ClientAvatar name={group.clientName} />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-[var(--copilot-text)]">{group.clientName}</p>
-                    <p className={copilotCaptionClass}>{group.statusSummary}</p>
-                    <p className={copilotCaptionClass}>Último movimiento: {formatDate(group.lastDate)}</p>
-                  </div>
-                  <span className="mt-1 shrink-0 text-[var(--copilot-muted)]">
-                    {open ? <ChevronDown className="h-4 w-4" aria-hidden /> : <ChevronRight className="h-4 w-4" aria-hidden />}
-                    <span className="sr-only">Ver detalle</span>
-                  </span>
-                </button>
-                {open ? (
-                  <ul className="space-y-2 border-t border-[var(--copilot-border)] px-3 py-2">
-                    {group.items.map((item) => (
-                      <li key={item.suggestionId} className="rounded-lg bg-[var(--copilot-soft-bg)] px-3 py-2">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="text-sm font-medium text-[var(--copilot-text)]">
-                            {money(item.movement.currency, item.movement.amount)}
-                          </p>
-                          <span
-                            className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${STATUS_STYLE[item.status] ?? ""}`}
-                          >
-                            {item.status === "confirmed" && item.reconciliationLevel
-                              ? RECONCILIATION_LEVEL_LABEL[item.reconciliationLevel]
-                              : STATUS_LABEL[item.status] ?? item.status}
-                          </span>
-                        </div>
-                        <p className={`${copilotCaptionClass} ${BANK_MOVEMENT_DESCRIPTION_CLASS}`}>
-                          {formatDate(item.movement.date)} · {item.movement.descriptionMasked}
-                          {item.receipt ? ` · Recibo ${money(item.receipt.currency, item.receipt.amount)}` : ""}
-                        </p>
-                        {item.status === "confirmed" && item.receipt ? (
-                          item.appliedAllocations.length > 0 ? (
-                            <p className={copilotCaptionClass}>
-                              Facturas comprobadas:{" "}
-                              {item.appliedAllocations
-                                .map((a) => `${a.invoiceNumber ?? a.invoiceId} (${money(a.currencyCode, a.appliedAmount)})`)
-                                .join(", ")}
-                            </p>
-                          ) : (
-                            <p className={copilotCaptionClass}>
-                              No encontramos una aplicación de este recibo a facturas en Zeta.
-                            </p>
-                          )
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      {groups.length > CLIENTS_PER_PAGE ? (
-        <nav className="mt-3 flex items-center justify-center gap-3">
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="rounded-lg border border-[var(--copilot-border)] px-3 py-1 text-xs font-semibold text-[var(--copilot-text)] disabled:opacity-50"
-          >
-            Anterior
-          </button>
-          <span className={copilotCaptionClass}>
-            Página {currentPage} / {totalPages}
-          </span>
-          <button
-            type="button"
-            disabled={currentPage >= totalPages}
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            className="rounded-lg border border-[var(--copilot-border)] px-3 py-1 text-xs font-semibold text-[var(--copilot-text)] disabled:opacity-50"
-          >
-            Siguiente
-          </button>
-        </nav>
-      ) : null}
-
-      <button
-        type="button"
-        disabled
-        title="La reversión desde la UI todavía no está disponible (fase futura)"
-        className="mt-3 inline-flex cursor-not-allowed items-center rounded-lg border border-[var(--copilot-border)] px-3 py-1.5 text-xs font-semibold text-[var(--copilot-muted)] opacity-60"
-      >
-        Revertir (próximamente)
-      </button>
     </section>
   );
 }
