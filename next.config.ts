@@ -7,6 +7,9 @@ import type { NextConfig } from "next";
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
+  // Playwright / e2e usan 127.0.0.1; sin esto Next 16 bloquea HMR y puede
+  // degradar el bundle cliente en dev.
+  allowedDevOrigins: ["127.0.0.1", "localhost"],
   async redirects() {
     return [
       {

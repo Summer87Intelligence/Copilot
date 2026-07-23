@@ -5,6 +5,9 @@ import { join } from "node:path";
 /**
  * FASE BANK-SIMPLE-RECONCILIATION-AND-PAYER-MEMORY-001 — deep links antiguos
  * (ingresos / reconciliation / conciliacion) normalizan a Conciliación.
+ *
+ * FASE BANK-ASSOCIATION-DRAWER-SCROLL-ANCHOR-FIX-002 — el tab se aplica una
+ * sola vez; `movementId` reacciona a cambios de URL (soft navigation).
  */
 
 const COMPONENTS_ROOT = join(process.cwd(), "components", "copilot", "bank-movements");
@@ -13,18 +16,21 @@ const incomeWorkspace = readFileSync(join(COMPONENTS_ROOT, "bank-income-workspac
 
 describe("Deep link: URLs antiguas normalizan a Conciliación", () => {
   it("reconoce tab=ingresos, reconciliation y conciliacion → setTab(conciliacion)", () => {
-    const effectBlock = pageClient.match(/useEffect\(\(\) => \{\s*if \(deepLinkApplied[\s\S]*?\}, \[searchParams, openSimpleAssociation\]\);/)![0];
-    expect(effectBlock).toContain('requestedTab === "ingresos"');
-    expect(effectBlock).toContain('requestedTab === "reconciliation"');
-    expect(effectBlock).toContain('requestedTab === "conciliacion"');
-    expect(effectBlock).toContain('setTab("conciliacion")');
-    expect(effectBlock).not.toContain('setTab("ingresos")');
+    expect(pageClient).toContain('requestedTab === "ingresos"');
+    expect(pageClient).toContain('requestedTab === "reconciliation"');
+    expect(pageClient).toContain('requestedTab === "conciliacion"');
+    expect(pageClient).toContain('setTab("conciliacion")');
+    expect(pageClient).not.toContain('setTab("ingresos")');
+    expect(pageClient).toContain("if (!deepLinkApplied.current)");
   });
 
   it("preserva movementId abriendo el panel simple de asociación directo (FASE BANK-SIMPLE-FLOW-COMPLETION-001)", () => {
-    const effectBlock = pageClient.match(/useEffect\(\(\) => \{\s*if \(deepLinkApplied[\s\S]*?\}, \[searchParams, openSimpleAssociation\]\);/)![0];
-    expect(effectBlock).toContain('searchParams.get("movementId")');
-    expect(effectBlock).toContain("openSimpleAssociation(movementIdParam)");
+    expect(pageClient).toContain('searchParams.get("movementId")');
+    expect(pageClient).toContain("openSimpleAssociation(movementIdParam)");
+    // movementId fuera del gate one-shot (soft-nav en el mismo pathname).
+    expect(pageClient).toMatch(
+      /deepLinkApplied\.current = true;\s*\}\s*if \(movementIdParam\) openSimpleAssociation\(movementIdParam\);/
+    );
   });
 
   it("BankIncomeWorkspace consume el foco vía initialMovementId", () => {

@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { BankDrawerShell } from "@/components/copilot/bank-movements/bank-drawer-shell";
+import {
+  BankDrawerBody,
+  BankDrawerFooter,
+  BankDrawerHeader,
+  BankDrawerShell,
+} from "@/components/copilot/bank-movements/bank-drawer-shell";
 import { copilotButtonClassName } from "@/components/copilot/ui/copilot-button";
 import {
   copilotCaptionClass,
@@ -18,6 +23,9 @@ import {
  * flujo de identificación en lote (`bank_movement_client_identifications`),
  * solo que aplicado a UN movimiento puntual desde Movimientos, sin pasar por
  * la vista de clusters por pagador.
+ *
+ * FASE BANK-ASSOCIATION-DRAWER-SCROLL-ANCHOR-FIX-002 — header / body / footer
+ * con scroll solo en `BankDrawerBody`.
  */
 
 type MovementDTO = {
@@ -222,7 +230,7 @@ export function SimpleMovementAssociationPanel({
 
   return (
     <BankDrawerShell aria-label="Asociar movimiento a cliente" onBackdropClick={onClose} panelClassName="w-full max-w-xl">
-      <div className="flex items-center justify-between border-b border-[var(--copilot-border)] px-5 py-4">
+      <BankDrawerHeader className="flex items-center justify-between border-b border-[var(--copilot-border)] px-5 py-4">
         <div className="min-w-0">
           <p className={copilotCaptionClass}>Banco → Conciliación</p>
           <h3 className="text-base font-semibold text-[var(--copilot-text)]">
@@ -232,9 +240,9 @@ export function SimpleMovementAssociationPanel({
         <button type="button" onClick={onClose} className={copilotButtonClassName({ variant: "ghost", size: "sm" })}>
           Cerrar
         </button>
-      </div>
+      </BankDrawerHeader>
 
-      <div className="flex-1 overflow-y-auto px-5 py-4">
+      <BankDrawerBody className="px-5 py-4">
         {loadState === "loading" ? <p className={copilotCaptionClass}>Cargando movimiento…</p> : null}
         {loadState === "error" ? (
           <p className="text-sm text-[var(--copilot-danger-text-strong)]">{error}</p>
@@ -275,44 +283,12 @@ export function SimpleMovementAssociationPanel({
                 </div>
 
                 {association?.source === "financial_link" ? (
-                  <div className="space-y-2">
-                    <p className={copilotCaptionClass}>
-                      Este movimiento ya está conciliado financieramente con un recibo real de Zeta. Cambiar o
-                      revocar el cliente no está disponible acá — eso afectaría una conciliación financiera real,
-                      fuera de alcance de este panel.
-                    </p>
-                    <a
-                      href={`/copilot/clientes/${association.clientCompanyId}`}
-                      className={copilotButtonClassName({ variant: "primary", size: "sm" })}
-                    >
-                      Ver ficha del cliente
-                    </a>
-                  </div>
-                ) : !pickedClientId ? (
-                  <div className="flex flex-wrap gap-2">
-                    <a
-                      href={association ? `/copilot/clientes/${association.clientCompanyId}` : "#"}
-                      className={copilotButtonClassName({ variant: "primary", size: "sm" })}
-                    >
-                      Ver ficha del cliente
-                    </a>
-                    <button
-                      type="button"
-                      onClick={() => setPickerOpen(true)}
-                      className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
-                    >
-                      Cambiar cliente
-                    </button>
-                    <button
-                      type="button"
-                      disabled={submitting}
-                      onClick={() => void handleRevoke()}
-                      className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
-                    >
-                      Revocar asociación
-                    </button>
-                  </div>
-                ) : (
+                  <p className={copilotCaptionClass}>
+                    Este movimiento ya está conciliado financieramente con un recibo real de Zeta. Cambiar o
+                    revocar el cliente no está disponible acá — eso afectaría una conciliación financiera real,
+                    fuera de alcance de este panel.
+                  </p>
+                ) : pickedClientId ? (
                   <div className="space-y-2">
                     <p className={copilotCaptionClass}>Nuevo cliente: {pickedClientName}</p>
                     <div>
@@ -324,114 +300,152 @@ export function SimpleMovementAssociationPanel({
                         className={copilotInputClass}
                       />
                     </div>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        disabled={submitting || !reassignReason.trim()}
-                        onClick={() => void handleReassign()}
-                        className={copilotButtonClassName({ variant: "primary", size: "sm" })}
-                      >
-                        Confirmar cambio
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPickedClientId(null);
-                          setPickedClientName("");
-                        }}
-                        className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
-                      >
-                        Cancelar
-                      </button>
-                    </div>
                   </div>
-                )}
+                ) : null}
               </div>
             ) : (
-              <div className="space-y-3">
-                <div>
-                  <label className={copilotMetricLabelClass}>Cliente</label>
-                  {pickedClientId ? (
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-[var(--copilot-text)]">{pickedClientName}</p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPickedClientId(null);
-                          setPickedClientName("");
-                          setPickerOpen(true);
-                        }}
-                        className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
-                      >
-                        Elegir otro cliente
-                      </button>
-                    </div>
-                  ) : (
-                    <div>
-                      <input
-                        type="search"
-                        value={clientQuery}
-                        onChange={(e) => {
-                          setClientQuery(e.target.value);
-                          setPickerOpen(true);
-                        }}
-                        placeholder="Buscar cliente…"
-                        className={copilotInputClass}
-                      />
-                      {pickerOpen && clientOptions.length > 0 ? (
-                        <ul className="mt-1 max-h-40 overflow-y-auto rounded-lg border border-[var(--copilot-border)]">
-                          {clientOptions.map((c) => (
-                            <li key={c.id}>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setPickedClientId(c.id);
-                                  setPickedClientName(c.name);
-                                  setPickerOpen(false);
-                                }}
-                                className="w-full px-2 py-1 text-left text-sm hover:bg-[var(--copilot-hover-bg)]"
-                              >
-                                {c.name}
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : null}
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    disabled={!pickedClientId || submitting}
-                    onClick={() => void handleConfirm()}
-                    className={copilotButtonClassName({ variant: "primary", size: "sm" })}
-                  >
-                    {submitting ? "Guardando asociación…" : "Confirmar asociación"}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={submitting}
-                    onClick={() => void handlePending()}
-                    className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
-                  >
-                    Dejar pendiente
-                  </button>
-                  <button
-                    type="button"
-                    disabled={submitting}
-                    onClick={() => void handleNonCommercial()}
-                    className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
-                  >
-                    Marcar ingreso no comercial
-                  </button>
-                </div>
+              <div>
+                <label className={copilotMetricLabelClass}>Cliente</label>
+                {pickedClientId ? (
+                  <div className="mt-1 flex items-center gap-2">
+                    <p className="text-sm font-medium text-[var(--copilot-text)]">{pickedClientName}</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPickedClientId(null);
+                        setPickedClientName("");
+                        setPickerOpen(true);
+                      }}
+                      className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+                    >
+                      Elegir otro cliente
+                    </button>
+                  </div>
+                ) : (
+                  <div className="mt-1">
+                    <input
+                      type="search"
+                      value={clientQuery}
+                      onChange={(e) => {
+                        setClientQuery(e.target.value);
+                        setPickerOpen(true);
+                      }}
+                      placeholder="Buscar cliente…"
+                      className={copilotInputClass}
+                    />
+                    {pickerOpen && clientOptions.length > 0 ? (
+                      <ul className="mt-1 max-h-40 overflow-y-auto rounded-lg border border-[var(--copilot-border)]">
+                        {clientOptions.map((c) => (
+                          <li key={c.id}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPickedClientId(c.id);
+                                setPickedClientName(c.name);
+                                setPickerOpen(false);
+                              }}
+                              className="w-full px-2 py-1 text-left text-sm hover:bg-[var(--copilot-hover-bg)]"
+                            >
+                              {c.name}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+                )}
               </div>
             )}
           </div>
         ) : null}
-      </div>
+      </BankDrawerBody>
+
+      {loadState === "ready" && movement ? (
+        <BankDrawerFooter className="flex flex-wrap gap-2 border-t border-[var(--copilot-border)] px-5 py-3">
+          {isAssociated ? (
+            association?.source === "financial_link" ? (
+              <a
+                href={`/copilot/clientes/${association.clientCompanyId}`}
+                className={copilotButtonClassName({ variant: "primary", size: "sm" })}
+              >
+                Ver ficha del cliente
+              </a>
+            ) : !pickedClientId ? (
+              <>
+                <a
+                  href={association ? `/copilot/clientes/${association.clientCompanyId}` : "#"}
+                  className={copilotButtonClassName({ variant: "primary", size: "sm" })}
+                >
+                  Ver ficha del cliente
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPickerOpen(true)}
+                  className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+                >
+                  Cambiar cliente
+                </button>
+                <button
+                  type="button"
+                  disabled={submitting}
+                  onClick={() => void handleRevoke()}
+                  className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+                >
+                  Revocar asociación
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  disabled={submitting || !reassignReason.trim()}
+                  onClick={() => void handleReassign()}
+                  className={copilotButtonClassName({ variant: "primary", size: "sm" })}
+                >
+                  Confirmar cambio
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPickedClientId(null);
+                    setPickedClientName("");
+                  }}
+                  className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+                >
+                  Cancelar
+                </button>
+              </>
+            )
+          ) : (
+            <>
+              <button
+                type="button"
+                disabled={!pickedClientId || submitting}
+                onClick={() => void handleConfirm()}
+                className={copilotButtonClassName({ variant: "primary", size: "sm" })}
+              >
+                {submitting ? "Guardando asociación…" : "Confirmar asociación"}
+              </button>
+              <button
+                type="button"
+                disabled={submitting}
+                onClick={() => void handlePending()}
+                className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+              >
+                Dejar pendiente
+              </button>
+              <button
+                type="button"
+                disabled={submitting}
+                onClick={() => void handleNonCommercial()}
+                className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+              >
+                Marcar ingreso no comercial
+              </button>
+            </>
+          )}
+        </BankDrawerFooter>
+      ) : null}
     </BankDrawerShell>
   );
 }

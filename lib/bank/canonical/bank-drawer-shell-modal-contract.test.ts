@@ -3,13 +3,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
- * FASE BANK-SIMPLE-ASSOCIATION-PANEL-LAYOUT-FIX-001 — bug reproducido en
- * vivo: el body seguía scrolleando detrás del drawer (doble scroll real,
- * `document.body` overflow nunca se bloqueaba), Escape no cerraba, el foco
- * podía escaparse por Tab hacia el contenido de fondo, y al cerrar no
- * volvía al elemento que abrió el panel. El click-through de mouse ya
- * estaba bloqueado (el backdrop cubre todo el viewport) — confirmado en
- * vivo antes de tocar nada, para no "arreglar" algo que no estaba roto.
+ * FASE BANK-SIMPLE-ASSOCIATION-PANEL-LAYOUT-FIX-001 — Escape, focus trap, portal.
+ * FASE BANK-ASSOCIATION-DRAWER-SCROLL-ANCHOR-FIX-002 — scroll lock via
+ * `useLockApplicationScroll` (html/body/module-scroll owner), no solo body.
  */
 
 const shell = readFileSync(
@@ -17,10 +13,31 @@ const shell = readFileSync(
   "utf8"
 );
 
+const hook = readFileSync(join(process.cwd(), "hooks", "use-lock-application-scroll.ts"), "utf8");
+
+const moduleShell = readFileSync(join(process.cwd(), "components", "copilot", "module-shell.tsx"), "utf8");
+
 describe("BankDrawerShell — modal real: scroll lock, Escape, focus trap, portal", () => {
-  it("bloquea el scroll del body mientras está montado y lo restaura al desmontar", () => {
-    expect(shell).toContain('document.body.style.overflow = "hidden"');
-    expect(shell).toContain("document.body.style.overflow = previousBodyOverflow");
+  it("usa useLockApplicationScroll (no un lock ad-hoc solo de body)", () => {
+    expect(shell).toContain("useLockApplicationScroll(true, panelRef)");
+    expect(shell).not.toContain("previousBodyOverflow");
+    expect(hook).toContain("applyDocumentLockStyles(body)");
+    expect(hook).toContain("applyDocumentLockStyles(html)");
+    expect(hook).toContain("applyOwnerLockStyles(owner)");
+    expect(hook).toContain("state.owner.scrollTop = state.savedScrollTop");
+  });
+
+  it("el module shell expone el contrato data-copilot-module-scroll", () => {
+    expect(moduleShell).toContain("data-copilot-module-scroll");
+    expect(hook).toContain("[data-copilot-module-scroll]");
+  });
+
+  it("panel overflow-hidden + helpers header/body/footer", () => {
+    expect(shell).toContain("overflow-hidden");
+    expect(shell).toContain('data-bank-drawer-header');
+    expect(shell).toContain('data-bank-drawer-body');
+    expect(shell).toContain('data-bank-drawer-footer');
+    expect(shell).toContain("min-h-0 flex-1 overflow-y-auto");
   });
 
   it("Escape cierra el panel (llama onBackdropClick)", () => {
@@ -51,5 +68,6 @@ describe("BankDrawerShell — modal real: scroll lock, Escape, focus trap, porta
   it("el backdrop sigue cubriendo todo el viewport (el click-through de mouse ya estaba bloqueado)", () => {
     expect(shell).toContain('className="absolute inset-0 cursor-default"');
     expect(shell).toContain('aria-label="Cerrar panel"');
+    expect(shell).toContain("data-bank-drawer-backdrop");
   });
 });

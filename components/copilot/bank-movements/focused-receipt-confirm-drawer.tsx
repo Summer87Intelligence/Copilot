@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { BankDrawerShell } from "@/components/copilot/bank-movements/bank-drawer-shell";
+import {
+  BankDrawerBody,
+  BankDrawerHeader,
+  BankDrawerShell,
+} from "@/components/copilot/bank-movements/bank-drawer-shell";
 import {
   ReconciliationEvidenceDrawer,
   confirmCanonicalEvidence,
@@ -108,6 +112,8 @@ export function FocusedReceiptConfirmDrawer({
   }, [movementId]);
 
   useEffect(() => {
+    // Fetch-on-open: el estado se sincroniza desde una fuente externa (API).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
 
@@ -158,13 +164,13 @@ export function FocusedReceiptConfirmDrawer({
 
   return (
     <BankDrawerShell onBackdropClick={onClose} panelClassName="w-full max-w-lg" aria-label="Confirmar movimiento">
-      <div className="flex items-center justify-between border-b border-[var(--copilot-border)] px-4 py-3">
+      <BankDrawerHeader className="flex items-center justify-between border-b border-[var(--copilot-border)] px-4 py-3">
         <h3 className="text-sm font-semibold text-[var(--copilot-text)]">Confirmar con recibo</h3>
         <button type="button" onClick={onClose} className={copilotButtonClassName({ variant: "ghost", size: "sm" })}>
           Cerrar
         </button>
-      </div>
-      <div className="space-y-3 p-4">
+      </BankDrawerHeader>
+      <BankDrawerBody className="space-y-3 p-4">
         {clientLabel ? <p className={copilotCaptionClass}>Cliente: {clientLabel}</p> : null}
 
         {/* Nunca afirmar falta/no hay recibo mientras carga. */}
@@ -212,7 +218,7 @@ export function FocusedReceiptConfirmDrawer({
             )}
           </>
         ) : null}
-      </div>
+      </BankDrawerBody>
     </BankDrawerShell>
   );
 }

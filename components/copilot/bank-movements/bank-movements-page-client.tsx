@@ -157,21 +157,26 @@ export function BankMovementsPageClient() {
   // ?tab=conciliacion | ?tab=ingresos normalizan todas a la pestaña
   // Conciliación actual; ?movementId abre directo el panel de asociación del
   // movimiento exacto (sin depender de en qué pestaña haya quedado la app).
+  //
+  // FASE BANK-ASSOCIATION-DRAWER-SCROLL-ANCHOR-FIX-002 — el tab se aplica una
+  // sola vez por montaje, pero `movementId` debe reaccionar a cambios de URL
+  // (soft navigation del App Router en el mismo pathname).
   useEffect(() => {
-    if (deepLinkApplied.current) return;
     const requestedTab = searchParams.get("tab");
     const direction = searchParams.get("direction");
     const movementIdParam = searchParams.get("movementId");
-    if (
-      direction === "inflow" ||
-      requestedTab === "ingresos" ||
-      requestedTab === "conciliacion" ||
-      requestedTab === "reconciliation"
-    ) {
-      setTab("conciliacion");
+    if (!deepLinkApplied.current) {
+      if (
+        direction === "inflow" ||
+        requestedTab === "ingresos" ||
+        requestedTab === "conciliacion" ||
+        requestedTab === "reconciliation"
+      ) {
+        setTab("conciliacion");
+      }
+      deepLinkApplied.current = true;
     }
     if (movementIdParam) openSimpleAssociation(movementIdParam);
-    deepLinkApplied.current = true;
   }, [searchParams, openSimpleAssociation]);
   const [tesoreriaOpen, setTesoreriaOpen] = useState(false);
   const [movements, setMovements] = useState<BankMovement[]>([]);

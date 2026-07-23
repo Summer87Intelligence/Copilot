@@ -1,5 +1,13 @@
 # Project Context
 
+## BANK — Scroll lock real detrás del drawer de asociación — 2026-07-22
+
+**FASE BANK-ASSOCIATION-DRAWER-SCROLL-ANCHOR-FIX-002:** el scroll owner real no era `body` sino `[data-copilot-module-scroll]` (`overflow-y-auto` del module shell). Hook `useLockApplicationScroll` bloquea html/body/owner, conserva `scrollTop`, intercepta wheel/touchmove fuera del panel, restaura al cerrar (refcount). `BankDrawerShell` lo invoca; panel `overflow-hidden` + header/body/footer. E2E Playwright real: 8/8 (4 viewports × Movimientos/Conciliación). También: Suspense + deep-link `movementId` soft-nav; `allowedDevOrigins` para e2e.
+
+- **Side-fix separado (commit propio):** ruta `clients/[companyId]/payer-memory` → `[id]` — conflicto de slugs Next 16 que tumba `next dev`/Playwright webServer. URL pública sin cambio; caller `client-payer-memory-section` intacto. Contrato en `clients-payer-memory-route-contract.test.ts`.
+- **Gates:** tsc 0, eslint limpio, vitest lib/bank verde, Playwright 8/8, build OK.
+- **Veredicto:** `READY_FOR_BANK_ASSOCIATION_DRAWER_SCROLL_ANCHOR` — fondo inmóvil verificado por E2E; header/footer fijos; solo scrollea el body del drawer.
+
 ## BANK — Panel de asociación endurecido como modal real — 2026-07-22
 
 **FASE BANK-SIMPLE-ASSOCIATION-PANEL-LAYOUT-FIX-001:** commit `c7c08f5` sobre `53cedde`, pusheado y desplegado (`dpl_EZYg78Ym6mQX5oZrCpHHDsniypdJ` READY, alias `copilot-pro.vercel.app`).

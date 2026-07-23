@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { BankDrawerShell } from "@/components/copilot/bank-movements/bank-drawer-shell";
+import {
+  BankDrawerBody,
+  BankDrawerHeader,
+  BankDrawerShell,
+} from "@/components/copilot/bank-movements/bank-drawer-shell";
 import { copilotButtonClassName } from "@/components/copilot/ui/copilot-button";
 import {
   copilotCaptionClass,
@@ -460,46 +464,46 @@ function UnifiedCaseDrawer({
     <BankDrawerShell
       onBackdropClick={onClose}
       aria-label="Detalle de conciliación"
-      panelClassName="w-full max-w-[820px] overflow-x-hidden"
+      panelClassName="w-full max-w-[820px]"
     >
-      <div className="p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className={copilotCaptionClass}>Banco → Conciliación</p>
-            <h3 className="truncate text-base font-semibold text-[var(--copilot-text)]">
-              {detail?.suggestedClientName ?? detail?.payerDisplayName ?? "Detalle de conciliación"}
-            </h3>
-            {detail ? (
-              <div className={`${copilotCaptionClass} mt-1 space-y-0.5`}>
-                <p>
-                  {detail.movementCount} movimiento{detail.movementCount === 1 ? "" : "s"} reales
-                  {detail.duplicateExcludedCount > 0
-                    ? ` · ${detail.duplicateExcludedCount} duplicado${detail.duplicateExcludedCount === 1 ? "" : "s"} excluido${detail.duplicateExcludedCount === 1 ? "" : "s"}`
-                    : ""}
-                </p>
-                <p>
-                  {detail.receiptsFoundCount} listos para confirmar · {detail.missingReceiptCount} pendientes de recibo
-                </p>
-                <p className={STATUS_TONE[detail.status]}>
-                  {unifiedCaseStatusLabel(detail.status, {
-                    ready: detail.receiptsFoundCount,
-                    missing: detail.missingReceiptCount,
-                  })}
-                </p>
-              </div>
-            ) : null}
-          </div>
-          <button type="button" onClick={onClose} className={copilotButtonClassName({ variant: "ghost", size: "sm" })}>
-            Cerrar
-          </button>
+      <BankDrawerHeader className="flex shrink-0 items-start justify-between gap-3 border-b border-[var(--copilot-border)] px-5 py-4">
+        <div className="min-w-0">
+          <p className={copilotCaptionClass}>Banco → Conciliación</p>
+          <h3 className="truncate text-base font-semibold text-[var(--copilot-text)]">
+            {detail?.suggestedClientName ?? detail?.payerDisplayName ?? "Detalle de conciliación"}
+          </h3>
+          {detail ? (
+            <div className={`${copilotCaptionClass} mt-1 space-y-0.5`}>
+              <p>
+                {detail.movementCount} movimiento{detail.movementCount === 1 ? "" : "s"} reales
+                {detail.duplicateExcludedCount > 0
+                  ? ` · ${detail.duplicateExcludedCount} duplicado${detail.duplicateExcludedCount === 1 ? "" : "s"} excluido${detail.duplicateExcludedCount === 1 ? "" : "s"}`
+                  : ""}
+              </p>
+              <p>
+                {detail.receiptsFoundCount} listos para confirmar · {detail.missingReceiptCount} pendientes de recibo
+              </p>
+              <p className={STATUS_TONE[detail.status]}>
+                {unifiedCaseStatusLabel(detail.status, {
+                  ready: detail.receiptsFoundCount,
+                  missing: detail.missingReceiptCount,
+                })}
+              </p>
+            </div>
+          ) : null}
         </div>
+        <button type="button" onClick={onClose} className={copilotButtonClassName({ variant: "ghost", size: "sm" })}>
+          Cerrar
+        </button>
+      </BankDrawerHeader>
 
-        {loading ? <p className={`${copilotCaptionClass} mt-4`}>Cargando movimientos…</p> : null}
-        {error ? <p className="mt-4 text-sm text-[var(--copilot-danger-text-strong)]">{error}</p> : null}
+      <BankDrawerBody className="p-5">
+        {loading ? <p className={copilotCaptionClass}>Cargando movimientos…</p> : null}
+        {error ? <p className="text-sm text-[var(--copilot-danger-text-strong)]">{error}</p> : null}
 
         {detail ? (
           <>
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2">
               {detail.batchEligibleMovementIds.length >= 1 && clientAlreadyIdentified ? (
                 <button
                   type="button"
@@ -765,7 +769,7 @@ function UnifiedCaseDrawer({
             ) : null}
           </>
         ) : null}
-      </div>
+      </BankDrawerBody>
     </BankDrawerShell>
   );
 }
