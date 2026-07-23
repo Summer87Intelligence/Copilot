@@ -1,5 +1,16 @@
 # Project Context
 
+## CLIENT 360 — Claridad identificación bancaria + correcciones — 2026-07-23
+
+**FASE CLIENT-BANKING-IDENTIFICATION-CLARITY-AND-HISTORY-CLEANUP-001** (local, **sin push**; ahead 1):
+
+- Resumen bancario solo asociaciones activas (no revocadas/duplicados).
+- Fechas separadas: `movement_date` principal; `associated_at` secundario.
+- Cómo aparece en Santander: nombres observados + descripción frecuente (no dump normalizado).
+- Historial activo vs Correcciones anteriores (colapsadas; agrupa reset QA).
+- Forma habitual de pago = patrón de activas; Ver en Banco → `tab=movimientos&view=consult` sin panel.
+- Commit: `50a9ba0`. E2E clarity 2/2. Gates verdes.
+
 ## BANK — Cierre pre-push idempotente + responsabilidades claras — 2026-07-22
 
 **FASE BANK-IDEMPOTENT-IMPORT-AND-CLEAR-RESPONSIBILITIES-001** (cierre):
