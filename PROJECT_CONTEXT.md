@@ -1,5 +1,18 @@
 # Project Context
 
+## BANK — 2026 cleanup + cashflow KPI — cierre pre-push 2026-07-23
+
+**FASE BANK-2026-CLEANUP-PAGINATION-HISTORY-AND-CASHFLOW-KPI-001** (local commits; apply audit done; **push pending this cierre**):
+
+- Piso operativo UI = `MIN_BANK_OPERATIONAL_DATE` / `MIN_FINANCIAL_DATE` = **2026-01-01**; intelligence shadow cutoff sigue **2026-07-01**.
+- KPI Entradas/Salidas con montos UYU+USD; sin “Neto” ambiguo; diferencia del período opcional.
+- Paginación numérica (`TablePagination` + `keyed-pagination` reset declarativo).
+- Historial: solo Identificaciones por cliente + Importaciones (sin Conciliados por cliente).
+- Import: “Importar solo nuevos”; sin batch vacío si 0 nuevos; exclusiones pre-2026 al insertar.
+- **Prod snapshot (MCP + script paginado):** physical **1004**, operational **879**, before_2026 **0**, duplicates marked **125**, multi-active A/B/C/D **0**. Apply `--apply` = **0** filas (ya limpio). Reportes en `.agents/` (no versionar).
+- Commits: `855838f`…`15fbabf` (9 ahead) = filtros/KPI previos (B) + cleanup 2026 (A). Sin commits C.
+- Script: `scripts/bank-2026-cleanup-apply.ts` (dry-run / `--apply` reversible).
+
 ## BANK — Cleanup UI historial/importación — 2026-07-23
 
 **FASE BANK-2026-CLEANUP-UI-001** (local, **sin push**):
