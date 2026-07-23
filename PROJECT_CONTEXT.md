@@ -1,5 +1,28 @@
 # Project Context
 
+## BANK — Cierre pre-push idempotente + responsabilidades claras — 2026-07-22
+
+**FASE BANK-IDEMPOTENT-IMPORT-AND-CLEAR-RESPONSIBILITIES-001** (cierre):
+
+- E2E determinista con fixtures mock (`e2e/fixtures/bank-tab-responsibilities.ts`): **6/6 passed, 0 skipped**.
+- Mobile: card `line-clamp-4` + CTA **Ver movimiento** + aviso “Vista resumida”; drawer sin clamp.
+- Historial/`descriptionMasked`: descripción canónica + enmascarado selectivo de cuentas ≥8 dígitos (`getBankMovementAuditDisplayDescription`).
+- Dry-run `.agents/qa-bank-idempotent-dedupe-dry-run.json` **fuera** del push.
+- Veredicto objetivo: `READY_FOR_BANK_IDEMPOTENT_IMPORT_AND_CLEAR_RECONCILIATION_PRODUCTION`.
+
+## BANK — Separación Movimientos/Conciliación + detalle completo + tabs detrás del drawer — 2026-07-22
+
+**FASE BANK-SIMPLE-RESPONSIBILITY-AND-DRAWER-DETAIL-001** (local, **sin push**; ahead 7):
+
+- **Movimientos = consulta:** sin Asignar/Confirmar/Cambiar/Revocar/Pendiente/No comercial; CTA `Ir a Conciliación` + deep-link `movementId` fuerza tab Conciliación.
+- **Conciliación = único lugar de asignación:** `SimpleMovementAssociationPanel` solo monta si `tab === "conciliacion"`.
+- **Descripción canónica:** `getBankMovementDisplayDescription` (raw → description → normalized fallback); clases sin truncate en panel.
+- **Drawer stacking:** tabs `z-[70]`; drawer/backdrop `z-[80]`; offset solo topbar (`pt-[3.25rem]`), no hueco de tabs.
+- **Commits nuevos:** `555ecb8` refactor asignación; `5b488d6` detalle canónico; `6f487b9` tabs detrás drawer; `74fc41c` harden E2E.
+- **Gates:** tsc/eslint/vitest lib/bank/build OK; Playwright tab-responsibilities 5 passed / 1 skipped.
+- **Veredicto:** `READY_FOR_BANK_CLEAR_TAB_RESPONSIBILITIES_AND_FULL_MOVEMENT_DETAIL`.
+- **No tocar:** commits previos `eb5a427` / `c2229e0` / `2de7b85`; no re-correr dedupe productivo.
+
 ## BANK — Import idempotente + identificación bancaria Cliente 360 — 2026-07-22
 
 **FASE BANK-IDEMPOTENT-IMPORT-CLIENT-BANKING-HISTORY-001** (local, **sin push**):
