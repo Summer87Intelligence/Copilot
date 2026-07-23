@@ -6,23 +6,22 @@ import { createPortal } from "react-dom";
 import { useLockApplicationScroll } from "@/hooks/use-lock-application-scroll";
 
 /**
- * FASE BANK-END-TO-END-RECONCILIATION-FLOW-UX-CORRECTION-001 —
- * Overlay de drawer que deja visible el chrome de Banco (tabs sticky z-[70]).
+ * Overlay de drawer bancario.
  *
- * FASE BANK-RECONCILIATION-FULL-SYSTEM-AUDIT-AND-SIMPLIFICATION-001 — offset
- * superior despeja franja de fecha/salud + tabs sticky.
+ * FASE BANK-SIMPLE-RESPONSIBILITY-AND-DRAWER-DETAIL-001 — el drawer y el
+ * backdrop deben quedar POR ENCIMA de las tabs sticky de Banco (z-[70]).
+ * Antes el shell usaba un z inferior y un padding superior grande (~6.5 rem)
+ * para “despejar” las tabs — eso hacía que las tabs taparan el drawer al tope.
  *
- * FASE BANK-SIMPLE-ASSOCIATION-PANEL-LAYOUT-FIX-001 — Portal a document.body,
- * Escape, focus trap, restore focus.
- *
- * FASE BANK-ASSOCIATION-DRAWER-SCROLL-ANCHOR-FIX-002 — `useLockApplicationScroll`
- * bloquea html/body/module-scroll owner real; panel `overflow-hidden` con
- * body interno scrolleable (header/footer fijos vía composición del hijo).
+ * Contrato:
+ * - backdrop + drawer: z-[80] (> tabs z-[70])
+ * - offset superior: solo topbar global (~3.5rem), no hueco de tabs
+ * - tabs quedan detrás del backdrop y no reciben clicks
  */
 export function BankDrawerShell({
   children,
   onBackdropClick,
-  zClassName = "z-[60]",
+  zClassName = "z-[80]",
   panelClassName = "w-full max-w-[820px]",
   "aria-label": ariaLabel,
 }: {
@@ -83,8 +82,9 @@ export function BankDrawerShell({
 
   const content = (
     <div
-      className={`fixed inset-x-0 bottom-0 top-0 ${zClassName} flex justify-end bg-black/30 pt-[6.5rem] sm:pt-[7rem]`}
+      className={`fixed inset-x-0 bottom-0 top-0 ${zClassName} flex justify-end bg-black/30 pt-[3.25rem] sm:pt-[3.5rem]`}
       role="presentation"
+      data-bank-drawer
       data-bank-drawer-backdrop-root
       style={{ height: "100dvh" }}
     >
@@ -102,7 +102,7 @@ export function BankDrawerShell({
         aria-modal="true"
         aria-label={ariaLabel}
         data-bank-drawer-panel
-        className={`relative flex h-full max-h-[calc(100dvh-6.5rem)] sm:max-h-[calc(100dvh-7rem)] ${panelClassName} flex-col overflow-hidden border-l border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] shadow-xl focus:outline-none`}
+        className={`relative flex h-full max-h-[calc(100dvh-3.25rem)] sm:max-h-[calc(100dvh-3.5rem)] ${panelClassName} flex-col overflow-hidden border-l border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] shadow-xl focus:outline-none`}
       >
         {children}
       </div>
@@ -122,7 +122,7 @@ export function BankDrawerHeader({ children, className = "" }: { children: React
   );
 }
 
-/** Cuerpo scrolleable del drawer (único overflow-y interno). */
+/** Cuerpo scrolleable del drawer. */
 export function BankDrawerBody({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
     <div data-bank-drawer-body className={`min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain ${className}`}>
@@ -131,7 +131,7 @@ export function BankDrawerBody({ children, className = "" }: { children: ReactNo
   );
 }
 
-/** Footer fijo del drawer (acciones siempre visibles). */
+/** Footer fijo del drawer. */
 export function BankDrawerFooter({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
     <div data-bank-drawer-footer className={`shrink-0 ${className}`}>

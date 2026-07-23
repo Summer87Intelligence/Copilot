@@ -20,36 +20,40 @@ const caseEngine = readFileSync(
 );
 
 describe("Banco tabs y chrome", () => {
-  it("tabs Banco sticky con z alto para permanecer visibles sobre drawers", () => {
+  it("tabs Banco sticky z-[70]; el drawer queda por encima (z-[80])", () => {
     expect(pageClient).toContain('data-bank-tabs');
     expect(pageClient).toContain("sticky top-0 z-[70]");
+    expect(shell).toContain('zClassName = "z-[80]"');
     const tabsBlock = pageClient.match(/const TABS[\s\S]*?\];/)![0];
     const ids = [...tabsBlock.matchAll(/id:\s*"([a-z]+)"/g)].map((m) => m[1]);
     expect(ids).toEqual(["importar", "movimientos", "conciliacion", "historial"]);
   });
 
-  it("drawers usan BankDrawerShell / offset bajo chrome, no full-screen opaco que oculte tabs", () => {
-    expect(shell).toContain("pt-[6.5rem]");
+  it("drawers usan BankDrawerShell / offset solo topbar, no full-screen opaco", () => {
+    expect(shell).toContain("pt-[3.25rem]");
+    expect(shell).toContain("sm:pt-[3.5rem]");
+    expect(shell).not.toContain("pt-[6.5rem]");
     expect(unified).toContain("BankDrawerShell");
     expect(pageClient).not.toMatch(/fixed inset-0 z-40 overflow-y-auto bg-\[var\(--copilot-card-bg\)\]/);
     expect(pageClient).not.toContain("BankIncomeWorkspace");
   });
 
-  it("el offset del drawer despeja tanto la franja de fecha como la barra de tabs sticky (z-[70]), para que 'Cerrar' nunca quede tapado tras hacer scroll", () => {
-    // Franja de fecha (~3.25rem=52px) + barra de tabs sticky (~2.9rem=46px)
-    // medidos en vivo: el offset debe ser mayor a esa suma (~98px / 6.125rem).
-    expect(shell).toMatch(/pt-\[6\.5rem\]/);
+  it("Cerrar visible al abrir: drawer por encima de tabs, sin hueco excesivo de tabs", () => {
+    // FASE BANK-SIMPLE-RESPONSIBILITY-AND-DRAWER-DETAIL-001 — el backdrop
+    // cubre las tabs; no hace falta un padding de tabs (~6.5 rem) para despejarlas.
+    expect(shell).toContain("data-bank-drawer-backdrop");
+    expect(shell).toMatch(/pt-\[3\.25rem\]/);
   });
 });
 
 describe("Foco exacto de movimiento", () => {
-  // FASE BANK-SIMPLE-FLOW-COMPLETION-001 — ya no hace falta preservar scroll
-  // ni "volver" a Movimientos: el panel simple se abre como overlay sobre
-  // cualquier pestaña (Movimientos o Conciliación), sin navegar a otro lado.
-  it("Identificar desde Movimientos/Conciliación abre el panel simple con el movementId exacto, sin cambiar de pestaña", () => {
+  // FASE BANK-SIMPLE-RESPONSIBILITY-AND-DRAWER-DETAIL-001 — el panel solo
+  // monta en Conciliación; Movimientos navega con goToReconciliation.
+  it("Asignación abre el panel solo en Conciliación con el movementId exacto", () => {
     expect(pageClient).toContain("SimpleMovementAssociationPanel");
     expect(pageClient).toContain("openSimpleAssociation");
-    expect(pageClient).toMatch(/simpleAssociationMovementId \? \(/);
+    expect(pageClient).toContain('tab === "conciliacion" && simpleAssociationMovementId');
+    expect(pageClient).toContain("goToReconciliation");
   });
 
   it("standalone: FocusedReceiptConfirmDrawer (código conservado, ya no montado por defecto) sigue apuntando a 1 movementId", () => {
@@ -99,9 +103,10 @@ describe("Un solo panel a la vez (FASE BANK-SIMPLE-FLOW-COMPLETION-001: un únic
     expect(pageClient).toMatch(/setSimpleAssociationMovementId\(movementId\);\s*\}, \[\]\);/);
   });
 
-  it("Movimientos y Conciliación usan la misma función openSimpleAssociation para abrir el panel", () => {
-    const occurrences = [...pageClient.matchAll(/onOpenAssociation=\{openSimpleAssociation\}|onClick=\{\(\) => openSimpleAssociation\(/g)];
-    expect(occurrences.length).toBeGreaterThan(1);
+  it("Conciliación abre el panel; Movimientos redirige a Conciliación con el mismo openSimpleAssociation", () => {
+    expect(pageClient).toContain("onOpenAssociation={openSimpleAssociation}");
+    expect(pageClient).toContain("goToReconciliation");
+    expect(pageClient).toMatch(/setTab\("conciliacion"\);\s*openSimpleAssociation\(movementId\)/);
   });
 });
 

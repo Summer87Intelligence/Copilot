@@ -61,8 +61,16 @@ describe("BankDrawerShell — modal real: scroll lock, Escape, focus trap, porta
     expect(shell).toContain("createPortal(content, document.body)");
   });
 
-  it("mantiene el offset ya verificado en vivo (franja de fecha + tabs sticky)", () => {
-    expect(shell).toContain("pt-[6.5rem]");
+  it("drawer queda por encima de las tabs sticky (z-[80] > z-[70])", () => {
+    expect(shell).toContain('zClassName = "z-[80]"');
+    expect(shell).toContain("data-bank-drawer");
+    expect(shell).not.toContain('zClassName = "z-[60]"');
+  });
+
+  it("offset superior solo despeja topbar global, no un hueco de tabs", () => {
+    expect(shell).toContain("pt-[3.25rem]");
+    expect(shell).toContain("sm:pt-[3.5rem]");
+    expect(shell).not.toContain("pt-[6.5rem]");
   });
 
   it("el backdrop sigue cubriendo todo el viewport (el click-through de mouse ya estaba bloqueado)", () => {
