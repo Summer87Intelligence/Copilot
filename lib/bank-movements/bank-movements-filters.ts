@@ -90,7 +90,8 @@ export const DEFAULT_BANK_MOVEMENTS_LIST_FILTERS: BankMovementsListFilters = {
   amount: "",
   amountMin: "",
   amountMax: "",
-  duplicates: "all",
+  /** Operativos por defecto: ocultar duplicados de importación. */
+  duplicates: "hide",
   source: "all",
   visibility: "visible",
 };
@@ -99,9 +100,9 @@ export const BANK_MOVEMENT_DUPLICATES_OPTIONS: ReadonlyArray<{
   value: BankMovementDuplicatesFilter;
   label: string;
 }> = [
+  { value: "hide", label: "Operativos" },
+  { value: "only", label: "Duplicados" },
   { value: "all", label: "Todos" },
-  { value: "only", label: "Solo duplicados" },
-  { value: "hide", label: "Ocultar duplicados" },
 ];
 
 export const BANK_MOVEMENT_SOURCE_OPTIONS: ReadonlyArray<{

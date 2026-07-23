@@ -7,9 +7,11 @@ import { Pencil, Plus, Sparkles, Trash2, EyeOff, Eye, X } from "lucide-react";
 import { BankMovementsFiltersBar } from "@/components/copilot/bank-movements/bank-movements-filters-bar";
 import { BankMovementsImportPanel } from "@/components/copilot/bank-movements/bank-movements-import-panel";
 import { BankMovementsReconciliationPanel } from "@/components/copilot/bank-movements/bank-movements-reconciliation-panel";
+import { BankClientNameLink } from "@/components/copilot/bank-movements/bank-client-name-link";
 import { SimpleMovementAssociationPanel } from "@/components/copilot/bank-movements/simple-movement-association-panel";
 import { SimpleReconciliationList } from "@/components/copilot/bank-movements/simple-reconciliation-list";
 import { BankHistoryPanel } from "@/components/copilot/bank-movements/bank-history-panel";
+import { buildBankReturnToQuery } from "@/lib/bank-movements/client-banking-navigation";
 
 import {
   CopilotResponsiveTable,
@@ -193,6 +195,8 @@ export function BankMovementsPageClient() {
   const [movementFilters, setMovementFilters] = useState<BankMovementsListFilters>(
     DEFAULT_BANK_MOVEMENTS_LIST_FILTERS
   );
+  /** Filtro temporal tras “Ver movimientos nuevos” (import_batch_id). */
+  const [newImportBatchIds, setNewImportBatchIds] = useState<string[] | null>(null);
 
   // `inflow_readonly` nunca debe poder filtrar por egresos: el filtro de
   // dirección se oculta en la UI (ver `hideDirectionFilter` abajo), pero
@@ -269,10 +273,12 @@ export function BankMovementsPageClient() {
     { label: "Revisados", value: counts.reviewed },
   ];
 
-  const filteredMovements = useMemo(
-    () => filterBankMovements(movements, movementFilters, new Date(), movementDuplicates),
-    [movements, movementFilters, movementDuplicates]
-  );
+  const filteredMovements = useMemo(() => {
+    const base = filterBankMovements(movements, movementFilters, new Date(), movementDuplicates);
+    if (!newImportBatchIds || newImportBatchIds.length === 0) return base;
+    const batch = new Set(newImportBatchIds);
+    return base.filter((m) => m.import_id != null && batch.has(m.import_id));
+  }, [movements, movementFilters, movementDuplicates, newImportBatchIds]);
 
   const [movPage, setMovPage] = useState(1);
   const [movSort, setMovSort] = useState<SortState>({ key: null, direction: "desc" });
@@ -637,6 +643,22 @@ export function BankMovementsPageClient() {
       render: (m) => m.account_label ?? m.bank_name,
     },
     {
+      key: "client",
+      header: "Cliente",
+      cellClassName: "align-top",
+      render: (m) => {
+        const client = movementClients[m.id];
+        if (!client?.clientCompanyId || !client.clientName) return "—";
+        return (
+          <BankClientNameLink
+            clientCompanyId={client.clientCompanyId}
+            clientName={client.clientName}
+            returnTo={buildBankReturnToQuery({ tab: "movimientos", movementId: m.id })}
+          />
+        );
+      },
+    },
+    {
       key: "in",
       header: "Entrada",
       sortKey: "amount",
@@ -695,6 +717,16 @@ export function BankMovementsPageClient() {
       </div>
       <p className="text-sm text-[var(--copilot-ink)]">{m.description}</p>
       {m.bank_reference ? <p className={copilotCaptionClass}>Ref: {m.bank_reference}</p> : null}
+      {movementClients[m.id]?.clientCompanyId && movementClients[m.id]?.clientName ? (
+        <p className={copilotCaptionClass}>
+          Cliente:{" "}
+          <BankClientNameLink
+            clientCompanyId={movementClients[m.id]!.clientCompanyId}
+            clientName={movementClients[m.id]!.clientName!}
+            returnTo={buildBankReturnToQuery({ tab: "movimientos", movementId: m.id })}
+          />
+        </p>
+      ) : null}
       <p className={copilotCaptionClass}>{movementStatusLabel(m)}</p>
       <div className="pt-1">{renderMovementActions(m)}</div>
     </div>
@@ -763,7 +795,15 @@ export function BankMovementsPageClient() {
       {tab === "importar" ? (
         <BankMovementsImportPanel
           onImportComplete={load}
-          onGoToMovements={() => setTab("movimientos")}
+          onGoToMovements={() => {
+            setNewImportBatchIds(null);
+            setTab("movimientos");
+          }}
+          onViewNewMovements={(importIds) => {
+            setNewImportBatchIds(importIds);
+            setMovementFilters((prev) => ({ ...prev, duplicates: "hide" }));
+            setTab("movimientos");
+          }}
         />
       ) : null}
 

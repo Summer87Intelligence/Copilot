@@ -2,6 +2,9 @@
 
 import { useMemo, useState } from "react";
 
+import { BankClientNameLink } from "@/components/copilot/bank-movements/bank-client-name-link";
+import { buildBankReturnToQuery } from "@/lib/bank-movements/client-banking-navigation";
+
 import { copilotButtonClassName } from "@/components/copilot/ui/copilot-button";
 import {
   copilotCaptionClass,
@@ -138,7 +141,20 @@ export function SimpleReconciliationList({
         </button>
       );
     }
-    if (state === "duplicado" || state === "ingreso_no_comercial") {
+    if (state === "duplicado") {
+      const canonicalId = movementDuplicates[movement.id]?.canonicalMovementId;
+      return (
+        <button
+          type="button"
+          onClick={() => onOpenAssociation(canonicalId ?? movement.id)}
+          className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+          aria-label="Ver movimiento canónico (evidencia de duplicado)"
+        >
+          Ver evidencia
+        </button>
+      );
+    }
+    if (state === "ingreso_no_comercial") {
       const label = SIMPLE_MOVEMENT_STATE_ACTION_LABEL[state];
       if (!label) return null;
       return (
@@ -254,7 +270,20 @@ export function SimpleReconciliationList({
                     <td className="py-2 pr-3 whitespace-nowrap">
                       {movement.currency} {resolveImportedBankMovementAmount(movement).toLocaleString("es-UY")}
                     </td>
-                    <td className="py-2 pr-3">{client?.clientName ?? "—"}</td>
+                    <td className="py-2 pr-3">
+                      {client?.clientCompanyId && client.clientName ? (
+                        <BankClientNameLink
+                          clientCompanyId={client.clientCompanyId}
+                          clientName={client.clientName}
+                          returnTo={buildBankReturnToQuery({
+                            tab: "conciliacion",
+                            movementId: movement.id,
+                          })}
+                        />
+                      ) : (
+                        "—"
+                      )}
+                    </td>
                     <td className="py-2 pr-3">{SIMPLE_MOVEMENT_STATE_LABEL[state]}</td>
                     <td className="py-2 pr-3 text-right">{actionFor(state, movement)}</td>
                   </tr>
@@ -274,7 +303,21 @@ export function SimpleReconciliationList({
                 <p className="mt-1 truncate text-sm text-[var(--copilot-text)]" title={movement.description}>
                   {movement.description}
                 </p>
-                <p className={`${copilotCaptionClass} mt-1`}>Cliente: {client?.clientName ?? "—"}</p>
+                <p className={`${copilotCaptionClass} mt-1`}>
+                  Cliente:{" "}
+                  {client?.clientCompanyId && client.clientName ? (
+                    <BankClientNameLink
+                      clientCompanyId={client.clientCompanyId}
+                      clientName={client.clientName}
+                      returnTo={buildBankReturnToQuery({
+                        tab: "conciliacion",
+                        movementId: movement.id,
+                      })}
+                    />
+                  ) : (
+                    "—"
+                  )}
+                </p>
                 <p className={copilotCaptionClass}>{SIMPLE_MOVEMENT_STATE_LABEL[state]}</p>
                 <div className="mt-2">{actionFor(state, movement)}</div>
               </li>

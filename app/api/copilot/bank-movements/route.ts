@@ -132,9 +132,19 @@ export async function GET(request: NextRequest) {
   }
 
   // FASE BANK-GLOBAL-MOVEMENT-RECEIPT-INVOICE-INTEGRITY-AUDIT-AND-CORRECTION-001
-  // Duplicados de importación (misma operación real, distinto parser/archivo)
-  // — solo lectura, nunca marca nada en DB. Ver duplicate-import-audit.server.ts.
-  let duplicates: Record<string, { canonicalMovementId: string }> = {};
+  // + BANK-IDEMPOTENT-IMPORT: duplicados de importación (metadata o columnas).
+  const duplicates: Record<string, { canonicalMovementId: string }> = {};
+  for (const row of rows) {
+    const meta = (row.metadata ?? {}) as Record<string, unknown>;
+    const excluded =
+      row.excluded_from_operations === true || meta.duplicate_status === "duplicate_of_import";
+    const duplicateOf =
+      (typeof row.duplicate_of === "string" && row.duplicate_of) ||
+      (typeof meta.duplicate_of === "string" ? meta.duplicate_of : null);
+    if (excluded && duplicateOf) {
+      duplicates[row.id] = { canonicalMovementId: duplicateOf };
+    }
+  }
   if (rows.length > 0) {
     try {
       const dates = rows.map((r) => r.movement_date).sort();
@@ -146,16 +156,13 @@ export async function GET(request: NextRequest) {
       );
       for (const group of groups) {
         for (const duplicateId of group.duplicateMovementIds) {
-          duplicates[duplicateId] = { canonicalMovementId: group.canonicalMovementId };
+          if (!duplicates[duplicateId]) {
+            duplicates[duplicateId] = { canonicalMovementId: group.canonicalMovementId };
+          }
         }
       }
     } catch (err) {
-      // Nunca romper la carga de Movimientos por esto, pero nunca tragarse el
-      // error en silencio tampoco: sin este log, un fallo de auditDuplicate
-      // BankMovements (p. ej. una consulta .in() con demasiados ids) queda
-      // invisible en Vercel y el mapa de duplicados se ve vacío sin rastro.
       console.error("bank-movements duplicate audit failed", err);
-      duplicates = {};
     }
   }
 
