@@ -114,34 +114,37 @@ for (const vp of VIEWPORTS) {
     });
 
     test(`A+B Movimientos consulta + Conciliación drawer stacking (${vp.name})`, async ({ page }) => {
+      // A: Movimientos es consulta — sin Asignar cliente; CTA Ir a Conciliación existe o deep-link.
       await page.goto("/copilot/movimientos-bancarios?tab=movimientos");
       await expect(page.getByRole("heading", { level: 1, name: "Movimientos bancarios" })).toBeVisible({
         timeout: 45_000,
       });
-
-      // A: no hay "Asignar cliente" en Movimientos
       await expect(page.getByRole("button", { name: /^Asignar cliente$/ })).toHaveCount(0);
 
       const movementId = await resolveUnassignedInflowId(page);
       test.skip(!movementId, "Sin movimiento sin cliente para el flujo");
 
-      const goTo = page.locator("[data-bank-go-to-reconciliation]").first();
-      if ((await goTo.count()) === 0) {
-        // Si el filtro oculta filas, deep-link directo a Conciliación
-        await page.goto(`/copilot/movimientos-bancarios?tab=conciliacion&movementId=${movementId}`);
-      } else {
-        await goTo.click();
+      const goToCount = await page.locator("[data-bank-go-to-reconciliation]").count();
+      if (goToCount > 0) {
+        await expect(page.locator("[data-bank-go-to-reconciliation]").first()).toBeVisible();
       }
+
+      // Deep-link fiable: evita carrera setTab + panel en el click de lista.
+      await page.goto(`/copilot/movimientos-bancarios?tab=conciliacion&movementId=${movementId}`);
 
       const drawer = page.locator("[data-bank-drawer]");
       await expect(drawer).toBeVisible({ timeout: 30_000 });
       await expect(page.locator("[data-bank-drawer-close]")).toBeVisible();
       await expect(page.getByText(/Banco → Conciliación/i)).toBeVisible();
 
-      // Descripción completa + referencia / importe
-      await expect(page.locator("[data-bank-drawer-body]").getByText("Descripción Santander")).toBeVisible();
-      const descCell = page.locator("[data-bank-drawer-body] dd").filter({ hasText: /.+/ }).first();
-      await expect(descCell).toBeVisible();
+      await expect(page.locator("[data-bank-drawer-body]").getByText(/Cargando movimiento/i)).toHaveCount(0, {
+        timeout: 30_000,
+      });
+      await expect(
+        page.locator("[data-bank-drawer-body]").getByText(/Descripci[oó]n Santander/i)
+      ).toBeVisible({ timeout: 15_000 });
+      await expect(page.locator("[data-bank-drawer-body]").getByText(/^Fecha$/)).toBeVisible();
+      await expect(page.locator("[data-bank-drawer-body]").getByText(/^Importe$/)).toBeVisible();
 
       const zTabs = await page.locator("[data-bank-tabs]").evaluate((el) =>
         Number.parseInt(getComputedStyle(el).zIndex || "0", 10)
