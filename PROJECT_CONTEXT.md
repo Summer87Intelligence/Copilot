@@ -1,5 +1,16 @@
 # Project Context
 
+## BANK — Filtros/KPI/Historial usabilidad — 2026-07-23
+
+**FASE BANK-FILTERS-KPI-AND-HISTORY-USABILITY-001** (local, **sin push**):
+
+- Barra simple `BankSimpleFiltersBar`: Período · Buscar · Estado · Más filtros · Limpiar; chips; mobile `Filtros (N)`.
+- Período canónico (`bank-period.ts`): presets + mes + custom; `movement_date` inclusiva; default Este mes; URL `period`/`month`/`from`/`to` + filtros.
+- KPI canónicos (`getBankOperationalSummary`): pendientes / entradas / salidas / revisados del período; click → foco; sin contaminación por búsqueda textual.
+- Historial: búsqueda cliente/pagador + rango; E2E fixtures `e2e/bank-filters-kpi-history.spec.ts` **7/7**.
+- Gates: `tsc` OK · ESLint dirigido OK · Vitest `lib/bank` verde · Playwright 7/7 · `build` OK.
+- Commits locales sugeridos (sin push): filtros · KPI · historial.
+
 ## CLIENT 360 — Claridad identificación bancaria + correcciones — 2026-07-23
 
 **FASE CLIENT-BANKING-IDENTIFICATION-CLARITY-AND-HISTORY-CLEANUP-001** (local, **sin push**; ahead 1):

@@ -12,6 +12,7 @@ import { EmptyState as DsEmptyState } from "@/components/copilot/ui/empty-state"
 import { formatDate, money, type EvidenceItem } from "@/components/copilot/bank-movements/canonical-evidence-ui";
 import type { BankStatementImport } from "@/lib/bank-movements/bank-movements-types";
 import { BANK_MOVEMENT_DESCRIPTION_CLASS } from "@/lib/bank-movements/bank-movement-display";
+import { movementDateInInclusiveRange } from "@/lib/bank-movements/bank-period";
 
 const CLIENTS_PER_PAGE = 15;
 
@@ -25,11 +26,32 @@ const CLIENTS_PER_PAGE = 15;
  * con enmascarado selectivo solo de cuentas/tokens (≥8 dígitos). El concepto y
  * el pagador permanecen legibles e iguales a Movimientos/Conciliación.
  */
-export function BankHistoryPanel({ imports, loading }: { imports: BankStatementImport[]; loading: boolean }) {
+export function BankHistoryPanel({
+  imports,
+  loading,
+  searchQuery = "",
+  dateFrom,
+  dateTo,
+  periodLabel,
+}: {
+  imports: BankStatementImport[];
+  loading: boolean;
+  searchQuery?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  periodLabel?: string;
+}) {
   return (
-    <div className="space-y-4">
-      <GroupedIdentifications />
-      <GroupedDecisions />
+    <div className="space-y-4" data-testid="bank-history-panel">
+      {periodLabel ? (
+        <p className={copilotCaptionClass}>
+          Mostrando historial para {periodLabel}
+          {searchQuery.trim() ? ` · búsqueda: ${searchQuery.trim()}` : ""}
+        </p>
+      ) : null}
+
+      <GroupedIdentifications searchQuery={searchQuery} dateFrom={dateFrom} dateTo={dateTo} />
+      <GroupedDecisions searchQuery={searchQuery} dateFrom={dateFrom} dateTo={dateTo} />
 
       <section className={copilotCardStandardClass}>
         <h2 className={copilotSectionTitleClass}>Importaciones realizadas</h2>
@@ -86,6 +108,75 @@ type ClientIdentificationGroup = {
   statusSummary: string;
 };
 
+function normalizeHistorySearch(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "");
+}
+
+function movementDateMatchesHistoryRange(
+  movementDate: string | null,
+  dateFrom?: string,
+  dateTo?: string
+): boolean {
+  if (!dateFrom || !dateTo) return true;
+  if (!movementDate) return false;
+  return movementDateInInclusiveRange(movementDate, dateFrom, dateTo);
+}
+
+function historySearchMatches(haystackParts: Array<string | null | undefined>, searchQuery: string): boolean {
+  const query = normalizeHistorySearch(searchQuery);
+  if (!query) return true;
+  const haystack = normalizeHistorySearch(haystackParts.filter(Boolean).join(" "));
+  return haystack.includes(query);
+}
+
+function filterIdentificationEvents(
+  events: IdentificationEvent[],
+  searchQuery: string,
+  dateFrom?: string,
+  dateTo?: string
+): IdentificationEvent[] {
+  return events.filter((event) => {
+    if (!movementDateMatchesHistoryRange(event.date, dateFrom, dateTo)) return false;
+    return historySearchMatches(
+      [
+        event.clientName,
+        event.actor,
+        event.eventLabel,
+        event.referenceMasked,
+        event.reason,
+        event.amountLabel,
+      ],
+      searchQuery
+    );
+  });
+}
+
+function filterDecisionItems(
+  items: EvidenceItem[],
+  searchQuery: string,
+  dateFrom?: string,
+  dateTo?: string
+): EvidenceItem[] {
+  return items.filter((item) => {
+    if (!movementDateMatchesHistoryRange(item.movement.date, dateFrom, dateTo)) return false;
+    return historySearchMatches(
+      [
+        item.client?.name,
+        item.movement.descriptionMasked,
+        item.payer?.normalizedName,
+        item.payer?.maskedAccount,
+        item.receipt?.id,
+        item.reasons.join(" "),
+      ],
+      searchQuery
+    );
+  });
+}
+
 function groupIdentificationsByClient(events: IdentificationEvent[]): ClientIdentificationGroup[] {
   const byClient = new Map<string, IdentificationEvent[]>();
   for (const ev of events) {
@@ -129,7 +220,15 @@ function ClientAvatar({ name }: { name: string }) {
  * Eventos de identificación de cliente — SEPARADOS visualmente de las
  * conciliaciones financieras. Nunca dice "conciliado" para una mera identificación.
  */
-function GroupedIdentifications() {
+function GroupedIdentifications({
+  searchQuery,
+  dateFrom,
+  dateTo,
+}: {
+  searchQuery: string;
+  dateFrom?: string;
+  dateTo?: string;
+}) {
   const [events, setEvents] = useState<IdentificationEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -154,11 +253,19 @@ function GroupedIdentifications() {
     };
   }, []);
 
-  const groups = useMemo(() => groupIdentificationsByClient(events), [events]);
+  const filteredEvents = useMemo(
+    () => filterIdentificationEvents(events, searchQuery, dateFrom, dateTo),
+    [dateFrom, dateTo, events, searchQuery]
+  );
+  const groups = useMemo(() => groupIdentificationsByClient(filteredEvents), [filteredEvents]);
   const totalPages = Math.max(1, Math.ceil(groups.length / CLIENTS_PER_PAGE));
-  const pageGroups = groups.slice((page - 1) * CLIENTS_PER_PAGE, page * CLIENTS_PER_PAGE);
+  const currentPage = Math.min(page, totalPages);
+  const pageGroups = groups.slice(
+    (currentPage - 1) * CLIENTS_PER_PAGE,
+    currentPage * CLIENTS_PER_PAGE
+  );
 
-  if (!loading && events.length === 0) return null;
+  if (!loading && events.length === 0 && !searchQuery.trim() && !dateFrom && !dateTo) return null;
 
   return (
     <section className={copilotCardStandardClass}>
@@ -169,6 +276,18 @@ function GroupedIdentifications() {
 
       {loading ? (
         <p className={`${copilotCaptionClass} mt-3`}>Cargando identificaciones…</p>
+      ) : groups.length === 0 ? (
+        <div className="mt-3">
+          <DsEmptyState
+            variant="compact"
+            title={
+              searchQuery.trim()
+                ? "No hay resultados para esta búsqueda"
+                : "No hay identificaciones en este período"
+            }
+            description="Probá con otro período o quitá la búsqueda para ver más movimientos."
+          />
+        </div>
       ) : (
         <ul className="mt-3 space-y-2">
           {pageGroups.map((group) => {
@@ -231,11 +350,11 @@ function GroupedIdentifications() {
             Anterior
           </button>
           <span className={copilotCaptionClass}>
-            Página {page} / {totalPages}
+            Página {currentPage} / {totalPages}
           </span>
           <button
             type="button"
-            disabled={page >= totalPages}
+            disabled={currentPage >= totalPages}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             className="rounded-lg border border-[var(--copilot-border)] px-3 py-1 text-xs font-semibold text-[var(--copilot-text)] disabled:opacity-50"
           >
@@ -295,7 +414,15 @@ function groupDecisionsByClient(items: EvidenceItem[]): DecisionGroup[] {
   return groups.sort((a, b) => String(b.lastDate ?? "").localeCompare(String(a.lastDate ?? "")));
 }
 
-function GroupedDecisions() {
+function GroupedDecisions({
+  searchQuery,
+  dateFrom,
+  dateTo,
+}: {
+  searchQuery: string;
+  dateFrom?: string;
+  dateTo?: string;
+}) {
   const [items, setItems] = useState<EvidenceItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -319,9 +446,17 @@ function GroupedDecisions() {
     };
   }, []);
 
-  const groups = useMemo(() => groupDecisionsByClient(items), [items]);
+  const filteredItems = useMemo(
+    () => filterDecisionItems(items, searchQuery, dateFrom, dateTo),
+    [dateFrom, dateTo, items, searchQuery]
+  );
+  const groups = useMemo(() => groupDecisionsByClient(filteredItems), [filteredItems]);
   const totalPages = Math.max(1, Math.ceil(groups.length / CLIENTS_PER_PAGE));
-  const pageGroups = groups.slice((page - 1) * CLIENTS_PER_PAGE, page * CLIENTS_PER_PAGE);
+  const currentPage = Math.min(page, totalPages);
+  const pageGroups = groups.slice(
+    (currentPage - 1) * CLIENTS_PER_PAGE,
+    currentPage * CLIENTS_PER_PAGE
+  );
 
   return (
     <section className={copilotCardStandardClass}>
@@ -332,8 +467,24 @@ function GroupedDecisions() {
 
       {loading ? (
         <p className={`${copilotCaptionClass} mt-3`}>Cargando conciliaciones…</p>
-      ) : items.length === 0 ? (
-        <p className={`${copilotCaptionClass} mt-3`}>Todavía no hay conciliaciones confirmadas ni rechazos.</p>
+      ) : groups.length === 0 ? (
+        searchQuery.trim() || dateFrom || dateTo ? (
+          <div className="mt-3">
+            <DsEmptyState
+              variant="compact"
+              title={
+                searchQuery.trim()
+                  ? "No hay resultados para esta búsqueda"
+                  : "No hay conciliaciones en este período"
+              }
+              description="Probá con otro período o quitá la búsqueda para ver más decisiones."
+            />
+          </div>
+        ) : (
+          <p className={`${copilotCaptionClass} mt-3`}>
+            Todavía no hay conciliaciones confirmadas ni rechazos.
+          </p>
+        )
       ) : (
         <ul className="mt-3 space-y-2">
           {pageGroups.map((group) => {
@@ -412,11 +563,11 @@ function GroupedDecisions() {
             Anterior
           </button>
           <span className={copilotCaptionClass}>
-            Página {page} / {totalPages}
+            Página {currentPage} / {totalPages}
           </span>
           <button
             type="button"
-            disabled={page >= totalPages}
+            disabled={currentPage >= totalPages}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             className="rounded-lg border border-[var(--copilot-border)] px-3 py-1 text-xs font-semibold text-[var(--copilot-text)] disabled:opacity-50"
           >
