@@ -14,15 +14,18 @@ export const dynamic = "force-dynamic";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * GET /api/copilot/clients/[companyId]/payer-memory
+ * GET /api/copilot/clients/[id]/payer-memory
  * Solo lectura: identidades de pagador + historial resumido para Cliente 360.
  * Nunca expone hashes ni cuentas completas.
+ *
+ * FASE BANK-ASSOCIATION-DRAWER-SCROLL-ANCHOR-FIX-002 — movido de `[companyId]`
+ * a `[id]` para eliminar el conflicto Next.js de slug names en el mismo path.
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ companyId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { companyId } = await params;
+  const { id: companyId } = await params;
   if (!UUID_RE.test(companyId)) {
     return NextResponse.json({ ok: false as const, error: "INVALID_CLIENT" }, { status: 400 });
   }
