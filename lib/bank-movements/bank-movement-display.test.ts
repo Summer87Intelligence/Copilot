@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   assertBankMovementParityEqual,
   buildBankMovementListParityView,
+  getBankMovementAuditDisplayDescription,
   getBankMovementDisplayDescription,
   stripBankPageMarkers,
 } from "@/lib/bank-movements/bank-movement-display";
@@ -75,6 +76,25 @@ describe("getBankMovementDisplayDescription", () => {
   });
 });
 
+describe("getBankMovementAuditDisplayDescription", () => {
+  it("conserva el texto Santander útil y enmascara solo cuentas largas", () => {
+    const raw = "TRANSFERENCIA RECIBIDA 4453956LR-2607150 508856001234 ALKITODO SRL";
+    const audit = getBankMovementAuditDisplayDescription({
+      raw_description: raw,
+      description: "corto",
+    });
+    expect(audit).toContain("TRANSFERENCIA RECIBIDA");
+    expect(audit).toContain("ALKITODO SRL");
+    expect(audit).not.toContain("508856001234");
+    expect(audit).toMatch(/•+1234/);
+  });
+
+  it("coincide con la descripción visible cuando no hay dígitos sensibles", () => {
+    const src = { raw_description: "TRANSFERENCIA RECIBIDA ALKITODO SRL" };
+    expect(getBankMovementAuditDisplayDescription(src)).toBe(getBankMovementDisplayDescription(src));
+  });
+});
+
 describe("parity view-model", () => {
   it("misma fuente produce vistas iguales Movimientos/Conciliación", () => {
     const m = movement({
@@ -121,5 +141,15 @@ describe("parity view-model", () => {
     });
     expect(assertBankMovementParityEqual(a, b)).toContain("clientCompanyId");
     expect(assertBankMovementParityEqual(a, b)).toContain("simpleState");
+  });
+});
+
+describe("detalle vs card compacta", () => {
+  it("el texto completo del helper no se pierde aunque la card use line-clamp", () => {
+    const full =
+      "TRANSFERENCIA RECIBIDA 4453956LR-2607150 50885600 ALKITODO SRL LINEA2 LINEA3 LINEA4 LINEA5 EXTRA";
+    const display = getBankMovementDisplayDescription({ raw_description: full });
+    expect(display).toBe(full);
+    expect(display.length).toBeGreaterThan(80);
   });
 });

@@ -88,7 +88,7 @@ export function BankMovementsReconciliationPanel({
         setError(json.error ?? "No se pudo cargar la conciliación.");
         return;
       }
-      setItems(json.data.items);
+      setItems(Array.isArray(json.data.items) ? json.data.items : []);
     } catch {
       setError("No se pudo cargar la conciliación.");
     } finally {

@@ -5,9 +5,12 @@
  * Historial y Cliente 360. La normalización queda solo para fingerprint /
  * búsqueda / dedupe — nunca como texto primario de UI.
  */
+import { maskAccountOrReference } from "@/lib/bank/canonical/mask-account-or-reference";
 import type { BankMovement } from "@/lib/bank-movements/bank-movements-types";
 
 const PAGE_MARKER_RE = /--\s*\d+\s+of\s+\d+\s*--/gi;
+/** Secuencias numéricas largas típicas de cuenta/token — no el texto del pagador. */
+const SENSITIVE_DIGIT_RUN_RE = /\b\d{8,}\b/g;
 
 /** Quita marcadores de paginación del parser sin alterar el pagador/concepto. */
 export function stripBankPageMarkers(text: string): string {
@@ -49,6 +52,20 @@ export function getBankMovementDisplayDescription(
     if (cleaned.length > 0) return cleaned;
   }
   return "Sin descripción";
+}
+
+/**
+ * Misma descripción canónica que Movimientos/Conciliación, con enmascarado
+ * selectivo solo de corridas numéricas ≥8 dígitos (cuentas/tokens).
+ * No reescribe el nombre del pagador ni el concepto Santander.
+ * Usado en Historial / evidencia de auditoría (`descriptionMasked` legacy).
+ */
+export function getBankMovementAuditDisplayDescription(
+  movement: BankMovementDescriptionSource
+): string {
+  const full = getBankMovementDisplayDescription(movement);
+  if (full === "Sin descripción") return full;
+  return full.replace(SENSITIVE_DIGIT_RUN_RE, (digits) => maskAccountOrReference(digits) ?? digits);
 }
 
 /** View-model de paridad Movimientos ↔ Conciliación para un mismo id. */
@@ -112,3 +129,6 @@ export function assertBankMovementParityEqual(
 /** Clases tipográficas para descripción completa (sin truncar). */
 export const BANK_MOVEMENT_DESCRIPTION_CLASS =
   "whitespace-pre-wrap break-words [overflow-wrap:anywhere] select-text";
+
+/** Compacto solo en cards mobile de lista; el detalle nunca lo usa. */
+export const BANK_MOVEMENT_DESCRIPTION_COMPACT_CLASS = `line-clamp-4 ${BANK_MOVEMENT_DESCRIPTION_CLASS}`;

@@ -172,7 +172,10 @@ describe("listCanonicalOperationalEvidence — evidencia completa desde el motor
     expect(ev.confidenceLabel).toBe("Alta");
     expect(ev.movement.amount).toBe(20000);
     expect(ev.movement.currency).toBe("UYU");
-    expect(ev.movement.descriptionMasked).not.toBe("TRANSFERENCIA PEPITO SA"); // enmascarado
+    expect(ev.movement.descriptionMasked).toContain("TRANSFERENCIA");
+    expect(ev.movement.descriptionMasked).toContain("PEPITO");
+    // No usa el truncado agresivo tipo "TRAN••••SA"
+    expect(ev.movement.descriptionMasked).not.toMatch(/^TRAN•+SA$/);
     expect(ev.client?.name).toBe("Pepito S.A.");
     expect(ev.receipt?.amount).toBe(20000);
     expect(ev.candidateInvoices).toHaveLength(1);

@@ -11,6 +11,7 @@ import {
 import { EmptyState as DsEmptyState } from "@/components/copilot/ui/empty-state";
 import { formatDate, money, type EvidenceItem } from "@/components/copilot/bank-movements/canonical-evidence-ui";
 import type { BankStatementImport } from "@/lib/bank-movements/bank-movements-types";
+import { BANK_MOVEMENT_DESCRIPTION_CLASS } from "@/lib/bank-movements/bank-movement-display";
 
 const CLIENTS_PER_PAGE = 15;
 
@@ -19,6 +20,10 @@ const CLIENTS_PER_PAGE = 15;
  * por cliente/lote (una fila por cliente, no N eventos repetidos). Reutiliza
  * los mismos endpoints de lectura ya existentes. Reversión financiera sigue
  * explícitamente fuera de alcance (botón deshabilitado).
+ *
+ * descriptionMasked (API legada): ahora es la descripción Santander canónica
+ * con enmascarado selectivo solo de cuentas/tokens (≥8 dígitos). El concepto y
+ * el pagador permanecen legibles e iguales a Movimientos/Conciliación.
  */
 export function BankHistoryPanel({ imports, loading }: { imports: BankStatementImport[]; loading: boolean }) {
   return (
@@ -368,7 +373,7 @@ function GroupedDecisions() {
                               : STATUS_LABEL[item.status] ?? item.status}
                           </span>
                         </div>
-                        <p className={copilotCaptionClass}>
+                        <p className={`${copilotCaptionClass} ${BANK_MOVEMENT_DESCRIPTION_CLASS}`}>
                           {formatDate(item.movement.date)} · {item.movement.descriptionMasked}
                           {item.receipt ? ` · Recibo ${money(item.receipt.currency, item.receipt.amount)}` : ""}
                         </p>

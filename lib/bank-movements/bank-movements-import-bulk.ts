@@ -1,9 +1,14 @@
 /**
  * Contratos y utilidades para importación masiva de extractos Santander PDF (Sprint E).
  */
-import { randomUUID } from "node:crypto";
-
 import { buildSantanderAccountLabel } from "@/lib/bank-movements/bank-movements-import-api";
+
+/** UUID portable (Node + browser) — evita node:crypto en el grafo cliente. */
+function newClientPreviewId(): string {
+  const c = globalThis.crypto;
+  if (c && typeof c.randomUUID === "function") return c.randomUUID();
+  return `preview-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
 import type { SantanderBankStatementPreview } from "@/lib/bank-movements/santander-pdf-parser";
 
 export type CurrencyBulkTotals = {
@@ -137,7 +142,7 @@ export function buildBulkPreviewReadyItem(
 ): BulkPreviewReadyItem {
   return {
     ...preview,
-    client_preview_id: randomUUID(),
+    client_preview_id: newClientPreviewId(),
     file_name: fileName,
     status: "ready",
     account_label: buildSantanderAccountLabel(preview.account_number, preview.currency_code),

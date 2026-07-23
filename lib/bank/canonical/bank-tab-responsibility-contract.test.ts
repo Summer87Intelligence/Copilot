@@ -33,6 +33,9 @@ describe("Separación Movimientos / Conciliación", () => {
       page.indexOf("const renderMovementActions"),
       page.indexOf("const movementColumns")
     );
+    expect(actionsBlock).toContain("Ir a Conciliación");
+    expect(actionsBlock).toContain("Ver movimiento");
+    expect(actionsBlock).toContain("data-bank-ver-movimiento");
     expect(actionsBlock).not.toContain("Asignar cliente");
     expect(actionsBlock).not.toContain("Confirmar asociación");
     expect(actionsBlock).not.toContain("Cambiar cliente");
@@ -58,6 +61,14 @@ describe("Separación Movimientos / Conciliación", () => {
     expect(panel).toContain("data-bank-drawer-close");
     expect(panel).toContain("Descripción Santander");
     expect(panel).not.toContain("truncate");
+    expect(panel).not.toContain("line-clamp");
+  });
+
+  it("Movimientos mobile compacta apunta a Ver movimiento; drawer sin clamp", () => {
+    expect(page).toContain("BANK_MOVEMENT_DESCRIPTION_COMPACT_CLASS");
+    expect(page).toContain("data-bank-ver-movimiento");
+    expect(page).toContain("Vista resumida");
+    expect(panel).not.toContain("line-clamp");
   });
 
   it("drawer por encima de tabs sticky", () => {

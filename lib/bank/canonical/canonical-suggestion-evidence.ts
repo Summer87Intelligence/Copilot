@@ -17,6 +17,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { getBankMovementAuditDisplayDescription } from "@/lib/bank-movements/bank-movement-display";
 import {
   getShadowMovementById,
   listOperationalSuggestions,
@@ -160,12 +161,16 @@ export type CanonicalSuggestionEvidence = {
   reconciliationLevel: ReconciliationLevel | null;
 };
 
-/** Enmascara la descripción bancaria cruda para no exponer datos completos en UI. */
-function maskDescription(description: string | null): string {
-  const d = (description ?? "").trim();
-  if (!d) return "(sin descripción)";
-  if (d.length <= 6) return d;
-  return `${d.slice(0, 4)}••••${d.slice(-2)}`;
+/**
+ * Descripción útil para Historial/evidencia: misma fuente canónica que
+ * Movimientos/Conciliación; solo enmascara corridas numéricas largas (cuentas).
+ * El campo API sigue llamándose `descriptionMasked` por compatibilidad.
+ */
+function maskDescription(description: string | null, rawDescription?: string | null): string {
+  return getBankMovementAuditDisplayDescription({
+    raw_description: rawDescription ?? null,
+    description,
+  });
 }
 
 async function buildOneEvidence(
@@ -225,7 +230,7 @@ async function buildOneEvidence(
       date: movement.movement_date,
       amount: typeof movement.amount === "number" ? movement.amount : parseFloat(String(movement.amount)) || 0,
       currency: movement.currency,
-      descriptionMasked: maskDescription(movement.description ?? movement.raw_description),
+      descriptionMasked: maskDescription(movement.description, movement.raw_description),
       accountLabel: movement.account_label,
     },
     payer: payerIdentity

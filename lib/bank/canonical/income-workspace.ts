@@ -13,6 +13,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { getBankMovementAuditDisplayDescription } from "@/lib/bank-movements/bank-movement-display";
 import { listOperationalSuggestionsForIncomeWorkspace, type BankMovementRow } from "@/lib/bank/intelligence/server/repositories";
 import type { ShadowSuggestionRow } from "@/lib/bank/intelligence/server/types";
 import {
@@ -196,8 +197,5 @@ export async function buildIncomeWorkspaceRows(
 }
 
 function maskFallback(description: string | null): string {
-  const d = (description ?? "").trim();
-  if (!d) return "(sin descripción)";
-  if (d.length <= 6) return d;
-  return `${d.slice(0, 4)}••••${d.slice(-2)}`;
+  return getBankMovementAuditDisplayDescription({ description, raw_description: description });
 }

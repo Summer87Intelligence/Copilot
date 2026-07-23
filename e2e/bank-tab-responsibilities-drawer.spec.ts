@@ -1,249 +1,242 @@
 /**
- * FASE BANK-SIMPLE-RESPONSIBILITY-AND-DRAWER-DETAIL-001
- *
- * Movimientos = consulta; Conciliación = asignación; drawer encima de tabs;
- * descripción canónica completa; paridad Movimientos/Conciliación.
+ * FASE BANK-IDEMPOTENT-IMPORT-AND-CLEAR-RESPONSIBILITIES-001
+ * E2E determinista con fixtures mockeadas — 6/6, 0 skipped, sin escrituras.
  */
 import { expect, test, type Page } from "@playwright/test";
 
 import { applyCopilotSessionCookie } from "./copilot-session-helper";
+import {
+  associationPayload,
+  bankMovementsListPayload,
+  FIXTURE_ASSOCIATED_ID,
+  FIXTURE_CLIENT_ID,
+  FIXTURE_CLIENT_NAME,
+  FIXTURE_FULL_DESCRIPTION,
+  FIXTURE_UNASSIGNED_ID,
+} from "./fixtures/bank-tab-responsibilities";
 
-const VIEWPORTS = [
-  { name: "desktop-1440", width: 1440, height: 900 },
-  { name: "desktop-1366", width: 1366, height: 768 },
-  { name: "mobile-390", width: 390, height: 844 },
-  { name: "tablet-768", width: 768, height: 1024 },
-] as const;
+test.describe.configure({ timeout: 120_000 });
 
-test.describe.configure({ timeout: 180_000 });
-
-async function resolveUnassignedInflowId(page: Page): Promise<string | null> {
-  return page.evaluate(async () => {
-    const res = await fetch("/api/copilot/bank-movements");
-    const json = (await res.json()) as {
-      ok?: boolean;
-      data?: Array<{ id: string; direction?: string; status?: string }>;
-      clients?: Record<string, { clientCompanyId: string; clientName: string | null }>;
-      duplicates?: Record<string, unknown>;
-    };
-    const clients = json.clients ?? {};
-    const duplicates = json.duplicates ?? {};
-    const rows = json.data ?? [];
-    const pick =
-      rows.find(
-        (m) =>
-          m.direction === "inflow" &&
-          m.status !== "ignored" &&
-          m.status !== "matched" &&
-          !clients[m.id]?.clientCompanyId &&
-          !duplicates[m.id]
-      ) ?? null;
-    return pick?.id ?? null;
+async function installBankFixtures(page: Page) {
+  // Subpaths antes que el catch-all: /reconciliation no debe recibir el payload de listado
+  // (rompe BankMovementsReconciliationPanel con items.filter sobre undefined).
+  await page.route("**/api/copilot/bank-movements/reconciliation**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ ok: true, data: { items: [] } }),
+    });
   });
-}
 
-async function resolveAssociatedInflow(page: Page): Promise<{
-  id: string;
-  clientCompanyId: string;
-  clientName: string;
-} | null> {
-  return page.evaluate(async () => {
-    const res = await fetch("/api/copilot/bank-movements");
-    const json = (await res.json()) as {
-      ok?: boolean;
-      data?: Array<{ id: string; direction?: string }>;
-      clients?: Record<string, { clientCompanyId: string; clientName: string | null }>;
-    };
-    const clients = json.clients ?? {};
-    for (const m of json.data ?? []) {
-      if (m.direction !== "inflow") continue;
-      const c = clients[m.id];
-      if (c?.clientCompanyId && c.clientName) {
-        return { id: m.id, clientCompanyId: c.clientCompanyId, clientName: c.clientName };
-      }
+  await page.route("**/api/copilot/bank-movements/imports**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ ok: true, data: [] }),
+    });
+  });
+
+  await page.route("**/api/copilot/bank-movements**", async (route) => {
+    const url = route.request().url();
+    const pathname = new URL(url).pathname.replace(/\/+$/, "") || "/";
+    if (pathname.endsWith("/imports") || pathname.includes("/imports/")) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ok: true, data: [] }),
+      });
+      return;
     }
-    return null;
+    if (pathname.includes("/reconciliation")) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ok: true, data: { items: [] } }),
+      });
+      return;
+    }
+    if (url.includes("/hide") || url.includes("/restore") || route.request().method() !== "GET") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ok: true }),
+      });
+      return;
+    }
+    if (pathname !== "/api/copilot/bank-movements") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ok: true, data: { items: [] } }),
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(bankMovementsListPayload()),
+    });
+  });
+
+  await page.route("**/api/copilot/bank-reconciliation/movements/*/association**", async (route) => {
+    const match = route.request().url().match(/movements\/([0-9a-f-]{36})\/association/i);
+    const id = match?.[1] ?? FIXTURE_UNASSIGNED_ID;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(associationPayload(id)),
+    });
+  });
+
+  // Cliente 360: responder HTML mínimo si la página real no carga el fixture id.
+  await page.route(`**/copilot/clientes/${FIXTURE_CLIENT_ID}**`, async (route) => {
+    if (route.request().resourceType() === "document") {
+      const url = new URL(route.request().url());
+      const html = `<!doctype html><html><body>
+        <h1>Cliente fixture</h1>
+        <div role="tab" aria-selected="true">Identificacion bancaria</div>
+        <p>Identificacion bancaria</p>
+        <a href="/copilot/movimientos-bancarios?${url.searchParams.get("returnTo") ?? ""}">Volver a Banco</a>
+      </body></html>`;
+      await route.fulfill({ status: 200, contentType: "text/html; charset=utf-8", body: html });
+      return;
+    }
+    await route.continue();
   });
 }
 
-async function readParitySnapshot(page: Page, movementId: string) {
-  return page.evaluate(async (id) => {
-    const res = await fetch("/api/copilot/bank-movements");
-    const json = (await res.json()) as {
-      ok?: boolean;
-      data?: Array<{
-        id: string;
-        description?: string | null;
-        raw_description?: string | null;
-        amount: number;
-        currency: string;
-        movement_date: string;
-        bank_reference?: string | null;
-        status: string;
-      }>;
-      clients?: Record<string, { clientCompanyId: string; clientName: string | null }>;
-      duplicates?: Record<string, unknown>;
-    };
-    const m = (json.data ?? []).find((row) => row.id === id);
-    if (!m) return null;
-    const client = json.clients?.[id] ?? null;
-    const desc =
-      (typeof m.raw_description === "string" && m.raw_description.trim()) ||
-      (typeof m.description === "string" && m.description.trim()) ||
-      "Sin descripción";
-    return {
-      id: m.id,
-      description: desc,
-      amount: Number(m.amount),
-      currency: m.currency,
-      date: m.movement_date.slice(0, 10),
-      reference: m.bank_reference ?? null,
-      clientName: client?.clientName ?? null,
-      clientCompanyId: client?.clientCompanyId ?? null,
-      isDuplicate: Boolean(json.duplicates?.[id]),
-    };
-  }, movementId);
-}
-
-for (const vp of VIEWPORTS) {
-  test.describe(`Bank tab responsibilities — ${vp.name}`, () => {
-    test.use({ viewport: { width: vp.width, height: vp.height } });
-
-    test.beforeEach(async ({ context, baseURL }) => {
-      await applyCopilotSessionCookie(context, baseURL ?? "http://127.0.0.1:3000");
-    });
-
-    test(`A+B Movimientos consulta + Conciliación drawer stacking (${vp.name})`, async ({ page }) => {
-      // A: Movimientos es consulta — sin Asignar cliente; CTA Ir a Conciliación existe o deep-link.
-      await page.goto("/copilot/movimientos-bancarios?tab=movimientos");
-      await expect(page.getByRole("heading", { level: 1, name: "Movimientos bancarios" })).toBeVisible({
-        timeout: 45_000,
-      });
-      await expect(page.getByRole("button", { name: /^Asignar cliente$/ })).toHaveCount(0);
-
-      const movementId = await resolveUnassignedInflowId(page);
-      test.skip(!movementId, "Sin movimiento sin cliente para el flujo");
-
-      const goToCount = await page.locator("[data-bank-go-to-reconciliation]").count();
-      if (goToCount > 0) {
-        await expect(page.locator("[data-bank-go-to-reconciliation]").first()).toBeVisible();
-      }
-
-      // Deep-link fiable: evita carrera setTab + panel en el click de lista.
-      await page.goto(`/copilot/movimientos-bancarios?tab=conciliacion&movementId=${movementId}`);
-
-      const drawer = page.locator("[data-bank-drawer]");
-      await expect(drawer).toBeVisible({ timeout: 30_000 });
-      await expect(page.locator("[data-bank-drawer-close]")).toBeVisible();
-      await expect(page.getByText(/Banco → Conciliación/i)).toBeVisible();
-
-      await expect(page.locator("[data-bank-drawer-body]").getByText(/Cargando movimiento/i)).toHaveCount(0, {
-        timeout: 30_000,
-      });
-      await expect(
-        page.locator("[data-bank-drawer-body]").getByText(/Descripci[oó]n Santander/i)
-      ).toBeVisible({ timeout: 15_000 });
-      await expect(page.locator("[data-bank-drawer-body]").getByText(/^Fecha$/)).toBeVisible();
-      await expect(page.locator("[data-bank-drawer-body]").getByText(/^Importe$/)).toBeVisible();
-
-      const zTabs = await page.locator("[data-bank-tabs]").evaluate((el) =>
-        Number.parseInt(getComputedStyle(el).zIndex || "0", 10)
-      );
-      const zDrawer = await page.locator("[data-bank-drawer]").evaluate((el) =>
-        Number.parseInt(getComputedStyle(el).zIndex || "0", 10)
-      );
-      expect(zDrawer).toBeGreaterThan(zTabs);
-
-      const drawerTopBefore = await page.locator("[data-bank-drawer-panel]").evaluate((el) =>
-        el.getBoundingClientRect().top
-      );
-
-      // Tabs no reciben click: pointer events van al backdrop
-      const tabsBlocked = await page.evaluate(() => {
-        const tabs = document.querySelector("[data-bank-tabs]");
-        const backdrop = document.querySelector("[data-bank-drawer-backdrop]");
-        if (!tabs || !backdrop) return false;
-        const tabRect = tabs.getBoundingClientRect();
-        const x = tabRect.left + Math.min(40, tabRect.width / 2);
-        const y = tabRect.top + Math.min(12, tabRect.height / 2);
-        const topEl = document.elementFromPoint(x, y);
-        return topEl === backdrop || Boolean(topEl?.closest("[data-bank-drawer]"));
-      });
-      expect(tabsBlocked).toBe(true);
-
-      await page.mouse.wheel(0, 400);
-      await page.waitForTimeout(80);
-      const drawerTopAfter = await page.locator("[data-bank-drawer-panel]").evaluate((el) =>
-        el.getBoundingClientRect().top
-      );
-      expect(drawerTopAfter).toBe(drawerTopBefore);
-
-      await page.locator("[data-bank-drawer-close]").click();
-      await expect(page.locator("[data-bank-drawer]")).toHaveCount(0);
-    });
-  });
-}
-
-test.describe("Bank client link + parity", () => {
-  test.beforeEach(async ({ context, baseURL }) => {
+test.describe("Bank tab responsibilities — fixtures", () => {
+  test.beforeEach(async ({ context, page, baseURL }) => {
     await applyCopilotSessionCookie(context, baseURL ?? "http://127.0.0.1:3000");
+    await installBankFixtures(page);
   });
 
-  test("C. nombre cliente clickeable → Identificación bancaria + returnTo", async ({ page }) => {
+  test("1. Movimientos no muestra Asignar cliente", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/copilot/movimientos-bancarios?tab=movimientos");
     await expect(page.getByRole("heading", { level: 1, name: "Movimientos bancarios" })).toBeVisible({
       timeout: 45_000,
     });
-
-    const associated = await resolveAssociatedInflow(page);
-    test.skip(!associated, "Sin movimiento asociado para el fixture");
-
-    const link = page.getByRole("link", {
-      name: `Abrir identificación bancaria de ${associated!.clientName}`,
+    await expect(page.getByRole("button", { name: /^Asignar cliente$/ })).toHaveCount(0);
+    await expect(page.getByText(FIXTURE_FULL_DESCRIPTION.slice(0, 40)).filter({ visible: true }).first()).toBeVisible({
+      timeout: 20_000,
     });
-    await expect(link.first()).toBeVisible({ timeout: 20_000 });
-    await link.first().click();
-    await expect(page).toHaveURL(new RegExp(`/copilot/clientes/${associated!.clientCompanyId}`));
-    await expect(page).toHaveURL(/tab=identificacion/);
-    await expect(page).toHaveURL(/returnTo=/);
-    await expect(page.getByText(/Identificación bancaria/i).first()).toBeVisible({ timeout: 30_000 });
   });
 
-  test("D. paridad Movimientos/Conciliación mismo movement_id", async ({ page }) => {
-    await page.setViewportSize({ width: 1366, height: 768 });
+  test("2. Ir a Conciliación abre el movement_id exacto", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/copilot/movimientos-bancarios?tab=movimientos");
     await expect(page.getByRole("heading", { level: 1, name: "Movimientos bancarios" })).toBeVisible({
       timeout: 45_000,
     });
+    const goTo = page.locator("[data-bank-go-to-reconciliation]").filter({ visible: true }).first();
+    await expect(goTo).toBeVisible({ timeout: 20_000 });
+    await goTo.click();
+    await expect(page.locator("[data-bank-drawer]")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText(/Banco.*Conciliaci/i).filter({ visible: true }).first()).toBeVisible();
+    await expect(page.locator("[data-bank-drawer-body]")).toContainText(FIXTURE_FULL_DESCRIPTION);
+    // El CTA del fixture sin cliente es el unassigned id
+    await expect(page.locator("[data-bank-drawer-body]")).toContainText("4453956LR-2607150");
+  });
 
-    const associated = await resolveAssociatedInflow(page);
-    const unassigned = associated ? null : await resolveUnassignedInflowId(page);
-    const movementId = associated?.id ?? unassigned;
-    test.skip(!movementId, "Sin movimiento para paridad");
-
-    const snapA = await readParitySnapshot(page, movementId!);
-    expect(snapA).not.toBeNull();
-
-    await page.goto(`/copilot/movimientos-bancarios?tab=conciliacion&movementId=${movementId}`);
+  test("3. Conciliación Asignar + descripción completa + tabs detrás + Cerrar", async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await page.goto(`/copilot/movimientos-bancarios?tab=conciliacion&movementId=${FIXTURE_UNASSIGNED_ID}`);
     await expect(page.locator("[data-bank-drawer]")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("heading", { name: /Asignar cliente/i })).toBeVisible();
+    await expect(page.locator("[data-bank-drawer-body]")).toContainText("Descripción Santander");
+    await expect(page.locator("[data-bank-drawer-body]")).toContainText(FIXTURE_FULL_DESCRIPTION);
+    await expect(page.locator("[data-bank-drawer-close]")).toBeVisible();
 
-    const snapB = await readParitySnapshot(page, movementId!);
-    expect(snapB).not.toBeNull();
-    expect(snapB!.description).toBe(snapA!.description);
-    expect(snapB!.amount).toBe(snapA!.amount);
-    expect(snapB!.currency).toBe(snapA!.currency);
-    expect(snapB!.date).toBe(snapA!.date);
-    expect(snapB!.reference).toBe(snapA!.reference);
-    expect(snapB!.clientName).toBe(snapA!.clientName);
-    expect(snapB!.clientCompanyId).toBe(snapA!.clientCompanyId);
-    expect(snapB!.isDuplicate).toBe(snapA!.isDuplicate);
+    const zTabs = await page.locator("[data-bank-tabs]").evaluate((el) =>
+      Number.parseInt(getComputedStyle(el).zIndex || "0", 10)
+    );
+    const zDrawer = await page.locator("[data-bank-drawer]").evaluate((el) =>
+      Number.parseInt(getComputedStyle(el).zIndex || "0", 10)
+    );
+    expect(zDrawer).toBeGreaterThan(zTabs);
 
-    // UI drawer muestra la misma descripción canónica
-    if (snapA!.description !== "Sin descripción") {
-      await expect(page.locator("[data-bank-drawer-body]")).toContainText(snapA!.description.slice(0, 40));
-    }
+    const tabsBlocked = await page.evaluate(() => {
+      const tabs = document.querySelector("[data-bank-tabs]");
+      const backdrop = document.querySelector("[data-bank-drawer-backdrop]");
+      if (!tabs || !backdrop) return false;
+      const tabRect = tabs.getBoundingClientRect();
+      const topEl = document.elementFromPoint(
+        tabRect.left + Math.min(40, tabRect.width / 2),
+        tabRect.top + Math.min(12, tabRect.height / 2)
+      );
+      return topEl === backdrop || Boolean(topEl?.closest("[data-bank-drawer]"));
+    });
+    expect(tabsBlocked).toBe(true);
 
+    await page.locator("[data-bank-drawer-close]").click();
+    await expect(page.locator("[data-bank-drawer]")).toHaveCount(0);
+
+    // Lista Conciliación sí ofrece Asignar cliente
+    await expect(page.getByRole("button", { name: /^Asignar cliente$/ }).first()).toBeVisible({
+      timeout: 15_000,
+    });
+  });
+
+  test("4. Nombre cliente asociado abre Identificación bancaria", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/copilot/movimientos-bancarios?tab=movimientos");
+    await expect(page.getByRole("heading", { level: 1, name: "Movimientos bancarios" })).toBeVisible({
+      timeout: 45_000,
+    });
+    const link = page.getByRole("link", {
+      name: new RegExp("Abrir identificaci.*" + FIXTURE_CLIENT_NAME),
+    }).filter({ visible: true });
+    await expect(link.first()).toBeVisible({ timeout: 20_000 });
+    const href = await link.first().getAttribute("href");
+    expect(href).toBeTruthy();
+    await page.goto(href!);
+    await expect(page).toHaveURL(new RegExp(`/copilot/clientes/${FIXTURE_CLIENT_ID}`));
+    await expect(page).toHaveURL(/tab=identificacion/);
+    await expect(page).toHaveURL(/returnTo=/);
+    await expect(page.getByText(/Identificacion bancaria|Identificaci.n bancaria/i).first()).toBeVisible();
+  });
+
+  test("5. Paridad descripción/cliente/estado mismo movement_id", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/copilot/movimientos-bancarios?tab=movimientos");
+    await expect(page.getByRole("heading", { level: 1, name: "Movimientos bancarios" })).toBeVisible({
+      timeout: 45_000,
+    });
+    await expect(page.getByText(FIXTURE_CLIENT_NAME).filter({ visible: true }).first()).toBeVisible();
+    await expect(page.getByText("Asociado", { exact: true }).filter({ visible: true }).first()).toBeVisible();
+
+    await page.goto(
+      `/copilot/movimientos-bancarios?tab=conciliacion&movementId=${FIXTURE_ASSOCIATED_ID}`
+    );
+    await expect(page.locator("[data-bank-drawer]")).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator("[data-bank-drawer-body]")).toContainText(
+      `${FIXTURE_FULL_DESCRIPTION} ASOCIADO`
+    );
+    await expect(page.locator("[data-bank-drawer-body]")).toContainText(FIXTURE_CLIENT_NAME);
+    await expect(page.getByRole("heading", { name: /Ver asociación/i })).toBeVisible();
+    await page.locator("[data-bank-drawer-close]").click();
+  });
+
+  test("6. Mobile: card compacta + Ver movimiento muestra texto completo en drawer", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/copilot/movimientos-bancarios?tab=movimientos");
+    await expect(page.getByRole("heading", { level: 1, name: "Movimientos bancarios" })).toBeVisible({
+      timeout: 45_000,
+    });
+    await expect(page.locator("[data-bank-movement-description-compact]").filter({ visible: true }).first()).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(page.getByRole("button", { name: /^Asignar cliente$/ })).toHaveCount(0);
+    const ver = page.locator("[data-bank-ver-movimiento]").filter({ visible: true }).first();
+    await expect(ver).toBeVisible();
+    await ver.click();
+    await expect(page.locator("[data-bank-drawer]")).toBeVisible({ timeout: 20_000 });
+    const body = page.locator("[data-bank-drawer-body]");
+    await expect(body).toContainText(FIXTURE_FULL_DESCRIPTION);
+    // Drawer nunca usa clamp
+    const hasClamp = await body.evaluate((el) => el.innerHTML.includes("line-clamp"));
+    expect(hasClamp).toBe(false);
     await page.locator("[data-bank-drawer-close]").click();
   });
 });

@@ -14,6 +14,7 @@ import { BankHistoryPanel } from "@/components/copilot/bank-movements/bank-histo
 import { buildBankReturnToQuery } from "@/lib/bank-movements/client-banking-navigation";
 import {
   BANK_MOVEMENT_DESCRIPTION_CLASS,
+  BANK_MOVEMENT_DESCRIPTION_COMPACT_CLASS,
   getBankMovementDisplayDescription,
 } from "@/lib/bank-movements/bank-movement-display";
 
@@ -448,6 +449,17 @@ export function BankMovementsPageClient() {
 
     return (
       <div className="flex flex-wrap justify-end gap-1.5">
+        {!isDup ? (
+          <button
+            type="button"
+            onClick={() => goToReconciliation(m.id)}
+            className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+            data-bank-ver-movimiento
+            aria-label="Ver movimiento completo"
+          >
+            Ver movimiento
+          </button>
+        ) : null}
         {isDup ? (
           <button
             type="button"
@@ -585,8 +597,10 @@ export function BankMovementsPageClient() {
     },
   ];
 
-  const renderMovementMobileCard = (m: BankMovement) => (
-    <div className="space-y-1.5">
+  const renderMovementMobileCard = (m: BankMovement) => {
+    const fullDescription = getBankMovementDisplayDescription(m);
+    return (
+    <div className="space-y-1.5" data-bank-movement-mobile-card={m.id}>
       <div className="flex items-start justify-between gap-2">
         <span className="text-sm font-medium text-[var(--copilot-ink)]">
           {formatDate(m.movement_date)}
@@ -602,9 +616,16 @@ export function BankMovementsPageClient() {
           {m.direction === "inflow" ? "+" : "−"} {movementAmountLabel(m)}
         </span>
       </div>
-      <p className={`line-clamp-4 text-sm text-[var(--copilot-ink)] ${BANK_MOVEMENT_DESCRIPTION_CLASS}`}>
-        {getBankMovementDisplayDescription(m)}
+      <p
+        className={`text-sm text-[var(--copilot-ink)] ${BANK_MOVEMENT_DESCRIPTION_COMPACT_CLASS}`}
+        title={fullDescription}
+        data-bank-movement-description-compact
+      >
+        {fullDescription}
       </p>
+      {fullDescription.length > 120 ? (
+        <p className={copilotCaptionClass}>Vista resumida — usá Ver movimiento para el texto completo.</p>
+      ) : null}
       {m.bank_reference ? <p className={copilotCaptionClass}>Ref: {m.bank_reference}</p> : null}
       {movementClients[m.id]?.clientCompanyId && movementClients[m.id]?.clientName ? (
         <p className={copilotCaptionClass}>
@@ -619,7 +640,8 @@ export function BankMovementsPageClient() {
       <p className={copilotCaptionClass}>{movementStatusLabel(m)}</p>
       <div className="pt-1">{renderMovementActions(m)}</div>
     </div>
-  );
+    );
+  };
 
   return (
     <div className={COPILOT_PAGE_GAP}>

@@ -29,7 +29,7 @@ export function BankClientNameLink({
         className ??
         "font-medium text-[var(--copilot-accent)] underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]"
       }
-      aria-label={`Abrir identificación bancaria de ${clientName}`}
+      aria-label={`Abrir identificacion bancaria de ${clientName}`}
     >
       {clientName}
     </Link>
