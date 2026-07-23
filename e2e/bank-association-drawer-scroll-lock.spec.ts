@@ -81,21 +81,21 @@ async function resolveMovementId(page: Page): Promise<string | null> {
   });
 }
 
-async function openAssociationDrawer(page: Page, tab: "Movimientos" | "Conciliación") {
-  // Preferir deep-link fresco (Suspense + useSearchParams) para no depender
-  // del filtro/lista; luego pad de scroll bajo el lock si hace falta.
+async function openAssociationDrawer(page: Page, _tab: "Movimientos" | "Conciliación") {
+  // FASE BANK-SIMPLE-RESPONSIBILITY-AND-DRAWER-DETAIL-001 — el panel solo
+  // vive en Conciliación; deep-link con movementId fuerza esa tab.
   const movementId = await resolveMovementId(page);
   if (movementId) {
-    const tabParam = tab === "Conciliación" ? "conciliacion" : "movimientos";
-    await page.goto(`/copilot/movimientos-bancarios?tab=${tabParam}&movementId=${movementId}`);
+    await page.goto(`/copilot/movimientos-bancarios?tab=conciliacion&movementId=${movementId}`);
   } else {
+    await page.goto("/copilot/movimientos-bancarios?tab=conciliacion");
     const openBtn = page.getByRole("button", { name: OPEN_ASSOCIATION_RE });
     const visible = await openBtn
       .first()
       .waitFor({ state: "visible", timeout: 45_000 })
       .then(() => true)
       .catch(() => false);
-    test.skip(!visible, `Sin CTA ni movimientos para abrir asociación en ${tab}`);
+    test.skip(!visible, "Sin CTA ni movimientos para abrir asociación en Conciliación");
     await openBtn.first().scrollIntoViewIfNeeded();
     await openBtn.first().click();
   }

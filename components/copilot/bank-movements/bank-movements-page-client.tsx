@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Pencil, Plus, Sparkles, Trash2, EyeOff, Eye, X } from "lucide-react";
+import { Plus, Sparkles, EyeOff, Eye, X } from "lucide-react";
 
 import { BankMovementsFiltersBar } from "@/components/copilot/bank-movements/bank-movements-filters-bar";
 import { BankMovementsImportPanel } from "@/components/copilot/bank-movements/bank-movements-import-panel";
@@ -12,6 +12,10 @@ import { SimpleMovementAssociationPanel } from "@/components/copilot/bank-moveme
 import { SimpleReconciliationList } from "@/components/copilot/bank-movements/simple-reconciliation-list";
 import { BankHistoryPanel } from "@/components/copilot/bank-movements/bank-history-panel";
 import { buildBankReturnToQuery } from "@/lib/bank-movements/client-banking-navigation";
+import {
+  BANK_MOVEMENT_DESCRIPTION_CLASS,
+  getBankMovementDisplayDescription,
+} from "@/lib/bank-movements/bank-movement-display";
 
 import {
   CopilotResponsiveTable,
@@ -59,7 +63,6 @@ import {
   BANK_MOVEMENT_STATUS_LABELS,
   type BankMovement,
   type BankMovementDirection,
-  type BankMovementStatus,
   type BankStatementImport,
 } from "@/lib/bank-movements/bank-movements-types";
 
@@ -117,19 +120,6 @@ function emptyForm(): FormState {
   };
 }
 
-function formFromMovement(m: BankMovement): FormState {
-  return {
-    id: m.id,
-    movement_date: m.movement_date.slice(0, 10),
-    description: m.description,
-    amount: String(m.amount),
-    currency: m.currency === "USD" ? "USD" : "UYU",
-    direction: m.direction,
-    account_label: m.account_label ?? "",
-    bank_reference: m.bank_reference ?? "",
-  };
-}
-
 export function BankMovementsPageClient() {
   const searchParams = useSearchParams();
   const { modulePermissions } = useCopilotPermissions();
@@ -145,24 +135,15 @@ export function BankMovementsPageClient() {
   const canWriteBank = canMutateBankMovementRecord(bankScope);
   const [tab, setTab] = useState<BankTab>("movimientos");
   const deepLinkApplied = useRef(false);
-  // FASE BANK-SIMPLE-MOVEMENT-TO-CLIENT-RESET-001 — panel simple de
-  // asociación movimiento→cliente. Es el ÚNICO drawer de Conciliación: se abre
-  // directo desde Movimientos o Conciliación, sin cambiar de pestaña salvo
-  // que el deep-link pida explícitamente la pestaña Conciliación.
+  // FASE BANK-SIMPLE-RESPONSIBILITY-AND-DRAWER-DETAIL-001 — panel solo desde
+  // Conciliación (o deep-link / Ir a Conciliación que fuerza esa tab).
   const [simpleAssociationMovementId, setSimpleAssociationMovementId] = useState<string | null>(null);
   const openSimpleAssociation = useCallback((movementId: string) => {
     setSimpleAssociationMovementId(movementId);
   }, []);
 
-  // Deep link desde el cuaderno de trabajo / URLs antiguas de las pestañas
-  // extintas "Conciliación" independiente e "Ingresos": ?tab=reconciliation |
-  // ?tab=conciliacion | ?tab=ingresos normalizan todas a la pestaña
-  // Conciliación actual; ?movementId abre directo el panel de asociación del
-  // movimiento exacto (sin depender de en qué pestaña haya quedado la app).
-  //
-  // FASE BANK-ASSOCIATION-DRAWER-SCROLL-ANCHOR-FIX-002 — el tab se aplica una
-  // sola vez por montaje, pero `movementId` debe reaccionar a cambios de URL
-  // (soft navigation del App Router en el mismo pathname).
+  // FASE BANK-SIMPLE-RESPONSIBILITY-AND-DRAWER-DETAIL-001 — deep-link
+  // `movementId` abre Conciliación (único lugar del panel), nunca Movimientos.
   useEffect(() => {
     const requestedTab = searchParams.get("tab");
     const direction = searchParams.get("direction");
@@ -172,13 +153,17 @@ export function BankMovementsPageClient() {
         direction === "inflow" ||
         requestedTab === "ingresos" ||
         requestedTab === "conciliacion" ||
-        requestedTab === "reconciliation"
+        requestedTab === "reconciliation" ||
+        Boolean(movementIdParam)
       ) {
         setTab("conciliacion");
       }
       deepLinkApplied.current = true;
     }
-    if (movementIdParam) openSimpleAssociation(movementIdParam);
+    if (movementIdParam) {
+      setTab("conciliacion");
+      openSimpleAssociation(movementIdParam);
+    }
   }, [searchParams, openSimpleAssociation]);
   const [tesoreriaOpen, setTesoreriaOpen] = useState(false);
   const [movements, setMovements] = useState<BankMovement[]>([]);
@@ -348,39 +333,6 @@ export function BankMovementsPageClient() {
     }
   }, [form, load]);
 
-  const changeStatus = useCallback(
-    async (movement: BankMovement, status: BankMovementStatus) => {
-      const res = await fetch(`/api/copilot/bank-movements/${movement.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-      const json = (await res.json()) as WriteResponse;
-      if (!res.ok || !json.ok) {
-        setFeedback({ tone: "error", message: json.error ?? "No se pudo cambiar el estado." });
-        return;
-      }
-      setFeedback({ tone: "ok", message: `Marcado como ${BANK_MOVEMENT_STATUS_LABELS[status]}.` });
-      await load();
-    },
-    [load]
-  );
-
-  const remove = useCallback(
-    async (movement: BankMovement) => {
-      if (!window.confirm("¿Eliminar este movimiento bancario?")) return;
-      const res = await fetch(`/api/copilot/bank-movements/${movement.id}`, { method: "DELETE" });
-      const json = (await res.json()) as WriteResponse;
-      if (!res.ok || !json.ok) {
-        setFeedback({ tone: "error", message: json.error ?? "No se pudo eliminar." });
-        return;
-      }
-      setFeedback({ tone: "ok", message: "Movimiento eliminado." });
-      await load();
-    },
-    [load]
-  );
-
   const historicalBadge = (m: BankMovement) =>
     isBankMovementHistorical(m) ? (
       <StatusBadge className="ml-1.5 align-middle" tone="neutral">
@@ -473,139 +425,74 @@ export function BankMovementsPageClient() {
     return simple ? SIMPLE_MOVEMENT_STATE_LABEL[simple] : BANK_MOVEMENT_STATUS_LABELS[m.status];
   };
 
-  // FASE BANK-SIMPLE-MOVEMENT-TO-CLIENT-RESET-001 — la acción principal de
-  // Movimientos ya no navega a la Conciliación por niveles técnicos
-  // (identificado/falta recibo/conciliación completa/etc.): abre directo el
-  // panel simple movimiento→cliente (sección 7). El detalle de recibo/factura
-  // sigue existiendo y sigue accesible desde la pestaña Conciliación — solo
-  // deja de ser la acción por defecto desde Movimientos.
-  const renderInflowLevelAction = (m: BankMovement, level: MovementReconciliationLevel) => {
-    const isUnidentified = level === "unidentified";
-    return (
-      <button
-        type="button"
-        onClick={() => openSimpleAssociation(m.id)}
-        className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
-      >
-        {isUnidentified ? "Asignar cliente" : "Ver asociación"}
-      </button>
-    );
-  };
+  // FASE BANK-SIMPLE-RESPONSIBILITY-AND-DRAWER-DETAIL-001 — Movimientos es
+  // solo consulta. La asignación vive exclusivamente en Conciliación.
+  const goToReconciliation = useCallback(
+    (movementId: string) => {
+      setTab("conciliacion");
+      openSimpleAssociation(movementId);
+    },
+    [openSimpleAssociation]
+  );
 
   const renderMovementActions = (m: BankMovement) => {
-    const level = m.direction === "inflow" && m.status !== "ignored" ? movementLevels[m.id] : undefined;
-    // FASE BANK-GLOBAL-MOVEMENT-RECEIPT-INVOICE-INTEGRITY-AUDIT-AND-CORRECTION-001
-    // — un duplicado nunca ofrece identificar/vincular/ignorar/reabrir: no es
-    // una operación real separada. Solo queda editar (para corregirlo a mano)
-    // y eliminar; la evidencia del archivo que lo generó se conserva en
-    // metadata.additional_sources de la fila canónica, nunca se borra sola.
-    if (movementDuplicates[m.id]) {
-      if (!canWriteBank) return null;
-      return (
-        <div className="flex flex-wrap justify-end gap-1.5">
-          <button
-            type="button"
-            onClick={() => setForm(formFromMovement(m))}
-            className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
-            aria-label="Editar movimiento"
-          >
-            <Pencil className="h-3.5 w-3.5" aria-hidden />
-          </button>
-          <button
-            type="button"
-            onClick={() => void remove(m)}
-            className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
-            aria-label="Eliminar movimiento"
-          >
-            <Trash2 className="h-3.5 w-3.5" aria-hidden />
-          </button>
-        </div>
-      );
-    }
+    const isDup = Boolean(movementDuplicates[m.id]);
+    const isHidden = isBankMovementUiHidden(m.metadata);
+    const simple = deriveSimpleMovementState({
+      direction: m.direction,
+      status: m.status,
+      isDuplicate: isDup,
+      isHidden,
+      level: movementLevels[m.id],
+    });
+
     return (
-    <div className="flex flex-wrap justify-end gap-1.5">
-      {canWriteBank ? (
-        <button
-          type="button"
-          onClick={() => setForm(formFromMovement(m))}
-          className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
-          aria-label="Editar movimiento"
-        >
-          <Pencil className="h-3.5 w-3.5" aria-hidden />
-        </button>
-      ) : null}
-      {m.direction === "inflow" && level ? (
-        renderInflowLevelAction(m, level)
-      ) : m.status !== "matched" ? (
+      <div className="flex flex-wrap justify-end gap-1.5">
+        {isDup ? (
+          <button
+            type="button"
+            onClick={() => goToReconciliation(movementDuplicates[m.id]?.canonicalMovementId ?? m.id)}
+            className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+          >
+            Ver evidencia
+          </button>
+        ) : null}
+        {!isDup &&
+        (simple === "sin_cliente" || simple === "pendiente") &&
         m.direction === "inflow" ? (
           <button
             type="button"
-            onClick={() => openSimpleAssociation(m.id)}
+            onClick={() => goToReconciliation(m.id)}
             className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+            data-bank-go-to-reconciliation
           >
-            Ver detalle
+            Ir a Conciliación
           </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setTesoreriaOpen(true)}
-            className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
-          >
-            Vincular con pago programado
-          </button>
-        )
-      ) : canWriteBank ? (
-        <button
-          type="button"
-          onClick={() => void changeStatus(m, "pending")}
-          className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
-        >
-          Reabrir
-        </button>
-      ) : null}
-      {m.status !== "ignored" && canWriteBank ? (
-        <button
-          type="button"
-          onClick={() => void changeStatus(m, "ignored")}
-          className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
-        >
-          Ignorar
-        </button>
-      ) : null}
-      {canWriteBank ? (
-        isBankMovementUiHidden(m.metadata) ? (
-          <button
-            type="button"
-            onClick={() => void hideOrRestoreMovement(m, "restore")}
-            className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
-            aria-label="Volver a mostrar movimiento"
-          >
-            <Eye className="mr-1 inline h-3.5 w-3.5" aria-hidden />
-            Volver a mostrar
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => void hideOrRestoreMovement(m, "hide")}
-            className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
-            aria-label="Ocultar movimiento"
-          >
-            <EyeOff className="mr-1 inline h-3.5 w-3.5" aria-hidden />
-            Ocultar
-          </button>
-        )
-      ) : null}
-      {canWriteBank ? (
-        <button
-          type="button"
-          onClick={() => void remove(m)}
-          className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
-          aria-label="Eliminar movimiento"
-        >
-          <Trash2 className="h-3.5 w-3.5" aria-hidden />
-        </button>
-      ) : null}
-    </div>
+        ) : null}
+        {canWriteBank ? (
+          isHidden ? (
+            <button
+              type="button"
+              onClick={() => void hideOrRestoreMovement(m, "restore")}
+              className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+              aria-label="Volver a mostrar movimiento"
+            >
+              <Eye className="mr-1 inline h-3.5 w-3.5" aria-hidden />
+              Volver a mostrar
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void hideOrRestoreMovement(m, "hide")}
+              className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+              aria-label="Ocultar movimiento"
+            >
+              <EyeOff className="mr-1 inline h-3.5 w-3.5" aria-hidden />
+              Ocultar
+            </button>
+          )
+        ) : null}
+      </div>
     );
   };
 
@@ -624,13 +511,13 @@ export function BankMovementsPageClient() {
     },
     {
       key: "desc",
-      header: "Descripción",
-      cellClassName: "align-top",
+      header: "Descripción Santander",
+      cellClassName: `align-top ${BANK_MOVEMENT_DESCRIPTION_CLASS}`,
       render: (m) => (
         <div>
-          <span>{m.description}</span>
+          <span className={BANK_MOVEMENT_DESCRIPTION_CLASS}>{getBankMovementDisplayDescription(m)}</span>
           {m.bank_reference ? (
-            <span className={`block ${copilotCaptionClass}`}>Ref: {m.bank_reference}</span>
+            <span className={`mt-1 block ${copilotCaptionClass}`}>Ref: {m.bank_reference}</span>
           ) : null}
         </div>
       ),
@@ -715,7 +602,9 @@ export function BankMovementsPageClient() {
           {m.direction === "inflow" ? "+" : "−"} {movementAmountLabel(m)}
         </span>
       </div>
-      <p className="text-sm text-[var(--copilot-ink)]">{m.description}</p>
+      <p className={`line-clamp-4 text-sm text-[var(--copilot-ink)] ${BANK_MOVEMENT_DESCRIPTION_CLASS}`}>
+        {getBankMovementDisplayDescription(m)}
+      </p>
       {m.bank_reference ? <p className={copilotCaptionClass}>Ref: {m.bank_reference}</p> : null}
       {movementClients[m.id]?.clientCompanyId && movementClients[m.id]?.clientName ? (
         <p className={copilotCaptionClass}>
@@ -937,7 +826,7 @@ export function BankMovementsPageClient() {
 
       {tab === "historial" ? <BankHistoryPanel imports={imports} loading={loading} /> : null}
 
-      {simpleAssociationMovementId ? (
+      {tab === "conciliacion" && simpleAssociationMovementId ? (
         <SimpleMovementAssociationPanel
           movementId={simpleAssociationMovementId}
           onClose={() => setSimpleAssociationMovementId(null)}

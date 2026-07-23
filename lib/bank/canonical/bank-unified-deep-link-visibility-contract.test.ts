@@ -28,10 +28,11 @@ describe("Movimientos → Conciliación unificada (deep-link)", () => {
     expect(pageClient).not.toContain("/copilot/bank-income");
   });
 
-  it("salidas no entran al flujo de ingresos unificado", () => {
-    expect(pageClient).toContain('m.direction !== "inflow"');
-    expect(pageClient).toContain("setTesoreriaOpen(true)");
-    expect(pageClient).toContain("Vincular con pago programado");
+  it("salidas no entran al flujo de asociación de ingresos", () => {
+    // Movimientos es consulta; Conciliación solo asigna ingresos.
+    expect(pageClient).toContain("Ir a Conciliación");
+    expect(pageClient).toContain('m.direction === "inflow"');
+    expect(pageClient).not.toContain("BankIncomeWorkspace");
   });
 
   it("duplicados no ofrecen Identificar cliente operativo", () => {

@@ -57,13 +57,20 @@ describe("Deep links preservan movementId y normalizan URLs antiguas", () => {
 });
 
 describe("Movimientos: sin writer directo a matched", () => {
-  it("entradas abren el panel simple de asociación (FASE BANK-SIMPLE-FLOW-COMPLETION-001, ya no 'Revisar conciliación')", () => {
+  it("entradas van a Conciliación vía Ir a Conciliación / openSimpleAssociation", () => {
+    expect(pageClient).toContain("goToReconciliation");
     expect(pageClient).toContain("openSimpleAssociation");
     expect(pageClient).not.toContain("Revisar conciliación");
   });
 
-  it("salidas usan Vincular con pago programado", () => {
-    expect(pageClient).toContain("Vincular con pago programado");
+  it("salidas no ofrecen Asignar cliente desde Movimientos", () => {
+    const actionsBlock = pageClient.slice(
+      pageClient.indexOf("const renderMovementActions"),
+      pageClient.indexOf("const movementColumns")
+    );
+    expect(actionsBlock).toContain('m.direction === "inflow"');
+    expect(actionsBlock).not.toContain("Vincular con pago programado");
+    expect(actionsBlock).not.toContain("Asignar cliente");
   });
 
   it("no hay botón genérico Conciliar que llame changeStatus(..., matched)", () => {

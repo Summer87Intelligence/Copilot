@@ -13,6 +13,10 @@ import {
 } from "@/components/copilot/ui/copilot-visual-system";
 import { EmptyState as DsEmptyState } from "@/components/copilot/ui/empty-state";
 import type { BankMovement } from "@/lib/bank-movements/bank-movements-types";
+import {
+  BANK_MOVEMENT_DESCRIPTION_CLASS,
+  getBankMovementDisplayDescription,
+} from "@/lib/bank-movements/bank-movement-display";
 import { resolveImportedBankMovementAmount } from "@/lib/bank-movements/santander-excel-amount";
 import { isBankMovementUiHidden } from "@/lib/bank-movements/bank-movement-visibility";
 import type { MovementReconciliationLevel } from "@/lib/bank/canonical/movement-reconciliation-level-labels";
@@ -99,7 +103,7 @@ export function SimpleReconciliationList({
       if (statusFilter && row.state !== statusFilter) return false;
       if (currency && row.movement.currency !== currency) return false;
       if (q) {
-        const haystack = `${row.movement.description} ${row.client?.clientName ?? ""}`.toLowerCase();
+        const haystack = `${getBankMovementDisplayDescription(row.movement)} ${row.client?.clientName ?? ""}`.toLowerCase();
         if (!haystack.includes(q)) return false;
       }
       return true;
@@ -264,8 +268,8 @@ export function SimpleReconciliationList({
                 {pageRows.map(({ movement, state, client }) => (
                   <tr key={movement.id} className="border-b border-[var(--copilot-border)]/60">
                     <td className="py-2 pr-3 whitespace-nowrap">{movement.movement_date}</td>
-                    <td className="max-w-[320px] truncate py-2 pr-3" title={movement.description}>
-                      {movement.description}
+                    <td className={`py-2 pr-3 ${BANK_MOVEMENT_DESCRIPTION_CLASS}`}>
+                      {getBankMovementDisplayDescription(movement)}
                     </td>
                     <td className="py-2 pr-3 whitespace-nowrap">
                       {movement.currency} {resolveImportedBankMovementAmount(movement).toLocaleString("es-UY")}
@@ -300,8 +304,8 @@ export function SimpleReconciliationList({
                   {movement.currency} {resolveImportedBankMovementAmount(movement).toLocaleString("es-UY")}
                 </p>
                 <p className={copilotCaptionClass}>{movement.movement_date}</p>
-                <p className="mt-1 truncate text-sm text-[var(--copilot-text)]" title={movement.description}>
-                  {movement.description}
+                <p className={`mt-1 text-sm text-[var(--copilot-text)] ${BANK_MOVEMENT_DESCRIPTION_CLASS}`}>
+                  {getBankMovementDisplayDescription(movement)}
                 </p>
                 <p className={`${copilotCaptionClass} mt-1`}>
                   Cliente:{" "}

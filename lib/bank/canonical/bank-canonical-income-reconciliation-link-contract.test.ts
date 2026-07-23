@@ -24,12 +24,12 @@ describe("Deep link: URLs antiguas normalizan a Conciliación", () => {
     expect(pageClient).toContain("if (!deepLinkApplied.current)");
   });
 
-  it("preserva movementId abriendo el panel simple de asociación directo (FASE BANK-SIMPLE-FLOW-COMPLETION-001)", () => {
+  it("preserva movementId abriendo Conciliación + panel (FASE BANK-SIMPLE-RESPONSIBILITY-AND-DRAWER-DETAIL-001)", () => {
     expect(pageClient).toContain('searchParams.get("movementId")');
     expect(pageClient).toContain("openSimpleAssociation(movementIdParam)");
-    // movementId fuera del gate one-shot (soft-nav en el mismo pathname).
+    // movementId fuera del gate one-shot; siempre fuerza tab Conciliación.
     expect(pageClient).toMatch(
-      /deepLinkApplied\.current = true;\s*\}\s*if \(movementIdParam\) openSimpleAssociation\(movementIdParam\);/
+      /if \(movementIdParam\) \{\s*setTab\("conciliacion"\);\s*openSimpleAssociation\(movementIdParam\);\s*\}/
     );
   });
 
