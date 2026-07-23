@@ -198,9 +198,10 @@ test.describe("Bank 2026 cleanup — fixtures", () => {
       timeout: 45_000,
     });
     await expect(page.getByTestId("table-pagination-numeric")).toBeVisible({ timeout: 20_000 });
-    await page.getByRole("button", { name: "Ir a página 2" }).click();
-    await expect(page).toHaveURL(/page=2/, { timeout: 10_000 });
+    await page.getByTestId("table-pagination-numeric").getByRole("button", { name: "Ir a página 2" }).click();
+    await expect(page).toHaveURL(/page=2/, { timeout: 15_000 });
     await expect(page).toHaveURL(/month=2026-07/);
+    await expect(page).toHaveURL(/pageSize=25/);
   });
 
   test("3. Historial sin Conciliados por cliente", async ({ page }) => {

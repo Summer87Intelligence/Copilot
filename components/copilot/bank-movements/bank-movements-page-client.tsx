@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Plus, Sparkles, EyeOff, Eye, X } from "lucide-react";
 
 import { BankMovementsImportPanel } from "@/components/copilot/bank-movements/bank-movements-import-panel";
@@ -232,7 +232,6 @@ function buildInitialBankViewState(
 }
 
 export function BankMovementsPageClient() {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { modulePermissions } = useCopilotPermissions();
@@ -457,6 +456,69 @@ export function BankMovementsPageClient() {
   const sortQuery = serializeMovSortState(movSort);
   const currentSearchString = searchParams.toString();
 
+  const syncBankUrl = useCallback(
+    (overrides?: { page?: number; pageSize?: MovPageSize }) => {
+      const page = overrides?.page ?? movPage;
+      const pageSize = overrides?.pageSize ?? movPageSize;
+      const params = bankFiltersToSearchParams({
+        tab,
+        period,
+        filters: movementFilters,
+        from: periodRange.from,
+        to: periodRange.to,
+        page,
+        pageSize,
+        sort: sortQuery,
+        kpiFocus,
+        movementId: activeMovementIdForUrl,
+        view: activeViewForUrl,
+      });
+      const nextQuery = params.toString();
+      if (nextQuery === searchParams.toString()) return;
+      const nextUrl = nextQuery ? `${pathname}?${nextQuery}` : pathname;
+      // Eager browser URL sync: App Router router.replace can no-op/revert
+      // search-only updates here, which broke pagination e2e (page stays in state).
+      if (typeof window !== "undefined") {
+        const current = `${window.location.pathname}${window.location.search}`;
+        if (current !== nextUrl) {
+          window.history.replaceState(window.history.state, "", nextUrl);
+        }
+      }
+    },
+    [
+      activeMovementIdForUrl,
+      activeViewForUrl,
+      kpiFocus,
+      movPage,
+      movPageSize,
+      movementFilters,
+      pathname,
+      period,
+      periodRange.from,
+      periodRange.to,
+      searchParams,
+      sortQuery,
+      tab,
+    ]
+  );
+
+  const goToMovPage = useCallback(
+    (page: number) => {
+      setMovPage(page);
+      syncBankUrl({ page });
+    },
+    [syncBankUrl]
+  );
+
+  const changeMovPageSize = useCallback(
+    (size: MovPageSize) => {
+      setMovPageSize(size);
+      setMovPage(1);
+      syncBankUrl({ page: 1, pageSize: size });
+    },
+    [syncBankUrl]
+  );
+
   useEffect(() => {
     const params = bankFiltersToSearchParams({
       tab,
@@ -473,7 +535,15 @@ export function BankMovementsPageClient() {
     });
     const nextQuery = params.toString();
     if (nextQuery === currentSearchString) return;
-    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+    const nextUrl = nextQuery ? `${pathname}?${nextQuery}` : pathname;
+      // Eager browser URL sync: App Router router.replace can no-op/revert
+      // search-only updates here, which broke pagination e2e (page stays in state).
+      if (typeof window !== "undefined") {
+        const current = `${window.location.pathname}${window.location.search}`;
+        if (current !== nextUrl) {
+          window.history.replaceState(window.history.state, "", nextUrl);
+        }
+      }
   }, [
     activeMovementIdForUrl,
     activeViewForUrl,
@@ -486,7 +556,6 @@ export function BankMovementsPageClient() {
     period,
     periodRange.from,
     periodRange.to,
-    router,
     sortQuery,
     tab,
   ]);
@@ -1176,9 +1245,9 @@ export function BankMovementsPageClient() {
                   to={movPageResult.to}
                   total={movPageResult.total}
                   itemLabel="movimientos"
-                  onPageChange={setMovPage}
+                  onPageChange={goToMovPage}
                   pageSize={movPageSize}
-                  onPageSizeChange={(size) => setMovPageSize(size as MovPageSize)}
+                  onPageSizeChange={(size) => changeMovPageSize(size as MovPageSize)}
                 />
             </div>
           )}
@@ -1224,7 +1293,7 @@ export function BankMovementsPageClient() {
             onOpenAssociation={openSimpleAssociation}
             onRestore={(m) => void hideOrRestoreMovement(m, "restore")}
             pageSize={movPageSize}
-            onPageSizeChange={(size) => setMovPageSize(size as MovPageSize)}
+            onPageSizeChange={(size) => changeMovPageSize(size as MovPageSize)}
             returnToSearch={currentSearchString}
           />
         </div>
