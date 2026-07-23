@@ -15,31 +15,21 @@ import {
   copilotInputClass,
   copilotMetricLabelClass,
 } from "@/components/copilot/ui/copilot-visual-system";
+import {
+  BANK_MOVEMENT_DESCRIPTION_CLASS,
+  getBankMovementDisplayDescription,
+} from "@/lib/bank-movements/bank-movement-display";
 import { buildBankReturnToQuery, buildClientBankingHref } from "@/lib/bank-movements/client-banking-navigation";
+import type { BankMovement } from "@/lib/bank-movements/bank-movements-types";
+import { maskAccountOrReference } from "@/lib/bank/canonical/mask-account-or-reference";
 
 /**
- * FASE BANK-SIMPLE-MOVEMENT-TO-CLIENT-RESET-001 — panel único de asociación
- * movimiento→cliente (sección 7 del enunciado). Nunca exige recibo ni
- * factura para habilitar "Confirmar asociación"; nunca crea allocations ni
- * marca facturas como pagadas. Reutiliza el mismo escritor que ya usaba el
- * flujo de identificación en lote (`bank_movement_client_identifications`),
- * solo que aplicado a UN movimiento puntual desde Movimientos, sin pasar por
- * la vista de clusters por pagador.
- *
- * FASE BANK-ASSOCIATION-DRAWER-SCROLL-ANCHOR-FIX-002 — header / body / footer
- * con scroll solo en `BankDrawerBody`.
+ * FASE BANK-SIMPLE-RESPONSIBILITY-AND-DRAWER-DETAIL-001 — panel único de
+ * asociación, solo desde Conciliación. Muestra descripción Santander completa
+ * (raw) y detalle del movimiento sin truncar.
  */
 
-type MovementDTO = {
-  id: string;
-  movement_date: string;
-  amount: number;
-  currency: string;
-  description: string;
-  bank_reference: string | null;
-  bank_name: string;
-  account_label: string | null;
-};
+type MovementDTO = BankMovement;
 
 type AssociationDTO = {
   id: string | null;
@@ -52,11 +42,26 @@ type AssociationDTO = {
 
 type ClientOption = { id: string; name: string };
 
-function maskReference(value: string | null): string {
-  if (!value) return "—";
-  const trimmed = value.trim();
-  if (trimmed.length <= 4) return "•".repeat(trimmed.length);
-  return `${"•".repeat(Math.max(trimmed.length - 4, 3))}${trimmed.slice(-4)}`;
+function metaString(meta: Record<string, unknown> | null | undefined, key: string): string | null {
+  const v = meta?.[key];
+  return typeof v === "string" && v.trim() ? v.trim() : null;
+}
+
+function metaNumber(meta: Record<string, unknown> | null | undefined, key: string): number | null {
+  const v = meta?.[key];
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && v.trim() && Number.isFinite(Number(v))) return Number(v);
+  return null;
+}
+
+function DetailRow({ label, value }: { label: string; value: string | null | undefined }) {
+  if (value == null || !String(value).trim()) return null;
+  return (
+    <div className="grid grid-cols-[7.5rem_1fr] gap-2 text-sm">
+      <dt className="text-[var(--copilot-muted)]">{label}</dt>
+      <dd className={`text-[var(--copilot-text)] ${BANK_MOVEMENT_DESCRIPTION_CLASS}`}>{value}</dd>
+    </div>
+  );
 }
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<{ ok: boolean; data?: T; error?: string }> {
@@ -239,7 +244,12 @@ export function SimpleMovementAssociationPanel({
             {isAssociated ? "Ver asociación" : "Asignar cliente"}
           </h3>
         </div>
-        <button type="button" onClick={onClose} className={copilotButtonClassName({ variant: "ghost", size: "sm" })}>
+        <button
+          type="button"
+          onClick={onClose}
+          className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+          data-bank-drawer-close
+        >
           Cerrar
         </button>
       </BankDrawerHeader>
@@ -252,18 +262,75 @@ export function SimpleMovementAssociationPanel({
 
         {loadState === "ready" && movement ? (
           <div className="space-y-4">
-            <div>
-              <p className={copilotMetricLabelClass}>Movimiento</p>
-              <p className="text-sm font-medium text-[var(--copilot-text)]">
-                {movement.currency} {movement.amount.toLocaleString("es-UY", { minimumFractionDigits: 2 })} ·{" "}
-                {movement.movement_date}
-              </p>
-              <p className={`${copilotCaptionClass} mt-1`}>{movement.description}</p>
-              <p className={`${copilotCaptionClass} mt-1`}>
-                Ref: {maskReference(movement.bank_reference)} · {movement.bank_name}
-                {movement.account_label ? ` ${movement.account_label}` : ""}
-              </p>
-            </div>
+            <section className="space-y-2">
+              <p className={copilotMetricLabelClass}>Movimiento bancario</p>
+              <DetailRow label="Fecha" value={movement.movement_date} />
+              <DetailRow
+                label="Fecha valor"
+                value={metaString(movement.metadata, "value_date") ?? metaString(movement.metadata, "valueDate")}
+              />
+              <DetailRow
+                label="Importe"
+                value={`${movement.currency} ${Number(movement.amount).toLocaleString("es-UY", { minimumFractionDigits: 2 })}`}
+              />
+              <DetailRow
+                label="Dirección"
+                value={movement.direction === "inflow" ? "Ingreso" : "Egreso"}
+              />
+              <div className="grid grid-cols-[7.5rem_1fr] gap-2 text-sm">
+                <dt className="text-[var(--copilot-muted)]">Descripción Santander</dt>
+                <dd className={`text-[var(--copilot-text)] ${BANK_MOVEMENT_DESCRIPTION_CLASS}`}>
+                  {getBankMovementDisplayDescription(movement)}
+                </dd>
+              </div>
+              <DetailRow label="Referencia" value={movement.bank_reference} />
+              <DetailRow
+                label="Nº operación"
+                value={
+                  metaString(movement.metadata, "operation_number") ??
+                  metaString(movement.metadata, "operation_group_key")
+                }
+              />
+              <DetailRow
+                label="Pagador"
+                value={
+                  metaString(movement.metadata, "payer_name_raw") ??
+                  metaString(movement.metadata, "payer_name_normalized")
+                }
+              />
+              <DetailRow
+                label="Cuenta / ref."
+                value={(() => {
+                  const token =
+                    metaString(movement.metadata, "payer_token") ??
+                    metaString(movement.metadata, "masked_account");
+                  if (!token) return null;
+                  return maskAccountOrReference(token);
+                })()}
+              />
+              <DetailRow
+                label="Saldo posterior"
+                value={(() => {
+                  const bal = metaNumber(movement.metadata, "balance");
+                  return bal == null
+                    ? null
+                    : `${movement.currency} ${bal.toLocaleString("es-UY", { minimumFractionDigits: 2 })}`;
+                })()}
+              />
+              <DetailRow label="Banco" value={movement.bank_name} />
+              <DetailRow label="Cuenta" value={movement.account_label} />
+              <DetailRow
+                label="Archivo fuente"
+                value={
+                  metaString(movement.metadata, "source_file") ??
+                  metaString(movement.metadata, "parser")
+                }
+              />
+              <DetailRow
+                label="Importado"
+                value={movement.created_at ? movement.created_at.slice(0, 10) : null}
+              />
+            </section>
 
             {feedback ? (
               <p
@@ -286,7 +353,7 @@ export function SimpleMovementAssociationPanel({
                       clientCompanyId={association.clientCompanyId}
                       clientName={association.clientName}
                       returnTo={buildBankReturnToQuery({
-                        tab: "movimientos",
+                        tab: "conciliacion",
                         movementId,
                       })}
                     />
@@ -380,7 +447,7 @@ export function SimpleMovementAssociationPanel({
               <a
                 href={buildClientBankingHref({
                   clientCompanyId: association.clientCompanyId,
-                  returnTo: buildBankReturnToQuery({ tab: "movimientos", movementId }),
+                  returnTo: buildBankReturnToQuery({ tab: "conciliacion", movementId }),
                 })}
                 className={copilotButtonClassName({ variant: "primary", size: "sm" })}
               >
@@ -393,7 +460,7 @@ export function SimpleMovementAssociationPanel({
                     association
                       ? buildClientBankingHref({
                           clientCompanyId: association.clientCompanyId,
-                          returnTo: buildBankReturnToQuery({ tab: "movimientos", movementId }),
+                          returnTo: buildBankReturnToQuery({ tab: "conciliacion", movementId }),
                         })
                       : "#"
                   }

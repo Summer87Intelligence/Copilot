@@ -1,5 +1,9 @@
 import { createHash } from "node:crypto";
 
+import { maskAccountOrReference } from "@/lib/bank/canonical/mask-account-or-reference";
+
+export { maskAccountOrReference };
+
 /**
  * FASE BANK-SIMPLE-RECONCILIATION-AND-PAYER-MEMORY-001, sección 7 — helpers puros
  * para la memoria de pagadores (`bank_payer_identities` / `client_payer_links`,
@@ -28,18 +32,6 @@ export function buildPayerToken(normalizedName: string | null): string | null {
   if (!normalizedName) return null;
   const token = normalizedName.replace(/[^A-Z0-9]+/g, "_").replace(/^_+|_+$/g, "");
   return token || null;
-}
-
-/**
- * Enmascara una cuenta/token de origen para mostrar en UI sin exponer el dato
- * completo (sección "No mostrar cuentas completas ni hashes" de la adenda).
- * Conserva solo los últimos 4 caracteres visibles.
- */
-export function maskAccountOrReference(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const trimmed = value.trim();
-  if (trimmed.length <= 4) return "•".repeat(trimmed.length);
-  return `${"•".repeat(Math.max(trimmed.length - 4, 3))}${trimmed.slice(-4)}`;
 }
 
 /**
