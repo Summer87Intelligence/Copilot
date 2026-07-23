@@ -213,6 +213,17 @@ test.describe("Bank 2026 cleanup — fixtures", () => {
     await expect(page.getByText(/Suprasur/i).first()).toBeVisible();
   });
 
+  test("4. Importar — sin Neto ambiguo y CTA Importar solo nuevos", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/copilot/movimientos-bancarios?tab=importar");
+    await expect(page.getByRole("heading", { level: 1, name: "Movimientos bancarios" })).toBeVisible({
+      timeout: 45_000,
+    });
+    await expect(page.getByText(/Neto UYU/i)).toHaveCount(0);
+    await expect(page.getByText(/Neto USD/i)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /Previsualizar/i })).toBeVisible();
+  });
+
   test("5. Mobile: paginación muestra Página X de Y", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/copilot/movimientos-bancarios?tab=movimientos&month=2026-07&pageSize=25");
