@@ -21,4 +21,14 @@ describe("client-banking-navigation", () => {
       "tab=conciliacion&movementId=m1"
     );
   });
+
+  it("preserva filtros existentes cuando recibe una query base", () => {
+    expect(
+      buildBankReturnToQuery({
+        tab: "movimientos",
+        movementId: "m9",
+        baseQuery: "tab=historial&period=this_month&q=acme",
+      })
+    ).toBe("tab=movimientos&period=this_month&q=acme&movementId=m9");
+  });
 });

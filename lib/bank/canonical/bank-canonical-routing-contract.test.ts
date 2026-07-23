@@ -52,7 +52,9 @@ describe("Deep links preservan movementId y normalizan URLs antiguas", () => {
   });
 
   it("preserva movementId al enfocar, abriendo el panel simple directo", () => {
-    expect(pageClient).toContain("openSimpleAssociation(movementIdParam)");
+    // FASE BANK-FILTERS-KPI-AND-HISTORY-USABILITY-001 — hidratación inicial desde URL.
+    expect(pageClient).toContain("simpleAssociationMovementId: viewConsult ? null : movementIdParam");
+    expect(pageClient).toContain("openSimpleAssociation");
   });
 });
 

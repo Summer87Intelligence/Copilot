@@ -20,8 +20,11 @@ export function buildBankReturnToQuery(input: {
   movementId?: string | null;
   duplicates?: string | null;
   text?: string | null;
+  /** Query existente (sin ?). Permite preservar período/filtros al volver. */
+  baseQuery?: string | null;
 }): string {
-  const params = new URLSearchParams();
+  const seed = input.baseQuery?.trim();
+  const params = new URLSearchParams(seed ? seed.replace(/^\?/, "") : undefined);
   if (input.tab) params.set("tab", input.tab);
   if (input.movementId) params.set("movementId", input.movementId);
   if (input.duplicates) params.set("duplicates", input.duplicates);

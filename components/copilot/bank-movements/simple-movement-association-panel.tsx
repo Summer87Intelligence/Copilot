@@ -78,10 +78,12 @@ type LoadState = "loading" | "ready" | "error";
 
 export function SimpleMovementAssociationPanel({
   movementId,
+  returnToSearch,
   onClose,
   onChanged,
 }: {
   movementId: string;
+  returnToSearch?: string;
   onClose: () => void;
   onChanged: () => void;
 }) {
@@ -355,6 +357,7 @@ export function SimpleMovementAssociationPanel({
                       returnTo={buildBankReturnToQuery({
                         tab: "conciliacion",
                         movementId,
+                        baseQuery: returnToSearch,
                       })}
                     />
                   ) : (
@@ -447,7 +450,11 @@ export function SimpleMovementAssociationPanel({
               <a
                 href={buildClientBankingHref({
                   clientCompanyId: association.clientCompanyId,
-                  returnTo: buildBankReturnToQuery({ tab: "conciliacion", movementId }),
+                  returnTo: buildBankReturnToQuery({
+                    tab: "conciliacion",
+                    movementId,
+                    baseQuery: returnToSearch,
+                  }),
                 })}
                 className={copilotButtonClassName({ variant: "primary", size: "sm" })}
               >
@@ -460,7 +467,11 @@ export function SimpleMovementAssociationPanel({
                     association
                       ? buildClientBankingHref({
                           clientCompanyId: association.clientCompanyId,
-                          returnTo: buildBankReturnToQuery({ tab: "conciliacion", movementId }),
+                          returnTo: buildBankReturnToQuery({
+                            tab: "conciliacion",
+                            movementId,
+                            baseQuery: returnToSearch,
+                          }),
                         })
                       : "#"
                   }

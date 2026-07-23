@@ -15,21 +15,22 @@ const pageClient = readFileSync(join(COMPONENTS_ROOT, "bank-movements-page-clien
 const incomeWorkspace = readFileSync(join(COMPONENTS_ROOT, "bank-income-workspace.tsx"), "utf8");
 
 describe("Deep link: URLs antiguas normalizan a Conciliación", () => {
-  it("reconoce tab=ingresos, reconciliation y conciliacion → setTab(conciliacion)", () => {
+  it("reconoce tab=ingresos, reconciliation y conciliacion → Conciliación", () => {
+    // FASE BANK-FILTERS-KPI-AND-HISTORY-USABILITY-001 — resolveInitialTab.
     expect(pageClient).toContain('requestedTab === "ingresos"');
     expect(pageClient).toContain('requestedTab === "reconciliation"');
     expect(pageClient).toContain('requestedTab === "conciliacion"');
+    expect(pageClient).toContain('return "conciliacion"');
     expect(pageClient).toContain('setTab("conciliacion")');
     expect(pageClient).not.toContain('setTab("ingresos")');
-    expect(pageClient).toContain("if (!deepLinkApplied.current)");
   });
 
   it("preserva movementId: Conciliación abre panel; Movimientos+consult solo resalta", () => {
     expect(pageClient).toContain('searchParams.get("movementId")');
-    expect(pageClient).toContain("openSimpleAssociation(movementIdParam)");
+    expect(pageClient).toContain("simpleAssociationMovementId: viewConsult ? null : movementIdParam");
+    expect(pageClient).toContain("highlightMovementId: viewConsult ? movementIdParam : null");
     expect(pageClient).toContain('searchParams.get("view") === "consult"');
-    expect(pageClient).toContain("setHighlightMovementId(movementIdParam)");
-    expect(pageClient).toContain('setTab("movimientos")');
+    expect(pageClient).toContain('if (viewConsult && movementIdParam) return "movimientos"');
   });
 
   it("BankIncomeWorkspace consume el foco vía initialMovementId", () => {

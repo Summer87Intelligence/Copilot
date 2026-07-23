@@ -93,6 +93,8 @@ function filterState(
         duplicates: f.duplicates,
         source: f.source,
         visibility: f.visibility,
+        clientPresence: f.clientPresence,
+        simpleStates: f.simpleStates,
       },
       defaults: {
         period: d.period,
@@ -107,6 +109,8 @@ function filterState(
         duplicates: d.duplicates,
         source: d.source,
         visibility: d.visibility,
+        clientPresence: d.clientPresence,
+        simpleStates: d.simpleStates,
       },
     };
   }

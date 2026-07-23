@@ -1,16 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Plus, Sparkles, EyeOff, Eye, X } from "lucide-react";
 
-import { BankMovementsFiltersBar } from "@/components/copilot/bank-movements/bank-movements-filters-bar";
 import { BankMovementsImportPanel } from "@/components/copilot/bank-movements/bank-movements-import-panel";
 import { BankMovementsReconciliationPanel } from "@/components/copilot/bank-movements/bank-movements-reconciliation-panel";
 import { BankClientNameLink } from "@/components/copilot/bank-movements/bank-client-name-link";
 import { SimpleMovementAssociationPanel } from "@/components/copilot/bank-movements/simple-movement-association-panel";
 import { SimpleReconciliationList } from "@/components/copilot/bank-movements/simple-reconciliation-list";
 import { BankHistoryPanel } from "@/components/copilot/bank-movements/bank-history-panel";
+import { BankSimpleFiltersBar } from "@/components/copilot/bank-movements/bank-simple-filters-bar";
 import { buildBankReturnToQuery } from "@/lib/bank-movements/client-banking-navigation";
 import {
   BANK_MOVEMENT_DESCRIPTION_CLASS,
@@ -44,6 +44,17 @@ import {
   filterBankMovements,
   type BankMovementsListFilters,
 } from "@/lib/bank-movements/bank-movements-filters";
+import {
+  defaultBankPeriodState,
+  periodStateKey,
+  resolveBankPeriodRange,
+  type BankPeriodState,
+} from "@/lib/bank-movements/bank-period";
+import { getBankOperationalSummary } from "@/lib/bank-movements/bank-operational-summary";
+import {
+  bankFiltersToSearchParams,
+  parseBankFiltersFromSearchParams,
+} from "@/lib/bank-movements/bank-filters-url";
 import { isBankMovementUiHidden } from "@/lib/bank-movements/bank-movement-visibility";
 import { isBankMovementHistorical } from "@/lib/bank/canonical/historical-policy";
 import type { MovementReconciliationLevel } from "@/lib/bank/canonical/movement-reconciliation-level-labels";
@@ -68,6 +79,8 @@ import {
 } from "@/lib/bank-movements/bank-movements-types";
 
 type BankTab = "importar" | "movimientos" | "conciliacion" | "historial";
+type BankKpiFocus = "none" | "pending" | "inflow" | "outflow" | "reviewed";
+type MovPageSize = 25 | 50 | 100;
 
 /**
  * FASE BANK-SIMPLE-RECONCILIATION-AND-PAYER-MEMORY-001 — navegación final:
@@ -86,6 +99,8 @@ type WriteResponse = { ok: boolean; data?: BankMovement; error?: string };
 
 const dateFormatter = new Intl.DateTimeFormat("es-UY", { dateStyle: "medium" });
 const numberFormatter = new Intl.NumberFormat("es-UY", { minimumFractionDigits: 2 });
+const DEFAULT_CONCILIATION_SIMPLE_STATES = "sin_cliente,pendiente";
+const MOV_PAGE_SIZE_OPTIONS: MovPageSize[] = [25, 50, 100];
 
 function formatDate(value: string | null): string {
   if (!value) return "—";
@@ -121,7 +136,106 @@ function emptyForm(): FormState {
   };
 }
 
+function withForcedBankDirection(
+  filters: BankMovementsListFilters,
+  forceInflowOnly: boolean
+): BankMovementsListFilters {
+  return forceInflowOnly ? { ...filters, direction: "inflow" } : filters;
+}
+
+function defaultFiltersForTab(
+  tab: BankTab,
+  forceInflowOnly: boolean
+): BankMovementsListFilters {
+  const base = withForcedBankDirection(
+    { ...DEFAULT_BANK_MOVEMENTS_LIST_FILTERS },
+    forceInflowOnly
+  );
+  if (tab === "conciliacion") {
+    return { ...base, simpleStates: DEFAULT_CONCILIATION_SIMPLE_STATES };
+  }
+  return base;
+}
+
+function parseMovSortState(sort: string): SortState {
+  if (sort === "date_asc") return { key: "date", direction: "asc" };
+  if (sort === "amount_asc") return { key: "amount", direction: "asc" };
+  if (sort === "amount_desc") return { key: "amount", direction: "desc" };
+  return { key: "date", direction: "desc" };
+}
+
+function serializeMovSortState(sort: SortState): string {
+  if (sort.key === "amount") return `amount_${sort.direction}`;
+  return `date_${sort.direction}`;
+}
+
+function resolveInitialTab(searchParams: URLSearchParams): BankTab {
+  const requestedTab = searchParams.get("tab");
+  const direction = searchParams.get("direction");
+  const movementIdParam = searchParams.get("movementId");
+  const viewConsult =
+    searchParams.get("view") === "consult" || requestedTab === "movimientos";
+  if (viewConsult && movementIdParam) return "movimientos";
+  if (
+    direction === "inflow" ||
+    requestedTab === "ingresos" ||
+    requestedTab === "conciliacion" ||
+    requestedTab === "reconciliation" ||
+    Boolean(movementIdParam)
+  ) {
+    return "conciliacion";
+  }
+  if (
+    requestedTab === "importar" ||
+    requestedTab === "movimientos" ||
+    requestedTab === "historial"
+  ) {
+    return requestedTab;
+  }
+  return "movimientos";
+}
+
+function buildInitialBankViewState(
+  searchParams: URLSearchParams,
+  forceInflowOnly: boolean
+): {
+  tab: BankTab;
+  period: BankPeriodState;
+  filters: BankMovementsListFilters;
+  page: number;
+  pageSize: MovPageSize;
+  movSort: SortState;
+  kpiFocus: BankKpiFocus;
+  highlightMovementId: string | null;
+  simpleAssociationMovementId: string | null;
+} {
+  const parsed = parseBankFiltersFromSearchParams(searchParams);
+  const tab = resolveInitialTab(searchParams);
+  const movementIdParam = searchParams.get("movementId");
+  const viewConsult =
+    searchParams.get("view") === "consult" || searchParams.get("tab") === "movimientos";
+  const filters = withForcedBankDirection({ ...parsed.filters }, forceInflowOnly);
+
+  if (tab === "conciliacion" && filters.simpleStates.trim() === "") {
+    filters.simpleStates = DEFAULT_CONCILIATION_SIMPLE_STATES;
+  }
+
+  return {
+    tab,
+    period: parsed.period,
+    filters,
+    page: parsed.page,
+    pageSize: parsed.pageSize as MovPageSize,
+    movSort: parseMovSortState(parsed.sort),
+    kpiFocus: parsed.kpiFocus,
+    highlightMovementId: viewConsult ? movementIdParam : null,
+    simpleAssociationMovementId: viewConsult ? null : movementIdParam,
+  };
+}
+
 export function BankMovementsPageClient() {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const { modulePermissions } = useCopilotPermissions();
   // FASE BANK-RECONCILIATION-END-TO-END-STABILIZATION-001 — el alcance real de
@@ -134,50 +248,24 @@ export function BankMovementsPageClient() {
   // `canMutateBankMovementRecord` es la única fuente de verdad del scope, así
   // que `inflow_readonly` jamás puede colar un canWriteBank=true acá.
   const canWriteBank = canMutateBankMovementRecord(bankScope);
-  const [tab, setTab] = useState<BankTab>("movimientos");
-  const deepLinkApplied = useRef(false);
+  const initialUrlStateRef = useRef<ReturnType<typeof buildInitialBankViewState> | null>(null);
+  if (!initialUrlStateRef.current) {
+    initialUrlStateRef.current = buildInitialBankViewState(searchParams, forceInflowOnly);
+  }
+  const initialUrlState = initialUrlStateRef.current;
+  const [tab, setTab] = useState<BankTab>(initialUrlState.tab);
   // FASE BANK-SIMPLE-RESPONSIBILITY-AND-DRAWER-DETAIL-001 — panel solo desde
   // Conciliación (o deep-link / Ir a Conciliación que fuerza esa tab).
-  const [simpleAssociationMovementId, setSimpleAssociationMovementId] = useState<string | null>(null);
-  const [highlightMovementId, setHighlightMovementId] = useState<string | null>(null);
+  const [simpleAssociationMovementId, setSimpleAssociationMovementId] = useState<string | null>(
+    initialUrlState.simpleAssociationMovementId
+  );
+  const [highlightMovementId, setHighlightMovementId] = useState<string | null>(
+    initialUrlState.highlightMovementId
+  );
   const openSimpleAssociation = useCallback((movementId: string) => {
+    setHighlightMovementId(null);
     setSimpleAssociationMovementId(movementId);
   }, []);
-
-  // FASE CLIENT-BANKING-IDENTIFICATION-CLARITY-AND-HISTORY-CLEANUP-001 —
-  // `view=consult` o `tab=movimientos` + movementId: solo resalta, no abre panel.
-  // Sin eso, movementId sigue abriendo Conciliación (asignación).
-  useEffect(() => {
-    const requestedTab = searchParams.get("tab");
-    const direction = searchParams.get("direction");
-    const movementIdParam = searchParams.get("movementId");
-    const viewConsult =
-      searchParams.get("view") === "consult" || requestedTab === "movimientos";
-    if (!deepLinkApplied.current) {
-      if (viewConsult && movementIdParam) {
-        setTab("movimientos");
-      } else if (
-        direction === "inflow" ||
-        requestedTab === "ingresos" ||
-        requestedTab === "conciliacion" ||
-        requestedTab === "reconciliation" ||
-        Boolean(movementIdParam)
-      ) {
-        setTab("conciliacion");
-      }
-      deepLinkApplied.current = true;
-    }
-    if (movementIdParam) {
-      if (viewConsult) {
-        setTab("movimientos");
-        setHighlightMovementId(movementIdParam);
-        setSimpleAssociationMovementId(null);
-      } else {
-        setTab("conciliacion");
-        openSimpleAssociation(movementIdParam);
-      }
-    }
-  }, [searchParams, openSimpleAssociation]);
 
   const [tesoreriaOpen, setTesoreriaOpen] = useState(false);
   const [movements, setMovements] = useState<BankMovement[]>([]);
@@ -191,11 +279,32 @@ export function BankMovementsPageClient() {
   const [form, setForm] = useState<FormState | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<{ tone: "ok" | "error"; message: string } | null>(null);
+  const [period, setPeriod] = useState<BankPeriodState>(initialUrlState.period);
   const [movementFilters, setMovementFilters] = useState<BankMovementsListFilters>(
-    DEFAULT_BANK_MOVEMENTS_LIST_FILTERS
+    initialUrlState.filters
   );
+  const [kpiFocus, setKpiFocus] = useState<BankKpiFocus>(initialUrlState.kpiFocus);
   /** Filtro temporal tras “Ver movimientos nuevos” (import_batch_id). */
   const [newImportBatchIds, setNewImportBatchIds] = useState<string[] | null>(null);
+  const [movPage, setMovPage] = useState(initialUrlState.page);
+  const [movPageSize, setMovPageSize] = useState<MovPageSize>(initialUrlState.pageSize);
+  const [movSort, setMovSort] = useState<SortState>(initialUrlState.movSort);
+
+  const setSanitizedMovementFilters = useCallback(
+    (
+      next:
+        | BankMovementsListFilters
+        | ((prev: BankMovementsListFilters) => BankMovementsListFilters)
+    ) => {
+      setMovementFilters((prev) =>
+        withForcedBankDirection(
+          typeof next === "function" ? next(prev) : next,
+          forceInflowOnly
+        )
+      );
+    },
+    [forceInflowOnly]
+  );
 
   // `inflow_readonly` nunca debe poder filtrar por egresos: el filtro de
   // dirección se oculta en la UI (ver `hideDirectionFilter` abajo), pero
@@ -203,7 +312,9 @@ export function BankMovementsPageClient() {
   // cambio de permisos en caliente sin recargar la página).
   useEffect(() => {
     if (!forceInflowOnly) return;
-    setMovementFilters((prev) => (prev.direction === "inflow" ? prev : { ...prev, direction: "inflow" }));
+    setMovementFilters((prev) =>
+      prev.direction === "inflow" ? prev : { ...prev, direction: "inflow" }
+    );
   }, [forceInflowOnly]);
 
   const load = useCallback(async () => {
@@ -243,41 +354,54 @@ export function BankMovementsPageClient() {
     return () => clearTimeout(timer);
   }, [feedback]);
 
-  const counts = useMemo(() => {
-    const monthPrefix = todayYmd().slice(0, 7);
-    // Los KPIs reflejan la operación (post inicio operativo): los históricos no
-    // deben contarse como "pendientes de identificar" ni ensuciar las métricas.
-    // Los duplicados de importación (misma operación real vista por otro
-    // archivo/parser) tampoco cuentan — no son operaciones reales separadas.
-    const operational = movements.filter(
-      (m) => !isBankMovementHistorical(m) && !movementDuplicates[m.id]
-    );
-    return {
-      pending: operational.filter((m) => m.status === "pending" || m.status === "needs_review")
-        .length,
-      inflowMonth: operational.filter(
-        (m) => m.direction === "inflow" && m.movement_date.slice(0, 7) === monthPrefix
-      ).length,
-      outflowMonth: operational.filter(
-        (m) => m.direction === "outflow" && m.movement_date.slice(0, 7) === monthPrefix
-      ).length,
-      reviewed: operational.filter((m) => m.status === "matched" || m.status === "ignored").length,
-    };
-  }, [movements, movementDuplicates]);
+  const periodRange = useMemo(() => resolveBankPeriodRange(period), [period]);
 
-  const summaryCards = [
-    { label: "Pendientes de identificar", value: counts.pending },
-    { label: "Entradas del mes", value: counts.inflowMonth },
-    { label: "Salidas del mes", value: counts.outflowMonth },
-    { label: "Revisados", value: counts.reviewed },
-  ];
+  const operationalSummary = useMemo(
+    () =>
+      getBankOperationalSummary({
+        movements,
+        from: periodRange.from,
+        to: periodRange.to,
+        duplicates: movementDuplicates,
+        levels: movementLevels,
+        direction: forceInflowOnly
+          ? "inflow"
+          : movementFilters.direction === "all"
+            ? undefined
+            : movementFilters.direction,
+        currency:
+          movementFilters.currency === "all" ? undefined : movementFilters.currency,
+      }),
+    [
+      forceInflowOnly,
+      movementDuplicates,
+      movementFilters.currency,
+      movementFilters.direction,
+      movementLevels,
+      movements,
+      periodRange.from,
+      periodRange.to,
+    ]
+  );
 
   const filteredMovements = useMemo(() => {
-    const base = filterBankMovements(movements, movementFilters, new Date(), movementDuplicates);
+    const base = filterBankMovements(movements, movementFilters, new Date(), movementDuplicates, {
+      dateRange: periodRange,
+      clientsByMovementId: movementClients,
+      levels: movementLevels,
+    });
     if (!newImportBatchIds || newImportBatchIds.length === 0) return base;
     const batch = new Set(newImportBatchIds);
     return base.filter((m) => m.import_id != null && batch.has(m.import_id));
-  }, [movements, movementFilters, movementDuplicates, newImportBatchIds]);
+  }, [
+    movementClients,
+    movementDuplicates,
+    movementFilters,
+    movementLevels,
+    movements,
+    newImportBatchIds,
+    periodRange,
+  ]);
 
   useEffect(() => {
     if (!highlightMovementId || loading) return;
@@ -287,16 +411,24 @@ export function BankMovementsPageClient() {
     }
   }, [highlightMovementId, loading, filteredMovements]);
 
-  const [movPage, setMovPage] = useState(1);
-  const [movSort, setMovSort] = useState<SortState>({ key: null, direction: "desc" });
-
   // Reset de página cuando cambian los filtros (evita páginas fuera de rango).
-  const movFilterSig = JSON.stringify(movementFilters);
-  const [appliedMovSig, setAppliedMovSig] = useState(movFilterSig);
-  if (appliedMovSig !== movFilterSig) {
-    setAppliedMovSig(movFilterSig);
-    setMovPage(pageAfterFilterChange());
-  }
+  const movFilterSig = JSON.stringify({
+    filters: movementFilters,
+    period: periodStateKey(period),
+    newImportBatchIds,
+    pageSize: movPageSize,
+  });
+  const appliedMovSigRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (appliedMovSigRef.current === null) {
+      appliedMovSigRef.current = movFilterSig;
+      return;
+    }
+    if (appliedMovSigRef.current !== movFilterSig) {
+      appliedMovSigRef.current = movFilterSig;
+      setMovPage(pageAfterFilterChange());
+    }
+  }, [movFilterSig]);
 
   const sortedMovements = useMemo(
     () =>
@@ -312,9 +444,144 @@ export function BankMovementsPageClient() {
     [filteredMovements, movSort]
   );
   const movPageResult = useMemo(
-    () => paginate(sortedMovements, movPage, 25),
-    [sortedMovements, movPage]
+    () => paginate(sortedMovements, movPage, movPageSize),
+    [movPage, movPageSize, sortedMovements]
   );
+
+  const activeMovementIdForUrl =
+    tab === "conciliacion"
+      ? simpleAssociationMovementId
+      : tab === "movimientos"
+        ? highlightMovementId
+        : null;
+  const activeViewForUrl =
+    tab === "movimientos" && highlightMovementId ? "consult" : null;
+  const sortQuery = serializeMovSortState(movSort);
+  const currentSearchString = searchParams.toString();
+
+  useEffect(() => {
+    const params = bankFiltersToSearchParams({
+      tab,
+      period,
+      filters: movementFilters,
+      from: periodRange.from,
+      to: periodRange.to,
+      page: movPage,
+      pageSize: movPageSize,
+      sort: sortQuery,
+      kpiFocus,
+      movementId: activeMovementIdForUrl,
+      view: activeViewForUrl,
+    });
+    const nextQuery = params.toString();
+    if (nextQuery === currentSearchString) return;
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+  }, [
+    activeMovementIdForUrl,
+    activeViewForUrl,
+    currentSearchString,
+    kpiFocus,
+    movPage,
+    movPageSize,
+    movementFilters,
+    pathname,
+    period,
+    periodRange.from,
+    periodRange.to,
+    router,
+    sortQuery,
+    tab,
+  ]);
+
+  const bankAccountLabel = useMemo(() => {
+    const firstAccountLabel = movements.find((movement) => movement.account_label?.trim())
+      ?.account_label;
+    return firstAccountLabel?.trim() || "Cuenta Santander";
+  }, [movements]);
+
+  const resetKpiFocus = useCallback(() => {
+    setKpiFocus("none");
+    setSanitizedMovementFilters((prev) => ({
+      ...prev,
+      direction: forceInflowOnly ? "inflow" : DEFAULT_BANK_MOVEMENTS_LIST_FILTERS.direction,
+      status: DEFAULT_BANK_MOVEMENTS_LIST_FILTERS.status,
+      simpleStates: DEFAULT_BANK_MOVEMENTS_LIST_FILTERS.simpleStates,
+    }));
+    setMovPage(1);
+  }, [forceInflowOnly, setSanitizedMovementFilters]);
+
+  const applyKpiFocus = useCallback(
+    (nextFocus: Exclude<BankKpiFocus, "none">) => {
+      setKpiFocus(nextFocus);
+      setSanitizedMovementFilters((prev) => {
+        const base: BankMovementsListFilters = {
+          ...prev,
+          status: DEFAULT_BANK_MOVEMENTS_LIST_FILTERS.status,
+        };
+        switch (nextFocus) {
+          case "pending":
+            return {
+              ...base,
+              direction: forceInflowOnly
+                ? "inflow"
+                : DEFAULT_BANK_MOVEMENTS_LIST_FILTERS.direction,
+              simpleStates: "sin_cliente",
+            };
+          case "inflow":
+            return {
+              ...base,
+              direction: "inflow",
+              simpleStates: DEFAULT_BANK_MOVEMENTS_LIST_FILTERS.simpleStates,
+            };
+          case "outflow":
+            return {
+              ...base,
+              direction: "outflow",
+              simpleStates: DEFAULT_BANK_MOVEMENTS_LIST_FILTERS.simpleStates,
+            };
+          case "reviewed":
+            return {
+              ...base,
+              direction: forceInflowOnly
+                ? "inflow"
+                : DEFAULT_BANK_MOVEMENTS_LIST_FILTERS.direction,
+              simpleStates: "asociado,pendiente,ingreso_no_comercial",
+            };
+        }
+      });
+      setMovPage(1);
+    },
+    [forceInflowOnly, setSanitizedMovementFilters]
+  );
+
+  const clearFilters = useCallback(() => {
+    setPeriod(defaultBankPeriodState());
+    setKpiFocus("none");
+    setNewImportBatchIds(null);
+    setSanitizedMovementFilters(defaultFiltersForTab(tab, forceInflowOnly));
+    setMovPage(1);
+  }, [forceInflowOnly, setSanitizedMovementFilters, tab]);
+
+  const kpiCards: Array<{
+    focus: Exclude<BankKpiFocus, "none">;
+    label: string;
+    value: number;
+    description?: string;
+  }> = [
+    {
+      focus: "pending",
+      label: "Pendientes",
+      value: operationalSummary.pendingIdentificationCount,
+    },
+    { focus: "inflow", label: "Entradas", value: operationalSummary.inflowCount },
+    { focus: "outflow", label: "Salidas", value: operationalSummary.outflowCount },
+    {
+      focus: "reviewed",
+      label: "Revisados",
+      value: operationalSummary.reviewedCount,
+      description: "Movimientos del período que ya recibieron una decisión.",
+    },
+  ];
 
   const submitForm = useCallback(async () => {
     if (!form) return;
@@ -573,7 +840,11 @@ export function BankMovementsPageClient() {
           <BankClientNameLink
             clientCompanyId={client.clientCompanyId}
             clientName={client.clientName}
-            returnTo={buildBankReturnToQuery({ tab: "movimientos", movementId: m.id })}
+            returnTo={buildBankReturnToQuery({
+              tab: "movimientos",
+              movementId: m.id,
+              baseQuery: currentSearchString,
+            })}
           />
         );
       },
@@ -654,7 +925,11 @@ export function BankMovementsPageClient() {
           <BankClientNameLink
             clientCompanyId={movementClients[m.id]!.clientCompanyId}
             clientName={movementClients[m.id]!.clientName!}
-            returnTo={buildBankReturnToQuery({ tab: "movimientos", movementId: m.id })}
+            returnTo={buildBankReturnToQuery({
+              tab: "movimientos",
+              movementId: m.id,
+              baseQuery: currentSearchString,
+            })}
           />
         </p>
       ) : null}
@@ -687,13 +962,47 @@ export function BankMovementsPageClient() {
         // Sección 13 — Historial muestra solo hechos terminados; estos KPIs
         // ("Pendientes de identificar", "Entradas/Salidas del mes") son estado
         // operativo actual, no un hecho histórico, así que no se muestran ahí.
-        <div className={`grid grid-cols-2 lg:grid-cols-4 ${COPILOT_GRID_GAP}`}>
-          {summaryCards.map((card) => (
-            <div key={card.label} className={copilotCardStandardClass}>
-              <p className={copilotMetricLabelClass}>{card.label}</p>
-              <p className={copilotMetricValueClass}>{loading ? "…" : card.value}</p>
-            </div>
-          ))}
+        <div className="space-y-3">
+          <div className={`grid grid-cols-2 lg:grid-cols-4 ${COPILOT_GRID_GAP}`}>
+            {kpiCards.map((card) => {
+              const active = kpiFocus === card.focus;
+              return (
+                <button
+                  key={card.focus}
+                  type="button"
+                  title={card.description}
+                  aria-pressed={active}
+                  data-testid={`bank-kpi-${card.focus}`}
+                  onClick={() => applyKpiFocus(card.focus)}
+                  className={`${copilotCardStandardClass} text-left transition ${
+                    active
+                      ? "border-[var(--copilot-accent)] ring-2 ring-[var(--copilot-accent)]"
+                      : "hover:border-[var(--copilot-accent)]/50"
+                  }`}
+                >
+                  <p className={copilotMetricLabelClass} title={card.description}>
+                    {card.label}
+                  </p>
+                  <p className={copilotMetricValueClass}>{loading ? "…" : card.value}</p>
+                  <p className={copilotCaptionClass}>{periodRange.label}</p>
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className={copilotCaptionClass}>
+              {periodRange.label} · {bankAccountLabel}
+            </p>
+            {kpiFocus !== "none" ? (
+              <button
+                type="button"
+                onClick={resetKpiFocus}
+                className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
+              >
+                Restablecer vista
+              </button>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
@@ -733,7 +1042,7 @@ export function BankMovementsPageClient() {
           }}
           onViewNewMovements={(importIds) => {
             setNewImportBatchIds(importIds);
-            setMovementFilters((prev) => ({ ...prev, duplicates: "hide" }));
+            setSanitizedMovementFilters((prev) => ({ ...prev, duplicates: "hide" }));
             setTab("movimientos");
           }}
         />
@@ -766,25 +1075,14 @@ export function BankMovementsPageClient() {
           ) : null}
 
           <div className="mt-4">
-            <BankMovementsFiltersBar
+            <BankSimpleFiltersBar
               mode="movements"
+              period={period}
+              onPeriodChange={setPeriod}
               filters={movementFilters}
-              onChange={(next) => {
-                const nextFilters = next as BankMovementsListFilters;
-                setMovementFilters(
-                  forceInflowOnly ? { ...nextFilters, direction: "inflow" } : nextFilters
-                );
-              }}
-              onClear={() =>
-                setMovementFilters(
-                  forceInflowOnly
-                    ? { ...DEFAULT_BANK_MOVEMENTS_LIST_FILTERS, direction: "inflow" }
-                    : DEFAULT_BANK_MOVEMENTS_LIST_FILTERS
-                )
-              }
-              showingCount={filteredMovements.length}
-              totalCount={movements.length}
-              countLabel="movimientos"
+              onFiltersChange={setSanitizedMovementFilters}
+              onClear={clearFilters}
+              periodLabel={periodRange.label}
               canManageVisibility={canWriteBank}
               hideDirectionFilter={forceInflowOnly}
             />
@@ -829,15 +1127,32 @@ export function BankMovementsPageClient() {
                   onSort: (key) => setMovSort((prev) => nextSortState(prev, key)),
                 }}
               />
-              <TablePagination
-                page={movPageResult.safePage}
-                totalPages={movPageResult.totalPages}
-                from={movPageResult.from}
-                to={movPageResult.to}
-                total={movPageResult.total}
-                itemLabel="movimientos"
-                onPageChange={setMovPage}
-              />
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <label className={`flex items-center gap-2 text-xs ${copilotCaptionClass}`}>
+                  <span>Filas por página</span>
+                  <select
+                    value={movPageSize}
+                    onChange={(e) => setMovPageSize(Number(e.target.value) as MovPageSize)}
+                    className={`${copilotInputClass} h-8 w-20 py-0`}
+                  >
+                    {MOV_PAGE_SIZE_OPTIONS.map((size) => (
+                      <option key={size} value={size}>
+                        {size}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <TablePagination
+                  page={movPageResult.safePage}
+                  totalPages={movPageResult.totalPages}
+                  from={movPageResult.from}
+                  to={movPageResult.to}
+                  total={movPageResult.total}
+                  itemLabel="movimientos"
+                  onPageChange={setMovPage}
+                  className="flex-1"
+                />
+              </div>
             </div>
           )}
         </section>
@@ -860,23 +1175,63 @@ export function BankMovementsPageClient() {
 
       {tab === "conciliacion" ? (
         <div className="space-y-3">
+          <section className={copilotCardStandardClass}>
+            <BankSimpleFiltersBar
+              mode="conciliation"
+              period={period}
+              onPeriodChange={setPeriod}
+              filters={movementFilters}
+              onFiltersChange={setSanitizedMovementFilters}
+              onClear={clearFilters}
+              periodLabel={periodRange.label}
+              canManageVisibility={canWriteBank}
+              hideDirectionFilter={forceInflowOnly}
+            />
+          </section>
           <SimpleReconciliationList
-            movements={movements}
+            movements={filteredMovements}
             movementLevels={movementLevels}
             movementDuplicates={movementDuplicates}
             movementClients={movementClients}
             canWriteBank={canWriteBank}
             onOpenAssociation={openSimpleAssociation}
             onRestore={(m) => void hideOrRestoreMovement(m, "restore")}
+            pageSize={movPageSize}
+            returnToSearch={currentSearchString}
           />
         </div>
       ) : null}
 
-      {tab === "historial" ? <BankHistoryPanel imports={imports} loading={loading} /> : null}
+      {tab === "historial" ? (
+        <div className="space-y-3">
+          <section className={copilotCardStandardClass}>
+            <BankSimpleFiltersBar
+              mode="historial"
+              period={period}
+              onPeriodChange={setPeriod}
+              filters={movementFilters}
+              onFiltersChange={setSanitizedMovementFilters}
+              onClear={clearFilters}
+              periodLabel={periodRange.label}
+              canManageVisibility={canWriteBank}
+              hideDirectionFilter={forceInflowOnly}
+            />
+          </section>
+          <BankHistoryPanel
+            imports={imports}
+            loading={loading}
+            searchQuery={movementFilters.text}
+            dateFrom={periodRange.from}
+            dateTo={periodRange.to}
+            periodLabel={periodRange.label}
+          />
+        </div>
+      ) : null}
 
       {tab === "conciliacion" && simpleAssociationMovementId ? (
         <SimpleMovementAssociationPanel
           movementId={simpleAssociationMovementId}
+          returnToSearch={currentSearchString}
           onClose={() => setSimpleAssociationMovementId(null)}
           onChanged={() => void load()}
         />

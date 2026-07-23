@@ -1,5 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
+import { COPILOT_SESSION_TEST_SIGNING_SECRET } from "./lib/copilot-session-signing-secret";
+
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000";
 const skipWebServer = process.env.PLAYWRIGHT_SKIP_WEBSERVER === "1";
 
@@ -27,6 +29,13 @@ export default defineConfig({
         timeout: 180_000,
         stdout: "pipe",
         stderr: "pipe",
+        // Alinea firma de cookie e2e con el middleware del servidor local.
+        env: {
+          ...process.env,
+          COPILOT_SESSION_SIGNING_SECRET:
+            process.env.COPILOT_SESSION_SIGNING_SECRET?.trim() ||
+            COPILOT_SESSION_TEST_SIGNING_SECRET,
+        },
       },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
 });

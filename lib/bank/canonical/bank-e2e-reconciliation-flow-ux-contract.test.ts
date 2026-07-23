@@ -94,8 +94,9 @@ describe("Un solo panel a la vez (FASE BANK-SIMPLE-FLOW-COMPLETION-001: un únic
   // uno nuevo siempre reemplaza el anterior (mismo setState), nunca los
   // acumula.
   it("un único estado (simpleAssociationMovementId) controla el único drawer de asociación", () => {
-    const stateDecl = pageClient.match(/const \[simpleAssociationMovementId, setSimpleAssociationMovementId\] = useState<string \| null>\(null\);/);
-    expect(stateDecl).not.toBeNull();
+    expect(pageClient).toMatch(
+      /const \[simpleAssociationMovementId, setSimpleAssociationMovementId\] = useState<string \| null>\(/
+    );
     expect(pageClient).toContain("const openSimpleAssociation = useCallback((movementId: string) => {");
   });
 

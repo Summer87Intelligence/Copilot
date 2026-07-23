@@ -8,8 +8,8 @@ import { buildBankReturnToQuery } from "@/lib/bank-movements/client-banking-navi
 import { copilotButtonClassName } from "@/components/copilot/ui/copilot-button";
 import {
   copilotCaptionClass,
-  copilotInputClass,
   copilotMetricLabelClass,
+  copilotInputClass,
 } from "@/components/copilot/ui/copilot-visual-system";
 import { EmptyState as DsEmptyState } from "@/components/copilot/ui/empty-state";
 import type { BankMovement } from "@/lib/bank-movements/bank-movements-types";
@@ -45,16 +45,6 @@ const SORT_OPTIONS: Array<{ value: SortKey; label: string }> = [
   { value: "amount_asc", label: "Menor importe" },
 ];
 
-const STATUS_FILTER_OPTIONS: Array<{ value: SimpleMovementState | ""; label: string }> = [
-  { value: "", label: "Todos" },
-  { value: "sin_cliente", label: "Sin cliente" },
-  { value: "asociado", label: "Asociado" },
-  { value: "pendiente", label: "Pendiente" },
-  { value: "ingreso_no_comercial", label: "Ingreso no comercial" },
-  { value: "duplicado", label: "Duplicado" },
-  { value: "oculto", label: "Oculto" },
-];
-
 export function SimpleReconciliationList({
   movements,
   movementLevels,
@@ -63,6 +53,8 @@ export function SimpleReconciliationList({
   canWriteBank,
   onOpenAssociation,
   onRestore,
+  pageSize = 25,
+  returnToSearch,
 }: {
   movements: BankMovement[];
   movementLevels: Record<string, MovementReconciliationLevel>;
@@ -71,13 +63,11 @@ export function SimpleReconciliationList({
   canWriteBank: boolean;
   onOpenAssociation: (movementId: string) => void;
   onRestore: (movement: BankMovement) => void;
+  pageSize?: 25 | 50 | 100;
+  returnToSearch?: string;
 }) {
-  const [search, setSearch] = useState("");
-  const [currency, setCurrency] = useState<"" | "UYU" | "USD">("");
-  const [statusFilter, setStatusFilter] = useState<SimpleMovementState | "">("");
   const [sort, setSort] = useState<SortKey>("date_desc");
   const [page, setPage] = useState(1);
-  const pageSize = 25;
 
   const rows = useMemo(() => {
     return movements
@@ -97,21 +87,8 @@ export function SimpleReconciliationList({
       .filter((row): row is typeof row & { state: SimpleMovementState } => row.state !== null);
   }, [movements, movementLevels, movementDuplicates, movementClients]);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return rows.filter((row) => {
-      if (statusFilter && row.state !== statusFilter) return false;
-      if (currency && row.movement.currency !== currency) return false;
-      if (q) {
-        const haystack = `${getBankMovementDisplayDescription(row.movement)} ${row.client?.clientName ?? ""}`.toLowerCase();
-        if (!haystack.includes(q)) return false;
-      }
-      return true;
-    });
-  }, [rows, statusFilter, currency, search]);
-
   const sorted = useMemo(() => {
-    const copy = [...filtered];
+    const copy = [...rows];
     copy.sort((a, b) => {
       switch (sort) {
         case "date_asc":
@@ -126,7 +103,7 @@ export function SimpleReconciliationList({
       }
     });
     return copy;
-  }, [filtered, sort]);
+  }, [rows, sort]);
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -183,53 +160,8 @@ export function SimpleReconciliationList({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" data-testid="bank-conciliation-list">
       <div className="flex flex-wrap items-end gap-3">
-        <div className="min-w-[200px] flex-1">
-          <label className={copilotMetricLabelClass}>Buscar</label>
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            placeholder="Descripción o cliente…"
-            className={copilotInputClass}
-          />
-        </div>
-        <div>
-          <label className={copilotMetricLabelClass}>Moneda</label>
-          <select
-            value={currency}
-            onChange={(e) => {
-              setCurrency(e.target.value as "" | "UYU" | "USD");
-              setPage(1);
-            }}
-            className={copilotInputClass}
-          >
-            <option value="">Todas</option>
-            <option value="UYU">UYU</option>
-            <option value="USD">USD</option>
-          </select>
-        </div>
-        <div>
-          <label className={copilotMetricLabelClass}>Estado</label>
-          <select
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value as SimpleMovementState | "");
-              setPage(1);
-            }}
-            className={copilotInputClass}
-          >
-            {STATUS_FILTER_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
         <div>
           <label className={copilotMetricLabelClass}>Orden</label>
           <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)} className={copilotInputClass}>
@@ -247,7 +179,7 @@ export function SimpleReconciliationList({
         <DsEmptyState
           variant="compact"
           title="No hay movimientos con estos filtros"
-          description="Probá con otro estado, moneda o búsqueda."
+          description="Probá limpiar filtros o revisar otro período."
         />
       ) : (
         <>
@@ -282,6 +214,7 @@ export function SimpleReconciliationList({
                           returnTo={buildBankReturnToQuery({
                             tab: "conciliacion",
                             movementId: movement.id,
+                            baseQuery: returnToSearch,
                           })}
                         />
                       ) : (
@@ -316,6 +249,7 @@ export function SimpleReconciliationList({
                       returnTo={buildBankReturnToQuery({
                         tab: "conciliacion",
                         movementId: movement.id,
+                        baseQuery: returnToSearch,
                       })}
                     />
                   ) : (

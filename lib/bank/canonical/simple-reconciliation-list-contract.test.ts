@@ -46,10 +46,11 @@ describe("SimpleReconciliationList — lista plana, sin clusters/recibos/colas",
     expect(list).not.toMatch(/Revisar N listos|Revisar uno por uno|Confirmar con recibo|payerCluster|clusterKey/);
   });
 
-  it("filtros mínimos: búsqueda, moneda, estado; orden por fecha/importe", () => {
-    expect(list).toContain("Buscar");
-    expect(list).toContain("Moneda");
-    expect(list).toContain("Estado");
+  it("el padre es dueño de los filtros; la lista conserva solo orden y paginación", () => {
+    expect(list).not.toContain("placeholder=\"Descripción o cliente…\"");
+    expect(list).not.toContain("<option value=\"UYU\">UYU</option>");
+    expect(list).not.toContain("STATUS_FILTER_OPTIONS");
+    expect(list).toContain("data-testid=\"bank-conciliation-list\"");
     expect(list).toContain("date_desc");
     expect(list).toContain("date_asc");
     expect(list).toContain("amount_desc");
@@ -64,7 +65,7 @@ describe("SimpleReconciliationList — lista plana, sin clusters/recibos/colas",
   it("bank-movements-page-client monta SimpleReconciliationList bajo Conciliación con la misma fuente de datos que Movimientos", () => {
     expect(pageClient).toMatch(/tab === "conciliacion" \? \(/);
     expect(pageClient).toContain("<SimpleReconciliationList");
-    expect(pageClient).toContain("movements={movements}");
+    expect(pageClient).toContain("movements={filteredMovements}");
     expect(pageClient).toContain("movementLevels={movementLevels}");
     expect(pageClient).toContain("movementClients={movementClients}");
   });
