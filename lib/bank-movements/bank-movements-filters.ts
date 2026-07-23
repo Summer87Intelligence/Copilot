@@ -12,9 +12,17 @@ import type {
   BankMovementDirection,
   BankMovementStatus,
 } from "@/lib/bank-movements/bank-movements-types";
+import { movementDateInInclusiveRange } from "@/lib/bank-movements/bank-period";
+import { countActiveFilters, type FilterValues } from "@/lib/ui/filter-bar-model";
 import { PERIOD_MONTH_OPTIONS } from "@/lib/copilot-datos-period-filter";
 import { resolveImportedBankMovementAmount } from "@/lib/bank-movements/santander-excel-amount";
+import {
+  deriveSimpleMovementState,
+  SIMPLE_MOVEMENT_STATES,
+  type SimpleMovementState,
+} from "@/lib/bank-movements/simple-movement-association";
 import { isBankMovementHistorical } from "@/lib/bank/canonical/historical-policy";
+import type { MovementReconciliationLevel } from "@/lib/bank/canonical/movement-reconciliation-level-labels";
 import { isBankMovementUiHidden } from "@/lib/bank-movements/bank-movement-visibility";
 
 export type BankMovementsPeriodFilter = "all" | "current" | `${number}-${string}`;
@@ -30,6 +38,9 @@ export type BankMovementDuplicatesFilter = "all" | "only" | "hide";
 
 /** Visibilidad operativa (ocultar ≠ ignorar). Default: solo visibles. */
 export type BankMovementVisibilityFilter = "visible" | "hidden" | "all";
+
+/** Presencia de cliente asociado (derivado de clientsByMovementId en filtrado). */
+export type BankMovementClientPresenceFilter = "all" | "with" | "without";
 
 export type BankMovementsListFilters = {
   period: BankMovementsPeriodFilter;
@@ -47,6 +58,15 @@ export type BankMovementsListFilters = {
   duplicates: BankMovementDuplicatesFilter;
   source: BankMovementSourceFilter;
   visibility: BankMovementVisibilityFilter;
+  clientPresence: BankMovementClientPresenceFilter;
+  /** Valores SimpleMovementState separados por coma (conciliación). */
+  simpleStates: string;
+};
+
+export type FilterBankMovementsContext = {
+  dateRange?: { from: string; to: string } | null;
+  clientsByMovementId?: Record<string, { clientName: string | null; clientCode?: string | null }>;
+  levels?: Record<string, MovementReconciliationLevel>;
 };
 
 export type ReconciliationSuggestionFilter =
@@ -94,6 +114,8 @@ export const DEFAULT_BANK_MOVEMENTS_LIST_FILTERS: BankMovementsListFilters = {
   duplicates: "hide",
   source: "all",
   visibility: "visible",
+  clientPresence: "all",
+  simpleStates: "",
 };
 
 export const BANK_MOVEMENT_DUPLICATES_OPTIONS: ReadonlyArray<{
@@ -175,8 +197,63 @@ export function isBankMovementsListFiltersActive(
     filters.amountMax.trim() !== "" ||
     filters.duplicates !== defaults.duplicates ||
     filters.source !== defaults.source ||
-    filters.visibility !== defaults.visibility
+    filters.visibility !== defaults.visibility ||
+    filters.clientPresence !== defaults.clientPresence ||
+    filters.simpleStates.trim() !== ""
   );
+}
+
+const SIMPLE_MOVEMENT_STATE_SET = new Set<string>(SIMPLE_MOVEMENT_STATES);
+
+export function parseSimpleStatesFilter(value: string): SimpleMovementState[] {
+  return value
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part): part is SimpleMovementState => SIMPLE_MOVEMENT_STATE_SET.has(part));
+}
+
+/** Defaults para conteo de chips (sin período URL, manejado aparte). */
+export function bankMovementsListFilterChipDefaults(): FilterValues {
+  const d = DEFAULT_BANK_MOVEMENTS_LIST_FILTERS;
+  return {
+    currency: d.currency,
+    status: d.status,
+    direction: d.direction,
+    text: d.text,
+    amount: d.amount,
+    amountMin: d.amountMin,
+    amountMax: d.amountMax,
+    duplicates: d.duplicates,
+    source: d.source,
+    visibility: d.visibility,
+    clientPresence: d.clientPresence,
+    simpleStates: d.simpleStates,
+  };
+}
+
+export function countBankMovementsListFilterChips(filters: BankMovementsListFilters): number {
+  const defaults = bankMovementsListFilterChipDefaults();
+  const values: FilterValues = {
+    currency: filters.currency,
+    status: filters.status,
+    direction: filters.direction,
+    text: filters.text,
+    amount: filters.amount,
+    amountMin: filters.amountMin,
+    amountMax: filters.amountMax,
+    duplicates: filters.duplicates,
+    source: filters.source,
+    visibility: filters.visibility,
+    clientPresence: filters.clientPresence,
+    simpleStates: filters.simpleStates,
+  };
+  return countActiveFilters(values, defaults);
+}
+
+function metaString(meta: Record<string, unknown> | null | undefined, key: string): string {
+  if (!meta || typeof meta !== "object") return "";
+  const v = meta[key];
+  return typeof v === "string" ? v : "";
 }
 
 /**
@@ -365,15 +442,37 @@ export function movementMatchesAmountSearch(
 export function movementMatchesTextSearch(
   movement: Pick<
     BankMovement,
-    "description" | "raw_description" | "bank_reference" | "account_label" | "bank_name"
+    | "description"
+    | "raw_description"
+    | "bank_reference"
+    | "account_label"
+    | "bank_name"
+    | "amount"
+    | "metadata"
   >,
-  text: string
+  text: string,
+  extraHaystack: string[] = []
 ): boolean {
   const query = normalizeSearchText(text);
   if (!query) return true;
 
+  const meta =
+    movement.metadata && typeof movement.metadata === "object" ? movement.metadata : null;
+
   const haystack = normalizeSearchText(
-    [movement.description, movement.raw_description, movement.bank_reference, movement.account_label, movement.bank_name]
+    [
+      movement.description,
+      movement.raw_description,
+      movement.bank_reference,
+      movement.account_label,
+      movement.bank_name,
+      metaString(meta, "payer_name_raw"),
+      metaString(meta, "payer_name_normalized"),
+      metaString(meta, "masked_account"),
+      metaString(meta, "account_number"),
+      String(movement.amount ?? ""),
+      ...extraHaystack,
+    ]
       .filter(Boolean)
       .join(" ")
   );
@@ -385,21 +484,38 @@ export function filterBankMovements(
   filters: BankMovementsListFilters,
   now: Date = new Date(),
   /** IDs marcados como duplicado de importación (opcional; si no hay mapa, el filtro duplicates se ignora). */
-  duplicateMovementIds?: ReadonlySet<string> | Readonly<Record<string, unknown>>
+  duplicateMovementIds?: ReadonlySet<string> | Readonly<Record<string, unknown>>,
+  context?: FilterBankMovementsContext
 ): BankMovement[] {
   const amountQuery = normalizeAmountSearch(filters.amount);
   const amountMin = normalizeAmountSearch(filters.amountMin);
   const amountMax = normalizeAmountSearch(filters.amountMax);
+  const simpleStateFilter = parseSimpleStatesFilter(filters.simpleStates);
   const dupSet =
     duplicateMovementIds instanceof Set
       ? duplicateMovementIds
       : duplicateMovementIds
         ? new Set(Object.keys(duplicateMovementIds))
         : null;
+  const dupRecord =
+    duplicateMovementIds instanceof Set
+      ? null
+      : (duplicateMovementIds as Record<string, unknown> | undefined);
+  const dateRange = context?.dateRange ?? null;
+  const clientsByMovementId = context?.clientsByMovementId;
+  const levels = context?.levels;
 
   return movements.filter((movement) => {
     if (!matchesMovementScope(movement.movement_date, filters.scope)) return false;
-    if (!matchesMovementPeriod(movement.movement_date, filters.period, now)) return false;
+
+    if (dateRange) {
+      if (!movementDateInInclusiveRange(movement.movement_date, dateRange.from, dateRange.to)) {
+        return false;
+      }
+    } else if (!matchesMovementPeriod(movement.movement_date, filters.period, now)) {
+      return false;
+    }
+
     if (filters.currency !== "all" && movement.currency !== filters.currency) return false;
     if (filters.direction !== "all" && movement.direction !== filters.direction) return false;
 
@@ -408,9 +524,33 @@ export function filterBankMovements(
       if (bucket !== filters.status) return false;
     }
 
-    if (!movementMatchesTextSearch(movement, filters.text)) return false;
+    const clientInfo = clientsByMovementId?.[movement.id];
+    const clientHaystack: string[] = [];
+    if (clientInfo?.clientName) clientHaystack.push(clientInfo.clientName);
+    if (clientInfo?.clientCode) clientHaystack.push(clientInfo.clientCode);
+
+    if (!movementMatchesTextSearch(movement, filters.text, clientHaystack)) return false;
     if (amountQuery != null && !movementMatchesAmountSearch(movement, amountQuery)) return false;
     if (!movementMatchesAmountRange(movement, amountMin, amountMax)) return false;
+
+    if (filters.clientPresence !== "all" && clientsByMovementId) {
+      const hasClient = Boolean(clientInfo?.clientName?.trim());
+      if (filters.clientPresence === "with" && !hasClient) return false;
+      if (filters.clientPresence === "without" && hasClient) return false;
+    }
+
+    if (simpleStateFilter.length > 0) {
+      const isDup = dupSet?.has(movement.id) ?? Boolean(dupRecord?.[movement.id]);
+      const hidden = isBankMovementUiHidden(movement.metadata);
+      const simple = deriveSimpleMovementState({
+        direction: movement.direction,
+        status: movement.status,
+        isDuplicate: isDup,
+        isHidden: hidden,
+        level: levels?.[movement.id],
+      });
+      if (!simple || !simpleStateFilter.includes(simple)) return false;
+    }
 
     if (filters.source !== "all") {
       const kind = deriveMovementSourceKind(movement);

@@ -177,6 +177,76 @@ describe("bank-movements-filters helpers", () => {
       expect(isBankMovementsListFiltersActive(active)).toBe(true);
       expect(isBankMovementsListFiltersActive(DEFAULT_BANK_MOVEMENTS_LIST_FILTERS)).toBe(false);
     });
+
+    it("filtra por dateRange del contexto ignorando filters.period", () => {
+      const rows = [
+        movement({ id: "in", description: "IN", amount: 10, movement_date: "2026-07-05" }),
+        movement({ id: "out", description: "OUT", amount: 10, movement_date: "2026-06-01" }),
+      ];
+      const result = filterBankMovements(
+        rows,
+        { ...DEFAULT_BANK_MOVEMENTS_LIST_FILTERS, scope: "all", period: "2026-06" },
+        julyNow,
+        undefined,
+        { dateRange: { from: "2026-07-01", to: "2026-07-31" } }
+      );
+      expect(result.map((r) => r.id)).toEqual(["in"]);
+    });
+
+    it("filtra por clientPresence with/without", () => {
+      const rows = [
+        movement({ id: "a", description: "A", amount: 10 }),
+        movement({ id: "b", description: "B", amount: 20 }),
+      ];
+      const clients = {
+        a: { clientName: "Acme SA" },
+        b: { clientName: null },
+      };
+      const withClient = filterBankMovements(
+        rows,
+        { ...DEFAULT_BANK_MOVEMENTS_LIST_FILTERS, clientPresence: "with" },
+        julyNow,
+        undefined,
+        { clientsByMovementId: clients }
+      );
+      expect(withClient.map((r) => r.id)).toEqual(["a"]);
+
+      const withoutClient = filterBankMovements(
+        rows,
+        { ...DEFAULT_BANK_MOVEMENTS_LIST_FILTERS, clientPresence: "without" },
+        julyNow,
+        undefined,
+        { clientsByMovementId: clients }
+      );
+      expect(withoutClient.map((r) => r.id)).toEqual(["b"]);
+    });
+
+    it("filtra por simpleStates usando levels", () => {
+      const rows = [
+        movement({ id: "sin", description: "SIN", amount: 10, direction: "inflow", status: "pending" }),
+        movement({ id: "asoc", description: "ASOC", amount: 20, direction: "inflow", status: "pending" }),
+      ];
+      const result = filterBankMovements(
+        rows,
+        { ...DEFAULT_BANK_MOVEMENTS_LIST_FILTERS, simpleStates: "asociado" },
+        julyNow,
+        undefined,
+        { levels: { asoc: "client_identified" } }
+      );
+      expect(result.map((r) => r.id)).toEqual(["asoc"]);
+    });
+
+    it("busca por nombre de cliente vía contexto", () => {
+      const rows = [movement({ id: "m1", description: "PAGO", amount: 100 })];
+      const result = filterBankMovements(
+        rows,
+        { ...DEFAULT_BANK_MOVEMENTS_LIST_FILTERS, text: "botica" },
+        julyNow,
+        undefined,
+        { clientsByMovementId: { m1: { clientName: "Botica del Señor SRL" } } }
+      );
+      expect(result.map((r) => r.id)).toEqual(["m1"]);
+    });
   });
 
   describe("filterReconciliationItems", () => {
@@ -441,6 +511,49 @@ describe("bank-movements-filters helpers", () => {
           movement({ description: "X", amount: 1, account_label: "Cuenta Corriente UYU" }),
           "corriente"
         )
+      ).toBe(true);
+    });
+
+    it("busca en monto, pagador y cuenta enmascarada", () => {
+      expect(
+        movementMatchesTextSearch(
+          movement({
+            description: "X",
+            amount: 3548,
+            metadata: {
+              payer_name_raw: "ZETASOFTWARE S.A.",
+              payer_name_normalized: "ZETASOFTWARE SA",
+              masked_account: "••••4821",
+            },
+          }),
+          "3548"
+        )
+      ).toBe(true);
+      expect(
+        movementMatchesTextSearch(
+          movement({
+            description: "X",
+            amount: 100,
+            metadata: { payer_name_normalized: "ENERGETIA" },
+          }),
+          "energetia"
+        )
+      ).toBe(true);
+      expect(
+        movementMatchesTextSearch(
+          movement({
+            description: "X",
+            amount: 100,
+            metadata: { masked_account: "••••4821" },
+          }),
+          "4821"
+        )
+      ).toBe(true);
+    });
+
+    it("acepta extraHaystack (cliente)", () => {
+      expect(
+        movementMatchesTextSearch(movement({ description: "PAGO", amount: 100 }), "acme", ["Acme Corp"])
       ).toBe(true);
     });
   });
