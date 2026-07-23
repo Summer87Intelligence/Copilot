@@ -100,8 +100,6 @@ type WriteResponse = { ok: boolean; data?: BankMovement; error?: string };
 const dateFormatter = new Intl.DateTimeFormat("es-UY", { dateStyle: "medium" });
 const numberFormatter = new Intl.NumberFormat("es-UY", { minimumFractionDigits: 2 });
 const DEFAULT_CONCILIATION_SIMPLE_STATES = "sin_cliente,pendiente";
-const MOV_PAGE_SIZE_OPTIONS: MovPageSize[] = [25, 50, 100];
-
 function formatDate(value: string | null): string {
   if (!value) return "—";
   const date = new Date(`${value.slice(0, 10)}T00:00:00`);
@@ -562,19 +560,39 @@ export function BankMovementsPageClient() {
     setMovPage(1);
   }, [forceInflowOnly, setSanitizedMovementFilters, tab]);
 
+  const moneyFmt = (n: number) =>
+    numberFormatter.format(n);
+
   const kpiCards: Array<{
     focus: Exclude<BankKpiFocus, "none">;
     label: string;
     value: number;
     description?: string;
+    amountLines?: string[];
   }> = [
     {
       focus: "pending",
       label: "Pendientes",
       value: operationalSummary.pendingIdentificationCount,
     },
-    { focus: "inflow", label: "Entradas", value: operationalSummary.inflowCount },
-    { focus: "outflow", label: "Salidas", value: operationalSummary.outflowCount },
+    {
+      focus: "inflow",
+      label: "Entradas",
+      value: operationalSummary.inflowCount,
+      amountLines: [
+        `UYU ${moneyFmt(operationalSummary.inflowAmountByCurrency.UYU)}`,
+        `USD ${moneyFmt(operationalSummary.inflowAmountByCurrency.USD)}`,
+      ],
+    },
+    {
+      focus: "outflow",
+      label: "Salidas",
+      value: operationalSummary.outflowCount,
+      amountLines: [
+        `UYU ${moneyFmt(operationalSummary.outflowAmountByCurrency.UYU)}`,
+        `USD ${moneyFmt(operationalSummary.outflowAmountByCurrency.USD)}`,
+      ],
+    },
     {
       focus: "reviewed",
       label: "Revisados",
@@ -582,6 +600,15 @@ export function BankMovementsPageClient() {
       description: "Movimientos del período que ya recibieron una decisión.",
     },
   ];
+
+  const periodDifference = {
+    UYU:
+      operationalSummary.inflowAmountByCurrency.UYU -
+      operationalSummary.outflowAmountByCurrency.UYU,
+    USD:
+      operationalSummary.inflowAmountByCurrency.USD -
+      operationalSummary.outflowAmountByCurrency.USD,
+  };
 
   const submitForm = useCallback(async () => {
     if (!form) return;
@@ -984,15 +1011,30 @@ export function BankMovementsPageClient() {
                     {card.label}
                   </p>
                   <p className={copilotMetricValueClass}>{loading ? "…" : card.value}</p>
+                  {card.amountLines && !loading ? (
+                    <div className={`${copilotCaptionClass} mt-1 space-y-0.5`}>
+                      {card.amountLines.map((line) => (
+                        <p key={line} className="tabular-nums">
+                          {line}
+                        </p>
+                      ))}
+                    </div>
+                  ) : null}
                   <p className={copilotCaptionClass}>{periodRange.label}</p>
                 </button>
               );
             })}
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className={copilotCaptionClass}>
-              {periodRange.label} · {bankAccountLabel}
-            </p>
+            <div className="space-y-0.5">
+              <p className={copilotCaptionClass}>
+                {periodRange.label} · {bankAccountLabel}
+              </p>
+              <p className={copilotCaptionClass} title="Diferencia entre entradas y salidas del período.">
+                Diferencia del período · UYU {numberFormatter.format(periodDifference.UYU)} · USD{" "}
+                {numberFormatter.format(periodDifference.USD)}
+              </p>
+            </div>
             {kpiFocus !== "none" ? (
               <button
                 type="button"
@@ -1127,22 +1169,7 @@ export function BankMovementsPageClient() {
                   onSort: (key) => setMovSort((prev) => nextSortState(prev, key)),
                 }}
               />
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <label className={`flex items-center gap-2 text-xs ${copilotCaptionClass}`}>
-                  <span>Filas por página</span>
-                  <select
-                    value={movPageSize}
-                    onChange={(e) => setMovPageSize(Number(e.target.value) as MovPageSize)}
-                    className={`${copilotInputClass} h-8 w-20 py-0`}
-                  >
-                    {MOV_PAGE_SIZE_OPTIONS.map((size) => (
-                      <option key={size} value={size}>
-                        {size}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <TablePagination
+              <TablePagination
                   page={movPageResult.safePage}
                   totalPages={movPageResult.totalPages}
                   from={movPageResult.from}
@@ -1150,9 +1177,9 @@ export function BankMovementsPageClient() {
                   total={movPageResult.total}
                   itemLabel="movimientos"
                   onPageChange={setMovPage}
-                  className="flex-1"
+                  pageSize={movPageSize}
+                  onPageSizeChange={(size) => setMovPageSize(size as MovPageSize)}
                 />
-              </div>
             </div>
           )}
         </section>
@@ -1197,6 +1224,7 @@ export function BankMovementsPageClient() {
             onOpenAssociation={openSimpleAssociation}
             onRestore={(m) => void hideOrRestoreMovement(m, "restore")}
             pageSize={movPageSize}
+            onPageSizeChange={(size) => setMovPageSize(size as MovPageSize)}
             returnToSearch={currentSearchString}
           />
         </div>

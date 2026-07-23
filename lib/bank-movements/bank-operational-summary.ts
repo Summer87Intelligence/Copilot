@@ -82,6 +82,7 @@ export function getBankOperationalSummary(
 
   const universe = input.movements.filter((m) => {
     if (isBankMovementHistorical(m)) return false;
+    if (m.excluded_from_operations === true) return false;
     if (isDuplicate(m.id, duplicates)) return false;
     if (isBankMovementUiHidden(m.metadata)) return false;
     if (!movementDateInInclusiveRange(m.movement_date, input.from, input.to)) return false;
