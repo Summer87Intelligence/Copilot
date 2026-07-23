@@ -24,13 +24,12 @@ describe("Deep link: URLs antiguas normalizan a Conciliación", () => {
     expect(pageClient).toContain("if (!deepLinkApplied.current)");
   });
 
-  it("preserva movementId abriendo Conciliación + panel (FASE BANK-SIMPLE-RESPONSIBILITY-AND-DRAWER-DETAIL-001)", () => {
+  it("preserva movementId: Conciliación abre panel; Movimientos+consult solo resalta", () => {
     expect(pageClient).toContain('searchParams.get("movementId")');
     expect(pageClient).toContain("openSimpleAssociation(movementIdParam)");
-    // movementId fuera del gate one-shot; siempre fuerza tab Conciliación.
-    expect(pageClient).toMatch(
-      /if \(movementIdParam\) \{\s*setTab\("conciliacion"\);\s*openSimpleAssociation\(movementIdParam\);\s*\}/
-    );
+    expect(pageClient).toContain('searchParams.get("view") === "consult"');
+    expect(pageClient).toContain("setHighlightMovementId(movementIdParam)");
+    expect(pageClient).toContain('setTab("movimientos")');
   });
 
   it("BankIncomeWorkspace consume el foco vía initialMovementId", () => {

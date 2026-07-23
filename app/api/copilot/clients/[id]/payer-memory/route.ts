@@ -8,6 +8,16 @@ import {
   listClientPayerHistory,
 } from "@/lib/bank/canonical/payer-identity-repository.server";
 import { maskAccountOrReference } from "@/lib/bank/canonical/payer-identity";
+import {
+  associationRowFromMovement,
+  buildClientBankingSummary,
+  buildHabitualPaymentPattern,
+  buildHowAppearsFromActive,
+  filterActiveBankingRows,
+  filterCorrectionRows,
+  groupCorrections,
+  type ClientBankingAssociationRow,
+} from "@/lib/bank-movements/client-banking-history-view";
 
 export const dynamic = "force-dynamic";
 
@@ -15,11 +25,9 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 /**
  * GET /api/copilot/clients/[id]/payer-memory
- * Solo lectura: identidades de pagador + historial resumido para Cliente 360.
- * Nunca expone hashes ni cuentas completas.
  *
- * FASE BANK-ASSOCIATION-DRAWER-SCROLL-ANCHOR-FIX-002 — movido de `[companyId]`
- * a `[id]` para eliminar el conflicto Next.js de slug names en el mismo path.
+ * FASE CLIENT-BANKING-IDENTIFICATION-CLARITY-AND-HISTORY-CLEANUP-001 —
+ * separa resumen activo, historial canónico, forma habitual y correcciones.
  */
 export async function GET(
   request: NextRequest,
@@ -93,23 +101,13 @@ export async function GET(
         };
       });
 
-    // Identificaciones sin recibo (sección 10 — "Falta recibo en Zeta"). Solo
-    // lectura, tolerante a que la migración local todavía no esté aplicada en
-    // producción: si la tabla no existe, esta sección queda vacía sin romper
-    // el resto de Cliente 360.
-    let identificationsOnly: Array<{
-      id: string;
-      movementId: string;
-      date: string | null;
-      amountLabel: string | null;
-      status: string;
-      reason: string | null;
-      confirmedAt: string | null;
-      actorEmail: string | null;
-    }> = [];
+    let associationRows: ClientBankingAssociationRow[] = [];
     try {
-      const idents = await listIdentificationsForClient(auth.ctx.supabase, auth.ctx.tenantCompanyId, companyId);
-      // Historial completo: activas + revocadas (correcciones). Excluidas se omiten.
+      const idents = await listIdentificationsForClient(
+        auth.ctx.supabase,
+        auth.ctx.tenantCompanyId,
+        companyId
+      );
       const historyIdents = idents.filter((i) => i.status !== "excluded");
       const movementIds = Array.from(new Set(historyIdents.map((i) => i.movementId)));
       const actorIds = Array.from(
@@ -126,6 +124,10 @@ export async function GET(
           amount: string | number;
           currency: string;
           description: string | null;
+          raw_description?: string | null;
+          bank_reference?: string | null;
+          created_at?: string | null;
+          status?: string | null;
           excluded_from_operations: boolean | null;
           duplicate_of: string | null;
           metadata: Record<string, unknown> | null;
@@ -136,13 +138,13 @@ export async function GET(
         const { data: movRows, error: movErr } = await auth.ctx.supabase
           .from("bank_movements")
           .select(
-            "id, movement_date, amount, currency, description, excluded_from_operations, duplicate_of, metadata"
+            "id, movement_date, amount, currency, description, raw_description, bank_reference, created_at, status, excluded_from_operations, duplicate_of, metadata"
           )
           .in("id", movementIds);
         if (movErr) {
           const { data: legacy } = await auth.ctx.supabase
             .from("bank_movements")
-            .select("id, movement_date, amount, currency, description, metadata")
+            .select("id, movement_date, amount, currency, description, bank_reference, created_at, status, metadata")
             .in("id", movementIds);
           for (const m of legacy ?? []) {
             movementsById.set(m.id as string, {
@@ -151,8 +153,12 @@ export async function GET(
                 amount: string | number;
                 currency: string;
                 description: string | null;
+                bank_reference?: string | null;
+                created_at?: string | null;
+                status?: string | null;
                 metadata: Record<string, unknown> | null;
               }),
+              raw_description: null,
               excluded_from_operations: null,
               duplicate_of: null,
             });
@@ -166,6 +172,10 @@ export async function GET(
                 amount: string | number;
                 currency: string;
                 description: string | null;
+                raw_description?: string | null;
+                bank_reference?: string | null;
+                created_at?: string | null;
+                status?: string | null;
                 excluded_from_operations: boolean | null;
                 duplicate_of: string | null;
                 metadata: Record<string, unknown> | null;
@@ -175,50 +185,85 @@ export async function GET(
         }
       }
       if (actorIds.length > 0) {
-        const { data: actorRows } = await auth.ctx.supabase.from("app_users").select("id, email").in("id", actorIds);
+        const { data: actorRows } = await auth.ctx.supabase
+          .from("app_users")
+          .select("id, email")
+          .in("id", actorIds);
         for (const a of actorRows ?? []) {
           actorsById.set(a.id as string, (a.email as string | null) ?? "—");
         }
       }
-      identificationsOnly = historyIdents
-        .filter((i) => {
-          const mv = movementsById.get(i.movementId);
-          if (!mv) return true;
-          const meta = mv.metadata ?? {};
-          // No listar copias duplicadas: solo el canónico (o la fila si no es dup).
-          if (mv.excluded_from_operations || meta.duplicate_status === "duplicate_of_import") {
-            return false;
-          }
-          return true;
-        })
-        .map((i) => {
-          const mv = movementsById.get(i.movementId);
-          const actorId = i.status === "revoked" ? i.revokedBy ?? i.confirmedBy : i.confirmedBy;
-          return {
+      associationRows = historyIdents.map((i) =>
+        associationRowFromMovement({
+          identification: {
             id: i.id,
             movementId: i.movementId,
-            date: mv?.movement_date ?? null,
-            amountLabel: mv ? `${mv.currency} ${Number(mv.amount).toLocaleString("es-UY")}` : null,
             status: i.status,
             reason: i.reason,
             confirmedAt: i.confirmedAt,
-            actorEmail: actorId ? (actorsById.get(actorId) ?? null) : null,
-          };
-        });
+            revokedAt: i.revokedAt,
+            confirmedByEmail: i.confirmedBy ? (actorsById.get(i.confirmedBy) ?? null) : null,
+            revokedByEmail: i.revokedBy ? (actorsById.get(i.revokedBy) ?? null) : null,
+          },
+          movement: movementsById.get(i.movementId) ?? null,
+        })
+      );
     } catch {
-      identificationsOnly = [];
+      associationRows = [];
     }
 
-    // Sección 6 (Cliente 360 · Pagos conciliados) — real, nunca `client_payer_links`
-    // (aprendizaje de nombre de pagador, sin movement_id, no es conciliación).
+    const activeHistory = filterActiveBankingRows(associationRows).sort((a, b) =>
+      String(b.movementDate ?? "").localeCompare(String(a.movementDate ?? ""))
+    );
+    const corrections = filterCorrectionRows(associationRows).sort((a, b) =>
+      String(b.revokedAt ?? b.associatedAt ?? "").localeCompare(
+        String(a.revokedAt ?? a.associatedAt ?? "")
+      )
+    );
+    const summary = buildClientBankingSummary(activeHistory);
+    const maskedFromIdentity = identities.find((i) => i.maskedAccount)?.maskedAccount ?? null;
+    const howAppears = buildHowAppearsFromActive(activeHistory, maskedFromIdentity);
+    const habitualPayment = buildHabitualPaymentPattern(activeHistory, howAppears);
+    const correctionsGrouped = groupCorrections(corrections);
+
+    // Compat: identificationsOnly = activas (sin revocadas) para no romper callers viejos
+    const identificationsOnly = activeHistory.map((r) => ({
+      id: r.id,
+      movementId: r.movementId,
+      date: r.movementDate,
+      amountLabel: r.amountLabel,
+      status: r.status,
+      reason: r.reason,
+      confirmedAt: r.associatedAt,
+      actorEmail: r.confirmedByEmail,
+      displayDescription: r.displayDescription,
+      bankReference: r.bankReference,
+    }));
+
     let reconciledPayments: Awaited<ReturnType<typeof listReconciledPaymentsForClient>> = [];
     try {
-      reconciledPayments = await listReconciledPaymentsForClient(auth.ctx.supabase, auth.ctx.tenantCompanyId, companyId);
+      reconciledPayments = await listReconciledPaymentsForClient(
+        auth.ctx.supabase,
+        auth.ctx.tenantCompanyId,
+        companyId
+      );
     } catch {
       reconciledPayments = [];
     }
 
-    return NextResponse.json({ ok: true as const, identities, history, identificationsOnly, reconciledPayments });
+    return NextResponse.json({
+      ok: true as const,
+      identities,
+      history,
+      identificationsOnly,
+      reconciledPayments,
+      summary,
+      howAppears,
+      activeHistory,
+      corrections,
+      correctionsGrouped,
+      habitualPayment,
+    });
   } catch (err) {
     return NextResponse.json(
       {

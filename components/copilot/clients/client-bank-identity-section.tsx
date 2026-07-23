@@ -468,7 +468,9 @@ function ConceptCard({ companyId, canWrite }: Props) {
       {!ready ? (
         <p className={copilotCaptionClass}>Cargando…</p>
       ) : items.length === 0 ? (
-        <p className={copilotCaptionClass}>Todavía no hay conceptos de cobro.</p>
+        <p className={copilotCaptionClass} data-client-billing-concepts-empty>
+          No hay suficientes movimientos para identificar un concepto habitual.
+        </p>
       ) : (
         <ul className="space-y-2">
           {items.map((c) => (

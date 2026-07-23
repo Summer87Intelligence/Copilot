@@ -36,4 +36,19 @@ describe("clients payer-memory route — slug contract", () => {
     const ui = readFileSync(caller, "utf8");
     expect(ui).toContain("`/api/copilot/clients/${companyId}/payer-memory`");
   });
+
+  it("API y UI separan resumen activo, historial y correcciones", () => {
+    const route = readFileSync(underId, "utf8");
+    expect(route).toContain("activeHistory");
+    expect(route).toContain("correctionsGrouped");
+    expect(route).toContain("habitualPayment");
+    expect(route).toContain("howAppears");
+
+    const ui = readFileSync(caller, "utf8");
+    expect(ui).toContain("data-client-banking-summary");
+    expect(ui).toContain("data-client-banking-active-history");
+    expect(ui).toContain("data-client-banking-corrections");
+    expect(ui).toContain("data-client-banking-habitual");
+    expect(ui).toContain("buildBankMovementConsultHref");
+  });
 });

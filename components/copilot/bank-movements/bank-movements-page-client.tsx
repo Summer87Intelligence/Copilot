@@ -139,18 +139,24 @@ export function BankMovementsPageClient() {
   // FASE BANK-SIMPLE-RESPONSIBILITY-AND-DRAWER-DETAIL-001 — panel solo desde
   // Conciliación (o deep-link / Ir a Conciliación que fuerza esa tab).
   const [simpleAssociationMovementId, setSimpleAssociationMovementId] = useState<string | null>(null);
+  const [highlightMovementId, setHighlightMovementId] = useState<string | null>(null);
   const openSimpleAssociation = useCallback((movementId: string) => {
     setSimpleAssociationMovementId(movementId);
   }, []);
 
-  // FASE BANK-SIMPLE-RESPONSIBILITY-AND-DRAWER-DETAIL-001 — deep-link
-  // `movementId` abre Conciliación (único lugar del panel), nunca Movimientos.
+  // FASE CLIENT-BANKING-IDENTIFICATION-CLARITY-AND-HISTORY-CLEANUP-001 —
+  // `view=consult` o `tab=movimientos` + movementId: solo resalta, no abre panel.
+  // Sin eso, movementId sigue abriendo Conciliación (asignación).
   useEffect(() => {
     const requestedTab = searchParams.get("tab");
     const direction = searchParams.get("direction");
     const movementIdParam = searchParams.get("movementId");
+    const viewConsult =
+      searchParams.get("view") === "consult" || requestedTab === "movimientos";
     if (!deepLinkApplied.current) {
-      if (
+      if (viewConsult && movementIdParam) {
+        setTab("movimientos");
+      } else if (
         direction === "inflow" ||
         requestedTab === "ingresos" ||
         requestedTab === "conciliacion" ||
@@ -162,10 +168,17 @@ export function BankMovementsPageClient() {
       deepLinkApplied.current = true;
     }
     if (movementIdParam) {
-      setTab("conciliacion");
-      openSimpleAssociation(movementIdParam);
+      if (viewConsult) {
+        setTab("movimientos");
+        setHighlightMovementId(movementIdParam);
+        setSimpleAssociationMovementId(null);
+      } else {
+        setTab("conciliacion");
+        openSimpleAssociation(movementIdParam);
+      }
     }
   }, [searchParams, openSimpleAssociation]);
+
   const [tesoreriaOpen, setTesoreriaOpen] = useState(false);
   const [movements, setMovements] = useState<BankMovement[]>([]);
   const [movementLevels, setMovementLevels] = useState<Record<string, MovementReconciliationLevel>>({});
@@ -265,6 +278,14 @@ export function BankMovementsPageClient() {
     const batch = new Set(newImportBatchIds);
     return base.filter((m) => m.import_id != null && batch.has(m.import_id));
   }, [movements, movementFilters, movementDuplicates, newImportBatchIds]);
+
+  useEffect(() => {
+    if (!highlightMovementId || loading) return;
+    const el = document.querySelector(`[data-row-id="${highlightMovementId}"]`);
+    if (el) {
+      el.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+  }, [highlightMovementId, loading, filteredMovements]);
 
   const [movPage, setMovPage] = useState(1);
   const [movSort, setMovSort] = useState<SortState>({ key: null, direction: "desc" });
@@ -798,6 +819,11 @@ export function BankMovementsPageClient() {
                 minWidth="820px"
                 ariaLabel="Movimientos bancarios"
                 mobileCard={renderMovementMobileCard}
+                rowClassName={(m) =>
+                  highlightMovementId === m.id
+                    ? "ring-2 ring-[var(--copilot-accent)] bg-[var(--copilot-soft-bg)]"
+                    : ""
+                }
                 sort={{
                   state: movSort,
                   onSort: (key) => setMovSort((prev) => nextSortState(prev, key)),

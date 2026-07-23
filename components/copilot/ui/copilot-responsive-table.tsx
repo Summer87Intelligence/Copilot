@@ -179,6 +179,7 @@ export function CopilotResponsiveTable<T>({
               <Fragment key={key}>
                 <tr
                   className={`${ROW_BASE_CLASS} ${interactive ? "cursor-pointer" : ""} ${extra}`.trim()}
+                  data-row-id={String(key)}
                   onClick={interactive ? () => onRowClick?.(row) : undefined}
                   aria-expanded={expandable ? isExpanded : undefined}
                   aria-controls={isExpanded ? detailId : undefined}
@@ -227,6 +228,7 @@ export function CopilotResponsiveTable<T>({
               return (
                 <li
                   key={key}
+                  data-row-id={String(key)}
                   role={interactive ? "button" : undefined}
                   tabIndex={interactive ? 0 : undefined}
                   onClick={interactive ? () => onRowClick?.(row) : undefined}
