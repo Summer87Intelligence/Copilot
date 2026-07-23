@@ -28,7 +28,7 @@
  * Los tres flujos se mantienen separados: operativo, matched-audit e historical-audit.
  */
 
-import { isBankMovementDateHistorical } from "@/lib/bank/canonical/historical-policy";
+import { isBankMovementDateBeforeIntelligenceCutoff } from "@/lib/bank/canonical/historical-policy";
 import { isPreOperationalPeriod } from "@/lib/copilot-operational-period";
 
 /** Estados conciliables/pendientes de revisión que el shadow puede procesar. */
@@ -107,8 +107,9 @@ export function isShadowEligibleMovement(
     return { eligible: false, skipReason: "MOVEMENT_BEFORE_GLOBAL_FLOOR" };
   }
 
-  // Corte bancario operativo (`< 2026-07-01`, pero `>= 2026-01-01`).
-  const historical = isBankMovementDateHistorical(movement.movementDate);
+  // Corte inteligencia shadow (`< 2026-07-01`, pero `>= 2026-01-01`).
+  // Independiente del piso UI (MIN_BANK_OPERATIONAL_DATE = 2026-01-01).
+  const historical = isBankMovementDateBeforeIntelligenceCutoff(movement.movementDate);
   if (historical && !includeHistoricalForShadow) {
     return { eligible: false, skipReason: "MOVEMENT_BEFORE_CUTOFF" };
   }

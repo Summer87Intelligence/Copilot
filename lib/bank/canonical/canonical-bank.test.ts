@@ -85,17 +85,18 @@ function canonicalList(rows: BankMovement[]): CanonicalBankMovement[] {
 // ─── Política temporal ─────────────────────────────────────────────────────────
 
 describe("historical policy", () => {
-  it("centraliza la fecha de corte", () => {
-    expect(BANK_OPERATIONAL_START_DATE).toBe("2026-07-01");
+  it("centraliza la fecha de corte UI en 2026-01-01 (piso Copilot)", () => {
+    expect(BANK_OPERATIONAL_START_DATE).toBe("2026-01-01");
   });
 
-  it("(3) movimiento anterior a 2026-07-01 es histórico", () => {
-    expect(isBankMovementDateHistorical("2026-06-30")).toBe(true);
+  it("(3) movimiento anterior a 2026-01-01 es histórico", () => {
+    expect(isBankMovementDateHistorical("2025-12-31")).toBe(true);
   });
 
-  it("(4) movimiento exactamente 2026-07-01 es operativo", () => {
-    expect(isBankMovementDateHistorical("2026-07-01")).toBe(false);
-    expect(isBankMovementHistorical({ movement_date: "2026-07-01" })).toBe(false);
+  it("(4) movimiento exactamente 2026-01-01 es operativo", () => {
+    expect(isBankMovementDateHistorical("2026-01-01")).toBe(false);
+    expect(isBankMovementHistorical({ movement_date: "2026-01-01" })).toBe(false);
+    expect(isBankMovementDateHistorical("2026-06-30")).toBe(false);
   });
 
   it("fecha faltante/ inválida no se trata como histórica (no oculta datos)", () => {
@@ -104,7 +105,7 @@ describe("historical policy", () => {
   });
 
   it("partitionByHistorical no pierde registros", () => {
-    const items = [{ d: "2026-06-01" }, { d: "2026-07-10" }, { d: "2026-07-01" }];
+    const items = [{ d: "2025-06-01" }, { d: "2026-07-10" }, { d: "2026-01-01" }];
     const { operational, historical } = partitionByHistorical(items, (i) => i.d);
     expect(historical).toHaveLength(1);
     expect(operational).toHaveLength(2);
@@ -277,8 +278,8 @@ describe("snapshot", () => {
     bankMovement({ id: "op-uyu-in", currency: "UYU", direction: "inflow", amount: 1000, movement_date: "2026-07-05" }),
     bankMovement({ id: "op-uyu-out", currency: "UYU", direction: "outflow", amount: 400, movement_date: "2026-07-06", status: "matched", matched_id: "o1" }),
     bankMovement({ id: "op-usd-in", currency: "USD", direction: "inflow", amount: 200, movement_date: "2026-07-07" }),
-    bankMovement({ id: "hist-uyu", currency: "UYU", direction: "inflow", amount: 9999, movement_date: "2026-03-01" }),
-    bankMovement({ id: "hist-usd", currency: "USD", direction: "outflow", amount: 5555, movement_date: "2026-02-01" }),
+    bankMovement({ id: "hist-uyu", currency: "UYU", direction: "inflow", amount: 9999, movement_date: "2025-03-01" }),
+    bankMovement({ id: "hist-usd", currency: "USD", direction: "outflow", amount: 5555, movement_date: "2025-02-01" }),
   ];
 
   it("(16)(21) separa UYU/USD y excluye histórico del operativo", () => {
@@ -350,7 +351,7 @@ describe("bank activity report model", () => {
       movements: canonicalList([
         bankMovement({ id: "1", currency: "UYU", direction: "inflow", amount: 1000, movement_date: "2026-07-05" }),
         bankMovement({ id: "2", currency: "UYU", direction: "outflow", amount: 400, movement_date: "2026-07-06" }),
-        bankMovement({ id: "3", currency: "UYU", direction: "inflow", amount: 9999, movement_date: "2026-01-01" }),
+        bankMovement({ id: "3", currency: "UYU", direction: "inflow", amount: 9999, movement_date: "2025-01-01" }),
       ]),
     });
     const report = buildBankActivityReportModel(snap);

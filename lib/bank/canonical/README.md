@@ -16,7 +16,9 @@ duplicado cross-source. Ver `docs/technical/canonical-bank-movements.md`.
 
 ## Política temporal
 
-`BANK_OPERATIONAL_START_DATE = "2026-07-01"` (centralizada en `historical-policy.ts`).
+`BANK_OPERATIONAL_START_DATE = "2026-01-01"` (centralizada en `historical-policy.ts`,
+alias del piso financiero Copilot). `BANK_INTELLIGENCE_CUTOFF_DATE = "2026-07-01"`
+aplica solo al runner shadow.
 
 - `fecha < corte` ⇒ **histórico**: visible y buscable, pero no genera tareas ni
   alertas, no aparece como pendiente reciente ni afecta métricas operativas.

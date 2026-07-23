@@ -34,18 +34,19 @@ function mv(id: string, date: string): BankMovement {
   };
 }
 
-const HIST = mv("hist", "2026-03-01");
+const HIST = mv("hist", "2025-03-01");
 const OP = mv("op", "2026-07-05");
-const BOUNDARY = mv("boundary", "2026-07-01");
+const BOUNDARY = mv("boundary", "2026-01-01");
+const MID_2026 = mv("mid", "2026-06-30");
 
 describe("bank module default scope guard", () => {
   it("scope operativo por defecto", () => {
     expect(DEFAULT_BANK_MOVEMENTS_LIST_FILTERS.scope).toBe("operational");
   });
 
-  it("(20)(30) vista por defecto excluye históricos", () => {
-    const out = filterBankMovements([HIST, OP, BOUNDARY], DEFAULT_BANK_MOVEMENTS_LIST_FILTERS);
-    expect(out.map((m) => m.id).sort()).toEqual(["boundary", "op"]);
+  it("(20)(30) vista por defecto excluye históricos (< 2026-01-01)", () => {
+    const out = filterBankMovements([HIST, OP, BOUNDARY, MID_2026], DEFAULT_BANK_MOVEMENTS_LIST_FILTERS);
+    expect(out.map((m) => m.id).sort()).toEqual(["boundary", "mid", "op"]);
   });
 
   it("(17) filtro=all incluye históricos", () => {
@@ -64,10 +65,11 @@ describe("bank module default scope guard", () => {
     expect(out.map((m) => m.id)).toEqual(["hist"]);
   });
 
-  it("matchesMovementScope respeta el borde 2026-07-01 como operativo", () => {
-    expect(matchesMovementScope("2026-07-01", "operational")).toBe(true);
-    expect(matchesMovementScope("2026-06-30", "operational")).toBe(false);
-    expect(matchesMovementScope("2026-06-30", "historical")).toBe(true);
+  it("matchesMovementScope respeta el borde 2026-01-01 como operativo", () => {
+    expect(matchesMovementScope("2026-01-01", "operational")).toBe(true);
+    expect(matchesMovementScope("2025-12-31", "operational")).toBe(false);
+    expect(matchesMovementScope("2025-12-31", "historical")).toBe(true);
+    expect(matchesMovementScope("2026-06-30", "operational")).toBe(true);
   });
 });
 

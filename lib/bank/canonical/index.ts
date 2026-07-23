@@ -6,8 +6,12 @@
  */
 export {
   BANK_OPERATIONAL_START_DATE,
+  BANK_INTELLIGENCE_CUTOFF_DATE,
+  MIN_BANK_OPERATIONAL_DATE,
+  BANK_EXCLUSION_REASON_BEFORE_2026,
   isBankMovementDateHistorical,
   isBankMovementHistorical,
+  isBankMovementDateBeforeIntelligenceCutoff,
   normalizeMovementDate,
   partitionByHistorical,
 } from "@/lib/bank/canonical/historical-policy";

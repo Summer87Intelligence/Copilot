@@ -170,16 +170,19 @@ export function parseBankPeriodSelectValue(value: string): BankPeriodState | nul
   return null;
 }
 
-/** Meses seleccionables (año actual Montevideo ± 1 hacia atrás). */
+/** Meses seleccionables desde Enero 2026 (piso operativo) hasta el mes actual Montevideo. */
 export function listBankMonthOptions(
   todayYmd: string = todayYmdMontevideo()
 ): Array<{ value: string; label: string; year: number; month: number }> {
   const year = Number(todayYmd.slice(0, 4));
   const month = Number(todayYmd.slice(5, 7));
+  const floorYear = 2026;
+  const floorMonth = 1;
   const out: Array<{ value: string; label: string; year: number; month: number }> = [];
-  for (let y = year; y >= year - 1; y -= 1) {
+  for (let y = year; y >= floorYear; y -= 1) {
     const maxM = y === year ? month : 12;
-    for (let m = maxM; m >= 1; m -= 1) {
+    const minM = y === floorYear ? floorMonth : 1;
+    for (let m = maxM; m >= minM; m -= 1) {
       out.push({
         value: `month:${y}-${String(m).padStart(2, "0")}`,
         label: `${MONTH_NAMES_ES[m - 1]} ${y}`,

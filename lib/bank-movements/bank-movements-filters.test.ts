@@ -140,7 +140,8 @@ describe("bank-movements-filters helpers", () => {
         { ...DEFAULT_BANK_MOVEMENTS_LIST_FILTERS, amountMin: "100", amountMax: "1000" },
         julyNow
       );
-      expect(result.map((row) => row.id).sort()).toEqual(["matched", "mid"]);
+      // usd (120) entra al rango; ahora es operativo (fecha 2026-06-15 ≥ corte 2026-01-01).
+      expect(result.map((row) => row.id).sort()).toEqual(["matched", "mid", "usd"]);
     });
 
     it("filtra por fuente PDF/Excel y por duplicados", () => {
