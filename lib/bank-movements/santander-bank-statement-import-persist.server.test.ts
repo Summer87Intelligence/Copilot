@@ -94,7 +94,7 @@ describe("confirmSantanderBankStatementImport — evidencia cross-parser (FASE B
       currencyCode: preview.currency_code,
       parserId: "santander_excel_consolidated_v1",
     });
-    const excelDescription = `${plannedFromExcel.description} -- 1 of 7 --`;
+    const excelDescription = `${plannedFromExcel.description} DETALLE EXTRA PARSER`;
     const excelDedupeKey = buildMovementDedupeKey({
       workspaceId: WS,
       bankName: "Santander",

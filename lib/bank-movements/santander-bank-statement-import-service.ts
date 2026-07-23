@@ -1,9 +1,15 @@
 /**
  * Lógica pura de confirmación de importación Santander (dedupe + filas).
+ * FASE BANK-IDEMPOTENT-IMPORT-CLIENT-BANKING-HISTORY-001 — fingerprint_v1 + clasificación.
  */
 import { createHash } from "node:crypto";
 
 import { computeCanonicalOperationFingerprint } from "@/lib/bank/canonical/canonical-operation-fingerprint";
+import {
+  BANK_MOVEMENT_FINGERPRINT_VERSION,
+  computeBankMovementFingerprintV1,
+  normalizeSantanderDescription,
+} from "@/lib/bank-movements/bank-movement-fingerprint-v1";
 import { buildSantanderAccountLabel } from "@/lib/bank-movements/bank-movements-import-api";
 import type { SantanderImportPreviewBody } from "@/lib/bank-movements/bank-movements-import-api";
 import {
@@ -22,16 +28,21 @@ export type BlockedAccountInfo = {
 export const SANTANDER_PDF_PARSER_ID = "santander_pdf_v1";
 export const SANTANDER_EXCEL_CONSOLIDATED_PARSER_ID = "santander_excel_consolidated_v1";
 
-export type BankStatementImportFileType = "pdf" | "xlsx";
+export type BankStatementImportFileType = "pdf" | "xlsx" | "csv";
+export const SANTANDER_CSV_PARSER_ID = "santander_csv_v1";
 
 export function inferBankStatementImportFileType(fileName: string): BankStatementImportFileType {
-  return fileName.trim().toLowerCase().endsWith(".xlsx") ? "xlsx" : "pdf";
+  const lower = fileName.trim().toLowerCase();
+  if (lower.endsWith(".xlsx") || lower.endsWith(".xls")) return "xlsx";
+  if (lower.endsWith(".csv")) return "csv";
+  return "pdf";
 }
 
 export function inferBankStatementParserId(fileName: string): string {
-  return inferBankStatementImportFileType(fileName) === "xlsx"
-    ? SANTANDER_EXCEL_CONSOLIDATED_PARSER_ID
-    : SANTANDER_PDF_PARSER_ID;
+  const fileType = inferBankStatementImportFileType(fileName);
+  if (fileType === "xlsx") return SANTANDER_EXCEL_CONSOLIDATED_PARSER_ID;
+  if (fileType === "csv") return SANTANDER_CSV_PARSER_ID;
+  return SANTANDER_PDF_PARSER_ID;
 }
 
 export type ExistingBankMovementForDedupe = {
@@ -47,12 +58,16 @@ export type ExistingBankMovementForDedupe = {
   account_label: string | null;
   bank_name: string;
   metadata?: Record<string, unknown> | null;
+  fingerprint_v1?: string | null;
+  excluded_from_operations?: boolean | null;
+  duplicate_of?: string | null;
 };
 
 export type PlannedMovementInsert = {
   movement_date: string;
   description: string;
   raw_description: string | null;
+  normalized_description: string;
   amount: number;
   currency: "UYU" | "USD";
   direction: "inflow" | "outflow";
@@ -60,8 +75,28 @@ export type PlannedMovementInsert = {
   status: "pending";
   metadata: Record<string, unknown>;
   dedupe_key: string;
-  /** Huella independiente del parser — ver canonical-operation-fingerprint.ts. Null sin referencia bancaria. */
+  /** Huella legacy (solo con referencia) — compatibilidad con audit previo. */
   canonical_fingerprint: string | null;
+  /** Huella canónica v1 (PDF/Excel/CSV). Siempre presente. */
+  fingerprint_v1: string;
+  fingerprint_version: typeof BANK_MOVEMENT_FINGERPRINT_VERSION;
+};
+
+/** Clasificación por fila parseada (resumen de importación). */
+export type ImportRowOutcome =
+  | "inserted"
+  | "already_exists"
+  | "duplicate_in_file"
+  | "invalid"
+  | "ambiguous";
+
+export type ImportOutcomeCounts = {
+  read: number;
+  inserted: number;
+  already_exists: number;
+  duplicate_in_file: number;
+  invalid: number;
+  ambiguous: number;
 };
 
 /**
@@ -83,19 +118,30 @@ export type ImportPlanResult = {
   total_preview_count: number;
   to_insert: PlannedMovementInsert[];
   skipped_duplicates_count: number;
+  /** Ya existentes en DB (exacto o cross-parser). No es error. */
+  already_exists_count: number;
+  /** Duplicados dentro del mismo archivo/lote. */
+  duplicate_in_file_count: number;
+  outcomes: ImportOutcomeCounts;
   /** Duplicados cross-parser detectados por huella canónica, no por dedupe_key exacto. */
   cross_parser_duplicates: CrossParserDuplicateSkip[];
   /** Presente si la cuenta no es de EASY: no se importa nada. */
   blocked?: BlockedAccountInfo;
 };
 
+export function emptyImportOutcomeCounts(read = 0): ImportOutcomeCounts {
+  return {
+    read,
+    inserted: 0,
+    already_exists: 0,
+    duplicate_in_file: 0,
+    invalid: 0,
+    ambiguous: 0,
+  };
+}
+
 export function normalizeDescriptionForDedupe(description: string): string {
-  return description
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{M}/gu, "")
-    .replace(/\s+/g, " ");
+  return normalizeSantanderDescription(description);
 }
 
 export function extractAccountNumberFromLabel(accountLabel: string | null): string {
@@ -156,10 +202,45 @@ export function dedupeKeyFromExistingRow(
 }
 
 /**
+ * Huella canónica v1 de una fila existente (PDF/Excel/CSV).
+ * Prefiere columna/metadata persistida; si no, la recalcula.
+ */
+export function fingerprintV1FromExistingRow(
+  row: ExistingBankMovementForDedupe,
+  workspaceId: string
+): string {
+  if (typeof row.fingerprint_v1 === "string" && row.fingerprint_v1.length > 0) {
+    return row.fingerprint_v1;
+  }
+  const storedMeta = row.metadata?.fingerprint_v1;
+  if (typeof storedMeta === "string" && storedMeta.length > 0) return storedMeta;
+
+  const accountNumber = extractAccountNumberFromLabel(row.account_label);
+  const balanceRaw = row.metadata?.balance;
+  const balanceAfter =
+    typeof balanceRaw === "number"
+      ? balanceRaw
+      : typeof balanceRaw === "string" && balanceRaw.trim()
+        ? Number(balanceRaw)
+        : null;
+
+  return computeBankMovementFingerprintV1({
+    workspaceId,
+    accountNumber,
+    bankName: row.bank_name,
+    bankReference: row.bank_reference,
+    movementDate: row.movement_date.slice(0, 10),
+    amount: Number(row.amount),
+    currency: row.currency,
+    direction: row.direction,
+    description: row.description,
+    balanceAfter: Number.isFinite(balanceAfter as number) ? (balanceAfter as number) : null,
+  }).fingerprint;
+}
+
+/**
  * FASE BANK-GLOBAL-MOVEMENT-RECEIPT-INVOICE-INTEGRITY-AUDIT-AND-CORRECTION-001
- * Huella canónica de una fila ya existente (independiente del parser). A
- * diferencia de `dedupeKeyFromExistingRow`, nunca depende de la descripción —
- * detecta la MISMA operación real vista antes por otro archivo/parser.
+ * Huella canónica legacy de una fila ya existente (independiente del parser).
  * Devuelve null cuando la fila no tiene referencia bancaria.
  */
 export function canonicalFingerprintFromExistingRow(
@@ -191,6 +272,8 @@ export function buildMovementInsertFromPreview(
 ): PlannedMovementInsert {
   const amount = movementAbsoluteAmount(movement);
   const parserId = ctx.parserId ?? SANTANDER_PDF_PARSER_ID;
+  const rawDescription = movement.raw_text?.trim() || movement.description.trim();
+  const normalized_description = normalizeSantanderDescription(movement.description);
   const dedupe_key = buildMovementDedupeKey({
     workspaceId: ctx.workspaceId,
     bankName: "Santander",
@@ -211,21 +294,37 @@ export function buildMovementInsertFromPreview(
     currency: ctx.currencyCode,
   });
 
+  const fp = computeBankMovementFingerprintV1({
+    workspaceId: ctx.workspaceId,
+    accountNumber: ctx.accountNumber,
+    bankName: "Santander",
+    bankReference: movement.reference,
+    movementDate: movement.date,
+    amount,
+    currency: ctx.currencyCode,
+    direction: movement.direction,
+    description: movement.description,
+    balanceAfter: movement.balance ?? null,
+  });
+
   const metadata: Record<string, unknown> = {
     balance: movement.balance,
     debit: movement.debit,
     credit: movement.credit,
     type: movement.type,
     parser: parserId,
+    source_parser: parserId,
     dedupe_key,
     canonical_fingerprint,
+    fingerprint_v1: fp.fingerprint,
+    fingerprint_version: fp.version,
+    fingerprint_strength: fp.strength,
     account_number: ctx.accountNumber,
+    normalized_description,
   };
   if (movement.source_file) {
     metadata.source_file = movement.source_file;
   }
-  // Señales estructuradas de pagador (aprendizaje en confirmación). Nunca se
-  // usa bank_reference / NRR / TT como identidad permanente.
   if (movement.payer_name_raw) metadata.payer_name_raw = movement.payer_name_raw;
   if (movement.payer_name_normalized) {
     metadata.payer_name_normalized = movement.payer_name_normalized;
@@ -238,7 +337,8 @@ export function buildMovementInsertFromPreview(
   return {
     movement_date: movement.date,
     description: movement.description.trim(),
-    raw_description: movement.raw_text?.trim() || movement.description.trim(),
+    raw_description: rawDescription,
+    normalized_description,
     amount,
     currency: ctx.currencyCode,
     direction: movement.direction,
@@ -247,6 +347,8 @@ export function buildMovementInsertFromPreview(
     metadata,
     dedupe_key,
     canonical_fingerprint,
+    fingerprint_v1: fp.fingerprint,
+    fingerprint_version: fp.version,
   };
 }
 
@@ -257,9 +359,8 @@ export function planSantanderBankStatementImport(
   parserId: string = SANTANDER_PDF_PARSER_ID
 ): ImportPlanResult {
   const account_label = buildSantanderAccountLabel(preview.account_number, preview.currency_code);
+  const outcomes = emptyImportOutcomeCounts(preview.movements.length);
 
-  // Guard de alcance: solo cuentas de empresa EASY se importan. Cuenta personal
-  // bloqueada o no reconocida ⇒ 0 movimientos, sin insertar nada.
   const scope = classifyBankAccount(preview.account_number);
   if (scope !== "business") {
     return {
@@ -267,6 +368,9 @@ export function planSantanderBankStatementImport(
       total_preview_count: preview.movements.length,
       to_insert: [],
       skipped_duplicates_count: 0,
+      already_exists_count: 0,
+      duplicate_in_file_count: 0,
+      outcomes,
       cross_parser_duplicates: [],
       blocked: {
         account_number: preview.account_number,
@@ -279,15 +383,18 @@ export function planSantanderBankStatementImport(
   const existingKeys = new Set(
     existingRows.map((row) => dedupeKeyFromExistingRow(row, workspaceId))
   );
-  // Mapa huella canónica -> id de fila existente. Solo filas con id (siempre
-  // el caso en producción; algunos fixtures de test legacy lo omiten a
-  // propósito y quedan fuera de este chequeo cross-parser adicional).
   const existingFingerprintToId = new Map<string, string>();
   for (const row of existingRows) {
     if (!row.id) continue;
-    const fingerprint = canonicalFingerprintFromExistingRow(row, workspaceId);
+    if (row.excluded_from_operations || row.duplicate_of) continue;
+    const fingerprint = fingerprintV1FromExistingRow(row, workspaceId);
     if (fingerprint && !existingFingerprintToId.has(fingerprint)) {
       existingFingerprintToId.set(fingerprint, row.id);
+    }
+    // Compat: filas antiguas solo con canonical_fingerprint (ref).
+    const legacy = canonicalFingerprintFromExistingRow(row, workspaceId);
+    if (legacy && !existingFingerprintToId.has(legacy)) {
+      existingFingerprintToId.set(legacy, row.id);
     }
   }
 
@@ -295,9 +402,15 @@ export function planSantanderBankStatementImport(
   const batchFingerprints = new Set<string>();
   const to_insert: PlannedMovementInsert[] = [];
   const cross_parser_duplicates: CrossParserDuplicateSkip[] = [];
-  let skipped_duplicates_count = 0;
+  let already_exists_count = 0;
+  let duplicate_in_file_count = 0;
 
   for (const movement of preview.movements) {
+    if (!movement.date || !Number.isFinite(movementAbsoluteAmount(movement))) {
+      outcomes.invalid += 1;
+      continue;
+    }
+
     const planned = buildMovementInsertFromPreview(movement, {
       workspaceId,
       accountNumber: preview.account_number,
@@ -305,46 +418,57 @@ export function planSantanderBankStatementImport(
       parserId,
     });
 
-    if (existingKeys.has(planned.dedupe_key) || batchKeys.has(planned.dedupe_key)) {
-      skipped_duplicates_count += 1;
+    const existsInDb =
+      existingKeys.has(planned.dedupe_key) ||
+      existingFingerprintToId.has(planned.fingerprint_v1) ||
+      (planned.canonical_fingerprint
+        ? existingFingerprintToId.has(planned.canonical_fingerprint)
+        : false);
+
+    if (existsInDb) {
+      const existingMatchId =
+        existingFingerprintToId.get(planned.fingerprint_v1) ??
+        (planned.canonical_fingerprint
+          ? existingFingerprintToId.get(planned.canonical_fingerprint)
+          : undefined);
+      if (
+        existingMatchId &&
+        !existingKeys.has(planned.dedupe_key) &&
+        (planned.canonical_fingerprint || planned.fingerprint_v1)
+      ) {
+        cross_parser_duplicates.push({
+          fingerprint: planned.fingerprint_v1,
+          existingMovementId: existingMatchId,
+          movement: planned,
+        });
+      }
+      already_exists_count += 1;
+      outcomes.already_exists += 1;
       continue;
     }
 
-    // Chequeo adicional independiente del dedupe_key exacto: la misma
-    // operación real ya importada por otro archivo/parser (huella canónica
-    // sin descripción). Nunca crea una segunda fila operativa — el llamador
-    // con acceso a DB registra esto como evidencia sobre la fila existente.
-    const existingMatchId = planned.canonical_fingerprint
-      ? existingFingerprintToId.get(planned.canonical_fingerprint)
-      : undefined;
-    if (planned.canonical_fingerprint && existingMatchId) {
-      cross_parser_duplicates.push({
-        fingerprint: planned.canonical_fingerprint,
-        existingMovementId: existingMatchId,
-        movement: planned,
-      });
-      continue;
-    }
-    if (planned.canonical_fingerprint && batchFingerprints.has(planned.canonical_fingerprint)) {
-      // Dos filas del mismo archivo comparten huella (misma operación real
-      // duplicada dentro del propio extracto, p. ej. superposición de
-      // páginas). La primera ya quedó en to_insert; esta segunda se omite
-      // igual que un duplicado exacto — no hay fila existente en DB todavía
-      // a la cual asociarle evidencia (ambas nacen del mismo lote).
-      skipped_duplicates_count += 1;
+    if (batchKeys.has(planned.dedupe_key) || batchFingerprints.has(planned.fingerprint_v1)) {
+      duplicate_in_file_count += 1;
+      outcomes.duplicate_in_file += 1;
       continue;
     }
 
     batchKeys.add(planned.dedupe_key);
-    if (planned.canonical_fingerprint) batchFingerprints.add(planned.canonical_fingerprint);
+    batchFingerprints.add(planned.fingerprint_v1);
     to_insert.push(planned);
+    outcomes.inserted += 1;
   }
+
+  const skipped_duplicates_count = already_exists_count + duplicate_in_file_count;
 
   return {
     account_label,
     total_preview_count: preview.movements.length,
     to_insert,
     skipped_duplicates_count,
+    already_exists_count,
+    duplicate_in_file_count,
+    outcomes,
     cross_parser_duplicates,
   };
 }
@@ -360,6 +484,9 @@ export function buildStatementImportRecord(input: {
   insertedCount: number;
   skippedDuplicatesCount: number;
   totalPreviewCount: number;
+  alreadyExistsCount?: number;
+  duplicateInFileCount?: number;
+  outcomes?: ImportOutcomeCounts;
 }): Record<string, unknown> {
   const fileType = input.fileType ?? inferBankStatementImportFileType(input.fileName);
   const parserId = input.parserId ?? inferBankStatementParserId(input.fileName);
@@ -383,7 +510,11 @@ export function buildStatementImportRecord(input: {
       total_preview_count: input.totalPreviewCount,
       inserted_count: input.insertedCount,
       skipped_duplicates_count: input.skippedDuplicatesCount,
+      already_exists_count: input.alreadyExistsCount ?? 0,
+      duplicate_in_file_count: input.duplicateInFileCount ?? 0,
+      outcomes: input.outcomes ?? null,
       parser: parserId,
+      fingerprint_version: BANK_MOVEMENT_FINGERPRINT_VERSION,
     },
   };
 }

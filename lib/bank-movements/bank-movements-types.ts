@@ -82,6 +82,7 @@ export type BankMovement = {
   movement_date: string;
   description: string;
   raw_description: string | null;
+  normalized_description?: string | null;
   amount: number;
   currency: string;
   direction: BankMovementDirection;
@@ -93,6 +94,10 @@ export type BankMovement = {
   matched_by: string | null;
   matched_at: string | null;
   metadata: Record<string, unknown> | null;
+  fingerprint_v1?: string | null;
+  fingerprint_version?: number | null;
+  duplicate_of?: string | null;
+  excluded_from_operations?: boolean | null;
   created_at: string;
   updated_at: string;
 };

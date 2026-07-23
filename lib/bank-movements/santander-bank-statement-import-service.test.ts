@@ -161,7 +161,29 @@ describe("anti-duplicado", () => {
     const second = planSantanderBankStatementImport(preview, existing, WS);
     expect(second.to_insert).toHaveLength(0);
     expect(second.skipped_duplicates_count).toBe(3);
+    expect(second.already_exists_count).toBe(3);
+    expect(second.outcomes.inserted).toBe(0);
+    expect(second.outcomes.already_exists).toBe(3);
     expect(second.total_preview_count).toBe(3);
+  });
+
+  it("asigna fingerprint_v1 a cada fila planeada", () => {
+    const plan = planSantanderBankStatementImport(preview, [], WS);
+    expect(plan.to_insert.every((r) => r.fingerprint_v1.length === 64)).toBe(true);
+    expect(plan.to_insert.every((r) => r.fingerprint_version === 1)).toBe(true);
+    expect(plan.outcomes.inserted).toBe(plan.to_insert.length);
+  });
+
+  it("duplicado dentro del archivo se cuenta aparte", () => {
+    const movement = preview.movements[0]!;
+    const doubled = {
+      ...preview,
+      movements: [movement, { ...movement }, ...(preview.movements.slice(1) ?? [])],
+    };
+    const plan = planSantanderBankStatementImport(doubled, [], WS);
+    expect(plan.duplicate_in_file_count).toBe(1);
+    expect(plan.outcomes.duplicate_in_file).toBe(1);
+    expect(plan.to_insert.length).toBe(preview.movements.length);
   });
 
   it("duplicado parcial inserta solo nuevos", () => {
@@ -202,11 +224,9 @@ describe("FASE BANK-GLOBAL-MOVEMENT-RECEIPT-INVOICE-INTEGRITY-AUDIT-AND-CORRECTI
       currencyCode: preview.currency_code,
       parserId: "santander_excel_consolidated_v1",
     });
-    // Simula el artefacto real de un parser PDF distinto para la MISMA
-    // transferencia ("-- N of M --", espaciado): su propio dedupe_key exacto
-    // (que sí incluye descripción) es DISTINTO al de la fila Excel — por eso
-    // el dedupe_key no la detecta y hace falta el chequeo por huella canónica.
-    const excelRowDescription = `${plannedFromExcel.description} -- 1 of 7 --`;
+    // Diferencia de descripción que sobrevive a la normalización (no solo
+    // marcador de página): el dedupe_key exacto cambia, la huella v1 (ref) no.
+    const excelRowDescription = `${plannedFromExcel.description} DETALLE EXTRA PARSER`;
     const excelRowDedupeKey = buildMovementDedupeKey({
       workspaceId: WS,
       bankName: "Santander",

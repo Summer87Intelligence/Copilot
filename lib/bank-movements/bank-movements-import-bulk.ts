@@ -58,7 +58,17 @@ export type BulkConfirmResultItem = {
   import_id: string;
   inserted_count: number;
   skipped_duplicates_count: number;
+  already_exists_count?: number;
+  duplicate_in_file_count?: number;
   total_preview_count: number;
+  outcomes?: {
+    read: number;
+    inserted: number;
+    already_exists: number;
+    duplicate_in_file: number;
+    invalid: number;
+    ambiguous: number;
+  };
   status: "imported" | "duplicate";
 };
 
@@ -86,6 +96,16 @@ export type BulkConfirmData = {
   total_preview_count: number;
   inserted_count: number;
   skipped_duplicates_count: number;
+  already_exists_count?: number;
+  duplicate_in_file_count?: number;
+  outcomes?: {
+    read: number;
+    inserted: number;
+    already_exists: number;
+    duplicate_in_file: number;
+    invalid: number;
+    ambiguous: number;
+  };
   results: BulkConfirmResultItem[];
   errors: BulkConfirmErrorItem[];
   skipped: BulkConfirmSkippedItem[];

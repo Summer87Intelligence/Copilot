@@ -40,11 +40,14 @@ type ConfirmResponse = { ok: true; data: BulkConfirmData } | { ok: false; error?
 type BankMovementsImportPanelProps = {
   onImportComplete?: () => void | Promise<void>;
   onGoToMovements?: () => void;
+  /** Abre Movimientos filtrado a los lotes que insertaron filas nuevas. */
+  onViewNewMovements?: (importIds: string[]) => void;
 };
 
 export function BankMovementsImportPanel({
   onImportComplete,
   onGoToMovements,
+  onViewNewMovements,
 }: BankMovementsImportPanelProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -328,7 +331,7 @@ export function BankMovementsImportPanel({
               </button>
             </div>
             {confirmResult ? (
-              <ConfirmSummary result={confirmResult} />
+              <ConfirmSummary result={confirmResult} onViewNew={onViewNewMovements} />
             ) : null}
           </div>
         </div>
@@ -455,19 +458,59 @@ function MovementsTable({ preview }: { preview: SantanderBankStatementPreview })
   );
 }
 
-function ConfirmSummary({ result }: { result: BulkConfirmData }) {
-  const allDuplicate =
-    result.inserted_count === 0 && result.skipped_duplicates_count > 0 && result.failed_files_count === 0;
+function ConfirmSummary({
+  result,
+  onViewNew,
+}: {
+  result: BulkConfirmData;
+  onViewNew?: (importIds: string[]) => void;
+}) {
+  const alreadyExists =
+    result.already_exists_count ??
+    Math.max(0, result.skipped_duplicates_count - (result.duplicate_in_file_count ?? 0));
+  const duplicateInFile = result.duplicate_in_file_count ?? 0;
+  const read = result.outcomes?.read ?? result.total_preview_count;
+  const invalid = result.outcomes?.invalid ?? 0;
+  const allAlreadyImported =
+    result.inserted_count === 0 &&
+    alreadyExists > 0 &&
+    result.failed_files_count === 0;
+
+  const newImportIds = result.results
+    .filter((item) => item.inserted_count > 0)
+    .map((item) => item.import_id)
+    .filter(Boolean);
 
   return (
-    <div className="w-full space-y-2 text-right">
-      <p className="text-xs text-[var(--copilot-success-text-strong)]">
-        {allDuplicate
-          ? "Estos extractos ya parecían importados. No se agregaron movimientos nuevos."
-          : `Importación completada: ${result.inserted_count} movimientos nuevos, ${result.skipped_duplicates_count} duplicados omitidos.`}
-      </p>
+    <div className="w-full space-y-3 text-left">
+      <p className="text-sm font-semibold text-[var(--copilot-text)]">Importación terminada</p>
+      {allAlreadyImported ? (
+        <p className="text-xs text-[var(--copilot-success-text-strong)]">
+          No se encontraron movimientos nuevos. Los movimientos del archivo ya estaban importados.
+        </p>
+      ) : (
+        <p className="text-xs text-[var(--copilot-success-text-strong)]">
+          Se importaron {result.inserted_count} movimientos nuevos.
+        </p>
+      )}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <SummaryItem label="Movimientos leídos" value={String(read)} />
+        <SummaryItem label="Nuevos" value={String(result.inserted_count)} />
+        <SummaryItem label="Ya existentes" value={String(alreadyExists)} />
+        <SummaryItem label="Duplicados dentro del archivo" value={String(duplicateInFile)} />
+        <SummaryItem label="Con errores" value={String(invalid + result.failed_files_count)} />
+      </div>
+      {result.inserted_count > 0 && onViewNew && newImportIds.length > 0 ? (
+        <button
+          type="button"
+          onClick={() => onViewNew(newImportIds)}
+          className="text-sm font-medium text-[var(--copilot-accent)] underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copilot-accent)]"
+        >
+          Ver movimientos nuevos
+        </button>
+      ) : null}
       {result.results.length > 0 ? (
-        <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] px-3 py-2 text-left">
+        <div className="rounded-xl border border-[var(--copilot-border)] bg-[var(--copilot-soft-bg)] px-3 py-2">
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--copilot-muted)]">
             Detalle por archivo
           </p>
@@ -476,8 +519,11 @@ function ConfirmSummary({ result }: { result: BulkConfirmData }) {
               <li key={item.import_id} className="flex flex-col gap-0.5 sm:flex-row sm:justify-between">
                 <span className="truncate font-medium">{item.file_name}</span>
                 <span className="text-[var(--copilot-muted)]">
-                  {item.inserted_count} nuevos · {item.skipped_duplicates_count} duplicados ·{" "}
-                  {item.status === "duplicate" ? "Ya importado" : "Importado"}
+                  {item.inserted_count} nuevos · {item.already_exists_count ?? item.skipped_duplicates_count}{" "}
+                  ya existentes
+                  {(item.duplicate_in_file_count ?? 0) > 0
+                    ? ` · ${item.duplicate_in_file_count} en archivo`
+                    : ""}
                 </span>
               </li>
             ))}
@@ -485,24 +531,18 @@ function ConfirmSummary({ result }: { result: BulkConfirmData }) {
         </div>
       ) : null}
       {result.errors.length > 0 ? (
-        <div className="space-y-1 text-left">
+        <div className="space-y-1">
           {result.errors.map((item) => (
-            <p
-              key={item.file_name}
-              className="text-xs text-[var(--copilot-danger-text-strong)]"
-            >
+            <p key={item.file_name} className="text-xs text-[var(--copilot-danger-text-strong)]">
               {item.file_name}: {item.error}
             </p>
           ))}
         </div>
       ) : null}
       {result.skipped.length > 0 ? (
-        <div className="space-y-1 text-left">
+        <div className="space-y-1">
           {result.skipped.map((item) => (
-            <p
-              key={item.file_name}
-              className="text-xs text-[var(--copilot-warning-text-strong)]"
-            >
+            <p key={item.file_name} className="text-xs text-[var(--copilot-warning-text-strong)]">
               {item.file_name}: {item.reason}
             </p>
           ))}
