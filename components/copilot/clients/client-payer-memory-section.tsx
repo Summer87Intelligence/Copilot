@@ -84,6 +84,7 @@ const IDENTIFICATION_STATUS_LABEL: Record<string, string> = {
   identified: "Cliente identificado",
   shared_account: "Cuenta compartida",
   third_party: "Pago de tercero",
+  revoked: "Asociación revocada",
 };
 
 function formatDate(iso: string | null): string {

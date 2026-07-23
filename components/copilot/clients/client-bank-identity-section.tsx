@@ -29,10 +29,13 @@ const rowClass =
 export function ClientBankIdentitySection({ companyId, canWrite }: Props) {
   return (
     <div className="space-y-4 px-5 py-4">
-      <p className={copilotCaptionClass}>
-        Estos datos ayudan a reconocer pagos que llegan al banco con una razón social o nombre
-        diferente al de este cliente. No afectan caja, facturas ni Zeta.
-      </p>
+      <div>
+        <h2 className="text-sm font-semibold text-[var(--copilot-ink)]">Identificación bancaria</h2>
+        <p className={copilotCaptionClass}>
+          Cómo aparece este cliente en el banco, conceptos habituales e historial de movimientos
+          asociados. La memoria se deriva de asociaciones activas (no de duplicados ni revocadas).
+        </p>
+      </div>
       <AliasCard companyId={companyId} canWrite={canWrite} />
       <ConceptCard companyId={companyId} canWrite={canWrite} />
     </div>

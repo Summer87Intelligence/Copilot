@@ -1,8 +1,9 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { Suspense } from "react";
 
 import { CopilotClient360View } from "@/components/copilot/copilot-client-360-view";
+import { useParams } from "next/navigation";
 
 export function Cliente360PageClient() {
   const params = useParams();
@@ -16,5 +17,13 @@ export function Cliente360PageClient() {
     );
   }
 
-  return <CopilotClient360View companyId={companyId} />;
+  return (
+    <Suspense
+      fallback={
+        <div className="px-6 py-8 text-sm text-[var(--copilot-ink-muted)]">Cargando ficha…</div>
+      }
+    >
+      <CopilotClient360View companyId={companyId} />
+    </Suspense>
+  );
 }

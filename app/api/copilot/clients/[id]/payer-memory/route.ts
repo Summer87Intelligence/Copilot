@@ -109,18 +109,69 @@ export async function GET(
     }> = [];
     try {
       const idents = await listIdentificationsForClient(auth.ctx.supabase, auth.ctx.tenantCompanyId, companyId);
-      const active = idents.filter((i) => i.status !== "revoked" && i.status !== "excluded");
-      const movementIds = active.map((i) => i.movementId);
-      const actorIds = Array.from(new Set(active.map((i) => i.confirmedBy).filter((v): v is string => v != null)));
-      const movementsById = new Map<string, { movement_date: string; amount: string | number; currency: string }>();
+      // Historial completo: activas + revocadas (correcciones). Excluidas se omiten.
+      const historyIdents = idents.filter((i) => i.status !== "excluded");
+      const movementIds = Array.from(new Set(historyIdents.map((i) => i.movementId)));
+      const actorIds = Array.from(
+        new Set(
+          historyIdents
+            .flatMap((i) => [i.confirmedBy, i.revokedBy])
+            .filter((v): v is string => v != null)
+        )
+      );
+      const movementsById = new Map<
+        string,
+        {
+          movement_date: string;
+          amount: string | number;
+          currency: string;
+          description: string | null;
+          excluded_from_operations: boolean | null;
+          duplicate_of: string | null;
+          metadata: Record<string, unknown> | null;
+        }
+      >();
       const actorsById = new Map<string, string>();
       if (movementIds.length > 0) {
-        const { data: movRows } = await auth.ctx.supabase
+        const { data: movRows, error: movErr } = await auth.ctx.supabase
           .from("bank_movements")
-          .select("id, movement_date, amount, currency")
+          .select(
+            "id, movement_date, amount, currency, description, excluded_from_operations, duplicate_of, metadata"
+          )
           .in("id", movementIds);
-        for (const m of movRows ?? []) {
-          movementsById.set(m.id as string, m as { movement_date: string; amount: string | number; currency: string });
+        if (movErr) {
+          const { data: legacy } = await auth.ctx.supabase
+            .from("bank_movements")
+            .select("id, movement_date, amount, currency, description, metadata")
+            .in("id", movementIds);
+          for (const m of legacy ?? []) {
+            movementsById.set(m.id as string, {
+              ...(m as {
+                movement_date: string;
+                amount: string | number;
+                currency: string;
+                description: string | null;
+                metadata: Record<string, unknown> | null;
+              }),
+              excluded_from_operations: null,
+              duplicate_of: null,
+            });
+          }
+        } else {
+          for (const m of movRows ?? []) {
+            movementsById.set(
+              m.id as string,
+              m as {
+                movement_date: string;
+                amount: string | number;
+                currency: string;
+                description: string | null;
+                excluded_from_operations: boolean | null;
+                duplicate_of: string | null;
+                metadata: Record<string, unknown> | null;
+              }
+            );
+          }
         }
       }
       if (actorIds.length > 0) {
@@ -129,19 +180,31 @@ export async function GET(
           actorsById.set(a.id as string, (a.email as string | null) ?? "—");
         }
       }
-      identificationsOnly = active.map((i) => {
-        const mv = movementsById.get(i.movementId);
-        return {
-          id: i.id,
-          movementId: i.movementId,
-          date: mv?.movement_date ?? null,
-          amountLabel: mv ? `${mv.currency} ${Number(mv.amount).toLocaleString("es-UY")}` : null,
-          status: i.status,
-          reason: i.reason,
-          confirmedAt: i.confirmedAt,
-          actorEmail: i.confirmedBy ? (actorsById.get(i.confirmedBy) ?? null) : null,
-        };
-      });
+      identificationsOnly = historyIdents
+        .filter((i) => {
+          const mv = movementsById.get(i.movementId);
+          if (!mv) return true;
+          const meta = mv.metadata ?? {};
+          // No listar copias duplicadas: solo el canónico (o la fila si no es dup).
+          if (mv.excluded_from_operations || meta.duplicate_status === "duplicate_of_import") {
+            return false;
+          }
+          return true;
+        })
+        .map((i) => {
+          const mv = movementsById.get(i.movementId);
+          const actorId = i.status === "revoked" ? i.revokedBy ?? i.confirmedBy : i.confirmedBy;
+          return {
+            id: i.id,
+            movementId: i.movementId,
+            date: mv?.movement_date ?? null,
+            amountLabel: mv ? `${mv.currency} ${Number(mv.amount).toLocaleString("es-UY")}` : null,
+            status: i.status,
+            reason: i.reason,
+            confirmedAt: i.confirmedAt,
+            actorEmail: actorId ? (actorsById.get(actorId) ?? null) : null,
+          };
+        });
     } catch {
       identificationsOnly = [];
     }

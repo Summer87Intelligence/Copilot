@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ChevronRight, Loader2, RefreshCw } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { CopilotPageHeader } from "@/components/copilot/copilot-page-header";
 import { CopilotGhostLink } from "@/components/copilot/copilot-ui";
@@ -9,6 +10,7 @@ import type { Client360Payload } from "@/lib/copilot-client-360";
 import { buildClientOperationalSummary } from "@/lib/copilot-client-operational-summary";
 import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 import { ClientBankIdentitySection } from "@/components/copilot/clients/client-bank-identity-section";
+import { ClientPayerMemorySection } from "@/components/copilot/clients/client-payer-memory-section";
 import { useDisplayCurrency } from "@/components/copilot/display-currency-provider";
 import type { CollectionFollowupInitialValues } from "@/lib/account-statement/build-account-statement-followup-prefill";
 
@@ -59,6 +61,10 @@ const VALID_TAB_IDS = new Set<string>(SECTION_NAV_TABS.map((t) => t.id));
 /** Normaliza ids legacy o de otros módulos al nuevo set de tabs. */
 function normalizeTabId(raw: string): SectionNavId | null {
   if (VALID_TAB_IDS.has(raw)) return raw as SectionNavId;
+  // Alias de deep-link desde Banco.
+  if (raw === "banking" || raw === "bank" || raw === "identificacion-bancaria") {
+    return "identificacion";
+  }
   if (raw === "datos" || raw === "contactos") return "contactos";
   if (raw === "zeta" || raw === "transferencias") return "actividad";
   return null;
@@ -108,6 +114,8 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
     modulePermissions["clientes"] === "write" || modulePermissions["clientes"] === "admin";
   const { mode: displayMode, fxRate: displayFxRate } = useDisplayCurrency();
   const isUsd360 = displayMode === "usd_equivalent";
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   const [data, setData] = useState<Client360Payload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -117,10 +125,17 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
     useState<CollectionFollowupInitialValues | null>(null);
   const [collectionPrefillKey, setCollectionPrefillKey] = useState(0);
 
-  const [activeTab, setActiveTab] = useState<SectionNavId>("resumen");
+  const initialTabFromUrl = normalizeTabId(searchParams.get("tab") ?? "");
+  const [activeTab, setActiveTab] = useState<SectionNavId>(initialTabFromUrl ?? "resumen");
+  const returnTo = searchParams.get("returnTo");
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const fromUrl = normalizeTabId(searchParams.get("tab") ?? "");
+    if (fromUrl) {
+      setActiveTab(fromUrl);
+      return;
+    }
     try {
       const saved = sessionStorage.getItem(SESSION_TAB_KEY);
       if (saved) {
@@ -130,19 +145,25 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
     } catch {
       /* noop */
     }
-  }, []);
+  }, [searchParams]);
 
-  const handleTabChange = useCallback((rawId: string) => {
-    const id = normalizeTabId(rawId);
-    if (!id) return;
-    setActiveTab(id);
-    scrollContainerRef.current?.scrollTo({ top: 0, behavior: "instant" });
-    try {
-      sessionStorage.setItem(SESSION_TAB_KEY, id);
-    } catch {
-      /* noop */
-    }
-  }, []);
+  const handleTabChange = useCallback(
+    (rawId: string) => {
+      const id = normalizeTabId(rawId);
+      if (!id) return;
+      setActiveTab(id);
+      scrollContainerRef.current?.scrollTo({ top: 0, behavior: "instant" });
+      try {
+        sessionStorage.setItem(SESSION_TAB_KEY, id);
+      } catch {
+        /* noop */
+      }
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("tab", id);
+      router.replace(`?${params.toString()}`, { scroll: false });
+    },
+    [router, searchParams]
+  );
 
   const handleSuggestFollowup = useCallback(
     (prefill: CollectionFollowupInitialValues) => {
@@ -392,7 +413,18 @@ export function CopilotClient360View({ companyId }: { companyId: string }) {
                 role="tabpanel"
                 aria-labelledby="client360-tab-identificacion"
               >
-              <ClientBankIdentitySection companyId={companyId} canWrite={canWrite} />
+                {returnTo ? (
+                  <div className="border-b border-[var(--copilot-border)] px-5 py-3">
+                    <CopilotGhostLink href={`/copilot/movimientos-bancarios?${returnTo}`}>
+                      <ArrowLeft className="mr-1 inline h-3.5 w-3.5" aria-hidden />
+                      Volver a Banco
+                    </CopilotGhostLink>
+                  </div>
+                ) : null}
+                <ClientBankIdentitySection companyId={companyId} canWrite={canWrite} />
+                <div className="border-t border-[var(--copilot-border)]">
+                  <ClientPayerMemorySection companyId={companyId} />
+                </div>
               </section>
             ) : null}
 

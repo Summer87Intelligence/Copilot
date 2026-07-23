@@ -1,5 +1,17 @@
 # Project Context
 
+## BANK — Import idempotente + identificación bancaria Cliente 360 — 2026-07-22
+
+**FASE BANK-IDEMPOTENT-IMPORT-CLIENT-BANKING-HISTORY-001** (local, **sin push**):
+
+- **Fingerprint canónico v1** (`lib/bank-movements/bank-movement-fingerprint-v1.ts`): PDF/Excel/CSV convergen; prioridad referencia bancaria → composite con descripción normalizada. No usa nombre de archivo/página/parser.
+- **DB:** columnas `fingerprint_v1`, `fingerprint_version`, `duplicate_of`, `excluded_from_operations`, `normalized_description`; backfill aplicado; índice único parcial activo (0 colisiones operativas). 125 filas excluidas (124 históricas + 1 composite FACAL).
+- **Import:** plan clasifica `inserted` / `already_exists` / `duplicate_in_file` / `invalid`; insert trata 23505 como already_exists; UI resumen claro + CTA “Ver movimientos nuevos”.
+- **Operativos:** filtro default `duplicates=hide` (labels Operativos/Duplicados/Todos).
+- **Cliente clickeable** → `/copilot/clientes/{id}?tab=identificacion` (+ `returnTo`); Identificación bancaria unifica alias/conceptos + payer-memory/historial; Cobranza ya no duplica esa sección.
+- **Dry-run:** `.agents/qa-bank-idempotent-dedupe-dry-run.json` (113 grupos; 1 ambiguo C/D no tocado).
+- **Veredicto pendiente de commits locales:** ver informe de fase.
+
 ## BANK — Scroll lock real detrás del drawer de asociación — 2026-07-22
 
 **FASE BANK-ASSOCIATION-DRAWER-SCROLL-ANCHOR-FIX-002:** el scroll owner real no era `body` sino `[data-copilot-module-scroll]` (`overflow-y-auto` del module shell). Hook `useLockApplicationScroll` bloquea html/body/owner, conserva `scrollTop`, intercepta wheel/touchmove fuera del panel, restaura al cerrar (refcount). `BankDrawerShell` lo invoca; panel `overflow-hidden` + header/body/footer. E2E Playwright real: 8/8 (4 viewports × Movimientos/Conciliación). También: Suspense + deep-link `movementId` soft-nav; `allowedDevOrigins` para e2e.

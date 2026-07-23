@@ -8,12 +8,14 @@ import {
   BankDrawerHeader,
   BankDrawerShell,
 } from "@/components/copilot/bank-movements/bank-drawer-shell";
+import { BankClientNameLink } from "@/components/copilot/bank-movements/bank-client-name-link";
 import { copilotButtonClassName } from "@/components/copilot/ui/copilot-button";
 import {
   copilotCaptionClass,
   copilotInputClass,
   copilotMetricLabelClass,
 } from "@/components/copilot/ui/copilot-visual-system";
+import { buildBankReturnToQuery, buildClientBankingHref } from "@/lib/bank-movements/client-banking-navigation";
 
 /**
  * FASE BANK-SIMPLE-MOVEMENT-TO-CLIENT-RESET-001 — panel único de asociación
@@ -279,7 +281,18 @@ export function SimpleMovementAssociationPanel({
               <div className="space-y-3">
                 <div>
                   <p className={copilotMetricLabelClass}>Cliente</p>
-                  <p className="text-sm font-medium text-[var(--copilot-text)]">{association?.clientName ?? "—"}</p>
+                  {association?.clientCompanyId && association.clientName ? (
+                    <BankClientNameLink
+                      clientCompanyId={association.clientCompanyId}
+                      clientName={association.clientName}
+                      returnTo={buildBankReturnToQuery({
+                        tab: "movimientos",
+                        movementId,
+                      })}
+                    />
+                  ) : (
+                    <p className="text-sm font-medium text-[var(--copilot-text)]">—</p>
+                  )}
                 </div>
 
                 {association?.source === "financial_link" ? (
@@ -365,7 +378,10 @@ export function SimpleMovementAssociationPanel({
           {isAssociated ? (
             association?.source === "financial_link" ? (
               <a
-                href={`/copilot/clientes/${association.clientCompanyId}`}
+                href={buildClientBankingHref({
+                  clientCompanyId: association.clientCompanyId,
+                  returnTo: buildBankReturnToQuery({ tab: "movimientos", movementId }),
+                })}
                 className={copilotButtonClassName({ variant: "primary", size: "sm" })}
               >
                 Ver ficha del cliente
@@ -373,7 +389,14 @@ export function SimpleMovementAssociationPanel({
             ) : !pickedClientId ? (
               <>
                 <a
-                  href={association ? `/copilot/clientes/${association.clientCompanyId}` : "#"}
+                  href={
+                    association
+                      ? buildClientBankingHref({
+                          clientCompanyId: association.clientCompanyId,
+                          returnTo: buildBankReturnToQuery({ tab: "movimientos", movementId }),
+                        })
+                      : "#"
+                  }
                   className={copilotButtonClassName({ variant: "primary", size: "sm" })}
                 >
                   Ver ficha del cliente

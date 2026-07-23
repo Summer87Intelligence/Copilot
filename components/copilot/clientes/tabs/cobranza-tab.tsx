@@ -2,7 +2,6 @@
 
 import { CollectionMessageAssistant } from "@/components/copilot/clientes/collection-message-assistant";
 import { CollectionFollowupForm } from "@/components/copilot/clientes/collection-followup-form";
-import { ClientPayerMemorySection } from "@/components/copilot/clients/client-payer-memory-section";
 import type { Client360Payload } from "@/lib/copilot-client-360";
 import type { CollectionFollowupInitialValues } from "@/lib/account-statement/build-account-statement-followup-prefill";
 
@@ -42,9 +41,10 @@ export function CobranzaTab({
         initialValues={collectionPrefill}
         prefillKey={collectionPrefillKey}
       />
-      <div className="-mx-5 border-t border-[var(--copilot-border)]">
-        <ClientPayerMemorySection companyId={data.summary.company_id} />
-      </div>
+      <p className="text-xs text-[var(--copilot-muted)]">
+        La identificación bancaria (alias, conceptos e historial de movimientos asociados) está en la
+        pestaña Identificación bancaria.
+      </p>
     </div>
   );
 }
