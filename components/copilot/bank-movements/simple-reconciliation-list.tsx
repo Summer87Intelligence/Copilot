@@ -12,6 +12,7 @@ import {
   copilotInputClass,
 } from "@/components/copilot/ui/copilot-visual-system";
 import { EmptyState as DsEmptyState } from "@/components/copilot/ui/empty-state";
+import { TablePagination } from "@/components/copilot/ui/table-pagination";
 import type { BankMovement } from "@/lib/bank-movements/bank-movements-types";
 import {
   BANK_MOVEMENT_DESCRIPTION_CLASS,
@@ -26,6 +27,7 @@ import {
   SIMPLE_MOVEMENT_STATE_LABEL,
   type SimpleMovementState,
 } from "@/lib/bank-movements/simple-movement-association";
+import { keyedPageAt, resolveKeyedPage, type KeyedPageState } from "@/lib/ui/keyed-pagination";
 
 /**
  * FASE BANK-SIMPLE-FLOW-COMPLETION-001 — Conciliación pasa a ser una lista
@@ -54,6 +56,7 @@ export function SimpleReconciliationList({
   onOpenAssociation,
   onRestore,
   pageSize = 25,
+  onPageSizeChange,
   returnToSearch,
 }: {
   movements: BankMovement[];
@@ -64,10 +67,14 @@ export function SimpleReconciliationList({
   onOpenAssociation: (movementId: string) => void;
   onRestore: (movement: BankMovement) => void;
   pageSize?: 25 | 50 | 100;
+  onPageSizeChange?: (pageSize: number) => void;
   returnToSearch?: string;
 }) {
   const [sort, setSort] = useState<SortKey>("date_desc");
-  const [page, setPage] = useState(1);
+  const sortKey = sort;
+  const [pageState, setPageState] = useState<KeyedPageState>(() => keyedPageAt(sortKey, 1));
+  const page = resolveKeyedPage(pageState, sortKey);
+  const setPage = (next: number) => setPageState(keyedPageAt(sortKey, next));
 
   const rows = useMemo(() => {
     return movements
@@ -262,29 +269,18 @@ export function SimpleReconciliationList({
             ))}
           </ul>
 
-          {totalPages > 1 ? (
-            <nav className="flex items-center justify-center gap-3 pt-2">
-              <button
-                type="button"
-                disabled={currentPage <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
-              >
-                Anterior
-              </button>
-              <span className={copilotCaptionClass}>
-                Página {currentPage} / {totalPages}
-              </span>
-              <button
-                type="button"
-                disabled={currentPage >= totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className={copilotButtonClassName({ variant: "ghost", size: "sm" })}
-              >
-                Siguiente
-              </button>
-            </nav>
-          ) : null}
+          <TablePagination
+            className="pt-2"
+            page={currentPage}
+            totalPages={totalPages}
+            from={sorted.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}
+            to={Math.min(currentPage * pageSize, sorted.length)}
+            total={sorted.length}
+            itemLabel="movimientos"
+            onPageChange={setPage}
+            pageSize={pageSize}
+            onPageSizeChange={onPageSizeChange}
+          />
         </>
       )}
     </div>
