@@ -4,9 +4,11 @@ import { buildSantanderConsolidatedExcelPreview } from "@/lib/bank-movements/san
 import { bankStatementImportConfirmBodySchema } from "@/lib/bank-movements/bank-movements-import-api";
 import { buildSantanderConsolidatedUyuFixtureBuffer } from "@/lib/bank-movements/fixtures/santander-excel-consolidated.fixture";
 import {
+  SANTANDER_REALWORLD_MULTIPAGE_FIXTURE,
   SANTANDER_USD_JULY_AUSZUG_FIXTURE,
   SANTANDER_UYU_JULY_AUSZUG_FIXTURE,
 } from "@/lib/bank-movements/fixtures/santander-pdf-text.fixture";
+import { buildSantanderConsolidatedExcelBuffer } from "@/lib/bank-movements/fixtures/santander-excel-consolidated.fixture";
 import { buildSantanderBankStatementPreview } from "@/lib/bank-movements/santander-pdf-parser";
 import {
   buildMovementDedupeKey,
@@ -95,6 +97,69 @@ describe("planSantanderBankStatementImport — UYU", () => {
       direction: "outflow",
       bank_reference: "ZETA001",
     });
+  });
+});
+
+describe("regla global — ningún texto de saldo llega a persistirse (PDF)", () => {
+  it("extracto real con 'Saldo final' fusionado en el último movimiento: description y raw_description del insert final quedan sin rastro de saldo, importe intacto", () => {
+    const preview = previewBodyFromFixture(SANTANDER_REALWORLD_MULTIPAGE_FIXTURE);
+    const movement = preview.movements.find((m) => m.description.includes("TFCG DEMOCORP"));
+    expect(movement).toBeDefined();
+    // Confirma la causa raíz documentada: el parser deja "Saldo final" en
+    // raw_text para el último movimiento (sin fecha siguiente que corte el
+    // bloque), aunque `description` ya salga limpia.
+    expect(movement!.raw_text.toLowerCase()).toContain("saldo final");
+
+    const planned = buildMovementInsertFromPreview(movement!, {
+      workspaceId: WS,
+      accountNumber: preview.account_number,
+      currencyCode: preview.currency_code,
+      parserId: "santander_pdf_v1",
+    });
+
+    expect(planned.description.toLowerCase()).not.toContain("saldo");
+    expect(planned.raw_description?.toLowerCase()).not.toContain("saldo");
+    expect(planned.amount).toBe(113);
+    expect(planned.direction).toBe("outflow");
+    expect(planned.raw_description).toContain("TFCG DEMOCORP");
+    expect(planned.raw_description).toContain("113,00");
+  });
+});
+
+describe("regla global — ningún texto de saldo llega a persistirse (Excel)", () => {
+  it("celda de descripción con 'Saldo final' embebido (variante defensiva): se descarta igual, importe intacto", async () => {
+    const buffer = buildSantanderConsolidatedExcelBuffer({
+      currency: "UYU",
+      accountNumber: "000001211749",
+      rows: [
+        {
+          fecha: "01/07/2026",
+          referencia: "REF001",
+          tipoConcepto: "CREDITO OPERACION EN BANCA DIGITAL 122,00 5.969,41 Saldo final 5.969,41",
+          credito: "122,00",
+          saldo: "5.969,41",
+          moneda: "UYU",
+          cuenta: "000001211749",
+        },
+      ],
+    });
+    const preview = await buildSantanderConsolidatedExcelPreview(buffer);
+    const movement = preview.movements[0]!;
+    expect(movement.description.toLowerCase()).toContain("saldo final");
+
+    const planned = buildMovementInsertFromPreview(movement, {
+      workspaceId: WS,
+      accountNumber: preview.account_number,
+      currencyCode: preview.currency_code,
+      parserId: "santander_excel_consolidated_v1",
+    });
+
+    expect(planned.description.toLowerCase()).not.toContain("saldo");
+    expect(planned.raw_description?.toLowerCase()).not.toContain("saldo");
+    expect(planned.description).toContain("CREDITO OPERACION EN BANCA DIGITAL");
+    expect(planned.description).toContain("122,00");
+    expect(planned.amount).toBe(122);
+    expect(planned.direction).toBe("inflow");
   });
 });
 

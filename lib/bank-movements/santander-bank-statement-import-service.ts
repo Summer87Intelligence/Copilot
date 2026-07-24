@@ -16,6 +16,7 @@ import {
   bankAccountScopeReason,
   classifyBankAccount,
 } from "@/lib/bank-movements/bank-account-scope";
+import { sanitizeBankMovementDescription } from "@/lib/bank-movements/sanitize-bank-movement-description";
 import type { SantanderParsedBankMovement } from "@/lib/bank-movements/santander-pdf-parser";
 
 /** Motivo por el que un extracto no se importa (cuenta fuera de EASY). */
@@ -272,8 +273,24 @@ export function buildMovementInsertFromPreview(
 ): PlannedMovementInsert {
   const amount = movementAbsoluteAmount(movement);
   const parserId = ctx.parserId ?? SANTANDER_PDF_PARSER_ID;
-  const rawDescription = movement.raw_text?.trim() || movement.description.trim();
-  const normalized_description = normalizeSantanderDescription(movement.description);
+
+  // Regla global de importación: ningún texto de saldo de cuenta ("Saldo
+  // final/inicial/disponible/contable", "Nuevo saldo", "Balance") se
+  // persiste — para nadie, independiente de rol o permiso. `dedupe_key` /
+  // `canonical_fingerprint` / `fingerprint_v1` de más abajo se calculan
+  // igual que siempre a partir de `movement.description` SIN sanear: son la
+  // identidad del movimiento para deduplicar contra filas ya importadas
+  // (antes de este fix), y cambiar su input rompería esa continuidad en un
+  // reimport del mismo extracto.
+  // Fallback defensivo: `description` nunca debe quedar vacía (constraint de
+  // DB `trim(description) <> ''`) — en la práctica un movimiento real
+  // siempre tiene contenido más allá de un posible texto de saldo.
+  const sanitizedDescription =
+    sanitizeBankMovementDescription(movement.description) || movement.description.trim();
+  const rawDescriptionSource = movement.raw_text?.trim() || movement.description.trim();
+  const sanitizedRawDescription =
+    sanitizeBankMovementDescription(rawDescriptionSource) || sanitizedDescription;
+  const normalized_description = normalizeSantanderDescription(sanitizedDescription);
   const dedupe_key = buildMovementDedupeKey({
     workspaceId: ctx.workspaceId,
     bankName: "Santander",
@@ -336,8 +353,8 @@ export function buildMovementInsertFromPreview(
 
   return {
     movement_date: movement.date,
-    description: movement.description.trim(),
-    raw_description: rawDescription,
+    description: sanitizedDescription,
+    raw_description: sanitizedRawDescription,
     normalized_description,
     amount,
     currency: ctx.currencyCode,
