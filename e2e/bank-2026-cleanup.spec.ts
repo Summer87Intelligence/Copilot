@@ -110,13 +110,6 @@ async function install(page: Page) {
       body: JSON.stringify({ ok: true, data: { items: [] } }),
     });
   });
-  await page.route("**/api/copilot/bank-movements/imports**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ ok: true, data: [] }),
-    });
-  });
   await page.route("**/api/copilot/bank-reconciliation/client-identifications**", async (route) => {
     await route.fulfill({
       status: 200,
@@ -142,11 +135,16 @@ async function install(page: Page) {
   });
   await page.route("**/api/copilot/bank-movements**", async (route) => {
     const pathname = new URL(route.request().url()).pathname.replace(/\/+$/, "") || "/";
-    if (pathname.includes("/imports") || pathname.includes("/reconciliation")) {
+    // Dejar que la ruta específica de /imports (registrada después) gane.
+    if (pathname.includes("/imports")) {
+      await route.fallback();
+      return;
+    }
+    if (pathname.includes("/reconciliation")) {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ ok: true, data: pathname.includes("reconciliation") ? { items: [] } : [] }),
+        body: JSON.stringify({ ok: true, data: { items: [] } }),
       });
       return;
     }
@@ -162,6 +160,43 @@ async function install(page: Page) {
       status: 200,
       contentType: "application/json",
       body: JSON.stringify(listPayload()),
+    });
+  });
+  // Última ruta registrada gana sobre el catch-all de bank-movements.
+  await page.route("**/api/copilot/bank-movements/imports**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: true,
+        data: [
+          {
+            id: "imp-1",
+            workspace_id: WS,
+            bank_name: "Santander",
+            account_label: "Santander UYU",
+            file_name: "auszug-julio.pdf",
+            file_type: "pdf",
+            imported_by: "22535d5c-3c6d-4bc4-a9a1-550132a1819b",
+            imported_at: "2026-07-15T12:00:00Z",
+            status: "parsed",
+            row_count: 11,
+            metadata: {
+              total_preview_count: 48,
+              inserted_count: 11,
+              already_exists_count: 37,
+            },
+            actor: {
+              id: "22535d5c-3c6d-4bc4-a9a1-550132a1819b",
+              displayName: "Daniel Odella",
+              email: "daniel@example.com",
+              kind: "user",
+            },
+            created_at: "2026-07-15T12:00:00Z",
+            updated_at: "2026-07-15T12:00:00Z",
+          },
+        ],
+      }),
     });
   });
 }
@@ -201,10 +236,12 @@ test.describe("Bank 2026 cleanup — fixtures", () => {
     await page.getByTestId("table-pagination-numeric").getByRole("button", { name: "Ir a página 2" }).click();
     await expect(page).toHaveURL(/page=2/, { timeout: 15_000 });
     await expect(page).toHaveURL(/month=2026-07/);
-    await expect(page).toHaveURL(/pageSize=25/);
+    // pageSize puede omitirse en URL cuando coincide con el default canónico (25).
+    const url = page.url();
+    expect(url.includes("pageSize=25") || !/[?&]pageSize=/.test(url)).toBe(true);
   });
 
-  test("3. Historial sin Conciliados por cliente", async ({ page }) => {
+  test("3. Historial: Importado por legible, sin UUID, sin Conciliados por cliente", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/copilot/movimientos-bancarios?tab=historial&month=2026-07");
     await expect(page.getByTestId("bank-history-panel")).toBeVisible({ timeout: 45_000 });
@@ -212,6 +249,24 @@ test.describe("Bank 2026 cleanup — fixtures", () => {
     await expect(page.getByText(/Conciliaciones por cliente/i)).toHaveCount(0);
     await expect(page.getByText(/Conciliados por cliente/i)).toHaveCount(0);
     await expect(page.getByText(/Suprasur/i).first()).toBeVisible();
+
+    const actor = page.getByTestId("bank-import-actor").first();
+    await expect(actor).toBeVisible();
+    await expect(actor).toContainText("Importado por");
+    await expect(actor).toContainText("Daniel Odella");
+    await expect(actor).toContainText("daniel@example.com");
+    await expect(actor).not.toContainText("22535d5c-3c6d-4bc4-a9a1-550132a1819b");
+  });
+
+  test("3b. Historial mobile: actor sin overflow horizontal", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/copilot/movimientos-bancarios?tab=historial&month=2026-07");
+    await expect(page.getByTestId("bank-import-actor").first()).toBeVisible({ timeout: 45_000 });
+    const overflowX = await page.evaluate(() => {
+      const doc = document.documentElement;
+      return Math.max(doc.scrollWidth - window.innerWidth, document.body.scrollWidth - window.innerWidth);
+    });
+    expect(overflowX).toBeLessThanOrEqual(1);
   });
 
   test("4. Importar — sin Neto ambiguo y CTA Importar solo nuevos", async ({ page }) => {

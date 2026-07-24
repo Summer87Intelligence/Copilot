@@ -50,4 +50,12 @@ describe("BankHistoryPanel — identificaciones e importaciones, solo lectura, s
     expect(historyPanel).not.toMatch(/useEffect\(\s*\(\)\s*=>\s*\{[^}]*setImportsPage/);
     expect(historyPanel).not.toMatch(/useEffect\(\s*\(\)\s*=>\s*\{[^}]*setPage\(1\)/);
   });
+
+  it("BANK-IMPORT-ACTOR-DISPLAY: Importado por con truncate; nunca UUID como label principal en markup", () => {
+    expect(historyPanel).toContain("Importado por");
+    expect(historyPanel).toContain('data-testid="bank-import-actor"');
+    expect(historyPanel).toContain("resolveImportActorSecondaryEmail");
+    expect(historyPanel).toContain("truncate");
+    expect(historyPanel).not.toMatch(/stats\.actor \? ` · \$\{stats\.actor\}`/);
+  });
 });

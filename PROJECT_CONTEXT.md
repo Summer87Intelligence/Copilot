@@ -1,5 +1,19 @@
 # Project Context
 
+## BANK — Import actor display — 2026-07-23
+
+**FASE BANK-IMPORT-ACTOR-DISPLAY-001**: Historial → Importaciones muestra actor legible (`Importado por` + nombre/email). `imported_by` sigue siendo UUID técnico en DB; resolución batch vía `app_users` en GET `/api/copilot/bank-movements/imports` (`enrichBankStatementImportsWithActors`). Fallback: nombre → email → Proceso automático → Usuario eliminado → Usuario del sistema / no disponible. Nunca UUID como label principal. Fuera de alcance: RBAC Camila.
+
+## BANK — 2026 cleanup apply + deploy — 2026-07-23
+
+**FASE BANK-2026-PRODUCTION-APPLY-AND-QA-001** (cerrada):
+
+- Deploy production **READY**: `dpl_Dbj7s2j5hybR4mZZxJgoMA7sCkAe` · alias `copilot-pro.vercel.app` · SHA **0143bed**.
+- Snapshot/dry-run/apply (`scripts/bank-2026-cleanup-apply.ts`): physical **1026**, operational **901**, before_2026 **0**, dups marcados **125**, multi-active A/B/C/D **0**. Apply = **0** updates (ya limpio / idempotente). Reportes en `.agents/` (no git).
+- Post-apply idéntico (físicas/asoc/links/allocations/events/imports).
+- QA UI autenticada prod **PASS** (Admin + rol operativo Camila; read-only; sesiones cerradas). Sin credenciales en repo/contexto.
+- Observación Camila: sin Agregar/Ocultar; nav reducido; aún ve Importar + Asignar cliente (no ejecutado en QA).
+
 ## BANK — 2026 cleanup + cashflow KPI — cierre pre-push 2026-07-23
 
 **FASE BANK-2026-CLEANUP-PAGINATION-HISTORY-AND-CASHFLOW-KPI-001** (local commits; apply audit done; **push pending this cierre**):

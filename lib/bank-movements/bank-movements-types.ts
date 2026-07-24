@@ -5,6 +5,8 @@
  * la conciliación siempre la confirma el usuario.
  */
 
+import type { BankImportActorView } from "@/lib/bank-movements/bank-import-actor";
+
 export const BANK_IMPORT_STATUSES = ["uploaded", "parsed", "failed", "archived"] as const;
 export type BankImportStatus = (typeof BANK_IMPORT_STATUSES)[number];
 
@@ -65,12 +67,15 @@ export type BankStatementImport = {
   account_label: string | null;
   file_name: string | null;
   file_type: string | null;
+  /** UUID técnico (o legado legible). No mostrar como etiqueta principal en UI. */
   imported_by: string | null;
   imported_at: string;
   status: BankImportStatus;
   row_count: number;
   /** Contadores de lectura/insert/idempotencia (persistidos al confirmar). */
   metadata?: Record<string, unknown> | null;
+  /** View model de presentación (API de listado). */
+  actor?: BankImportActorView | null;
   created_at: string;
   updated_at: string;
 };

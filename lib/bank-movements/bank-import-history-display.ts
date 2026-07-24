@@ -1,3 +1,5 @@
+import type { BankImportActorView } from "@/lib/bank-movements/bank-import-actor";
+import { buildBankImportActorView, isUuidAsPrimaryActorLabel } from "@/lib/bank-movements/bank-import-actor";
 import type { BankStatementImport } from "@/lib/bank-movements/bank-movements-types";
 
 export type ImportHistoryDisplayRow = BankStatementImport & {
@@ -12,6 +14,25 @@ function importMeta(item: BankStatementImport): Record<string, unknown> {
   return (item.metadata ?? {}) as Record<string, unknown>;
 }
 
+function resolveActorView(item: BankStatementImport): BankImportActorView | null {
+  if (item.actor && item.actor.displayName.trim()) {
+    // Defensa: nunca promover UUID crudo aunque venga mal del API.
+    if (isUuidAsPrimaryActorLabel(item.actor.displayName)) {
+      return { ...item.actor, displayName: "Usuario del sistema", kind: "unknown" };
+    }
+    return item.actor;
+  }
+  const built = buildBankImportActorView({
+    importedBy: item.imported_by,
+    metadata: item.metadata ?? null,
+    resolved: null,
+  });
+  if (isUuidAsPrimaryActorLabel(built.displayName)) {
+    return { ...built, displayName: "Usuario del sistema", kind: "unknown" };
+  }
+  return built;
+}
+
 /** Stats visibles en Historial → Importaciones. */
 export function resolveImportHistoryStats(item: ImportHistoryDisplayRow | BankStatementImport): {
   read: number;
@@ -19,6 +40,8 @@ export function resolveImportHistoryStats(item: ImportHistoryDisplayRow | BankSt
   alreadyExists: number;
   errors: number;
   actor: string | null;
+  actorEmail: string | null;
+  actorKind: BankImportActorView["kind"] | null;
   retryCount: number;
 } {
   const meta = importMeta(item);
@@ -33,15 +56,31 @@ export function resolveImportHistoryStats(item: ImportHistoryDisplayRow | BankSt
     0;
   const errors = asFiniteNumber(meta.error_count) ?? (item.status === "failed" ? 1 : 0);
   const retryCount = "retryCount" in item && typeof item.retryCount === "number" ? item.retryCount : 1;
+  const actorView = resolveActorView(item);
+  const actorEmail =
+    actorView?.email && actorView.email !== actorView.displayName ? actorView.email : null;
 
   return {
     read,
     inserted,
     alreadyExists,
     errors,
-    actor: item.imported_by?.trim() || null,
+    actor: actorView?.displayName ?? null,
+    actorEmail,
+    actorKind: actorView?.kind ?? null,
     retryCount,
   };
+}
+
+/** Email secundario solo si aporta valor (nombre distinto del email). */
+export function resolveImportActorSecondaryEmail(stats: {
+  actor: string | null;
+  actorEmail: string | null;
+}): string | null {
+  if (!stats.actorEmail) return null;
+  if (!stats.actor) return stats.actorEmail;
+  if (stats.actor === stats.actorEmail) return null;
+  return stats.actorEmail;
 }
 
 function fileKey(item: BankStatementImport): string {

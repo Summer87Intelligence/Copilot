@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireCopilotModuleAccess } from "@/lib/auth/copilot-module-api-auth";
+import { enrichBankStatementImportsWithActors } from "@/lib/bank-movements/bank-import-actor.server";
 import type { BankStatementImport } from "@/lib/bank-movements/bank-movements-types";
 
 export const dynamic = "force-dynamic";
@@ -35,9 +36,19 @@ export async function GET(request: NextRequest) {
   }
 
   const rows = (data ?? []) as BankStatementImport[];
-  return NextResponse.json({
-    ok: true as const,
-    data: rows,
-    meta: { total: rows.length, migration_pending: false },
-  });
+  try {
+    const enriched = await enrichBankStatementImportsWithActors(supabase, rows);
+    return NextResponse.json({
+      ok: true as const,
+      data: enriched,
+      meta: { total: enriched.length, migration_pending: false },
+    });
+  } catch {
+    // Si falla la resolución de actores, no romper el historial: devolver filas crudas.
+    return NextResponse.json({
+      ok: true as const,
+      data: rows,
+      meta: { total: rows.length, migration_pending: false, actors_unresolved: true },
+    });
+  }
 }

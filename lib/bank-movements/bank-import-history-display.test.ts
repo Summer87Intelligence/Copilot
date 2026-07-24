@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   collapseZeroNewImportRetries,
+  resolveImportActorSecondaryEmail,
   resolveImportHistoryStats,
 } from "@/lib/bank-movements/bank-import-history-display";
 import type { BankStatementImport } from "@/lib/bank-movements/bank-movements-types";
@@ -43,6 +44,33 @@ describe("bank-import-history-display", () => {
       actor: "Ana",
       retryCount: 1,
     });
+  });
+
+  it("usa actor.displayName del view model y no el UUID crudo", () => {
+    const uuid = "22535d5c-3c6d-4bc4-a9a1-550132a1819b";
+    const stats = resolveImportHistoryStats(
+      imp({
+        id: "2",
+        imported_by: uuid,
+        actor: {
+          id: uuid,
+          displayName: "Daniel Odella",
+          email: "daniel@example.com",
+          kind: "user",
+        },
+      })
+    );
+    expect(stats.actor).toBe("Daniel Odella");
+    expect(stats.actorEmail).toBe("daniel@example.com");
+    expect(stats.actor).not.toMatch(/^[0-9a-f-]{36}$/i);
+    expect(resolveImportActorSecondaryEmail(stats)).toBe("daniel@example.com");
+  });
+
+  it("si solo hay UUID en imported_by sin actor resuelto, no lo muestra como label", () => {
+    const uuid = "22535d5c-3c6d-4bc4-a9a1-550132a1819b";
+    const stats = resolveImportHistoryStats(imp({ id: "3", imported_by: uuid }));
+    expect(stats.actor).toBe("Usuario del sistema");
+    expect(stats.actor).not.toBe(uuid);
   });
 
   it("agrupa reintentos del mismo archivo con 0 nuevos", () => {

@@ -8,9 +8,9 @@ describe("resolveAppUsersById", () => {
   it("resuelve nombre → email → fallback en un solo .in() (sin N+1)", async () => {
     const inMock = vi.fn().mockResolvedValue({
       data: [
-        { id: "u1", full_name: "Camila Pérez", email: "camila@example.com" },
-        { id: "u2", full_name: null, email: "solo@example.com" },
-        { id: "u3", full_name: "  ", email: null },
+        { id: "u1", full_name: "Camila Pérez", email: "camila@example.com", deleted_at: null, is_active: true },
+        { id: "u2", full_name: null, email: "solo@example.com", deleted_at: null, is_active: true },
+        { id: "u3", full_name: "  ", email: null, deleted_at: null, is_active: true },
       ],
       error: null,
     });
@@ -28,5 +28,27 @@ describe("resolveAppUsersById", () => {
     expect(map.get("u3")!.label).toBe("Usuario del sistema");
     expect(map.get("missing")!.label).toBe("Usuario del sistema");
     expect(map.get("u1")!.label).not.toMatch(/^[0-9a-f-]{36}$/i);
+  });
+
+  it("marca usuarios eliminados sin exponer UUID como label", async () => {
+    const inMock = vi.fn().mockResolvedValue({
+      data: [
+        {
+          id: "del",
+          full_name: "Gone",
+          email: "gone@example.com",
+          deleted_at: "2026-01-02T00:00:00Z",
+          is_active: false,
+        },
+      ],
+      error: null,
+    });
+    const select = vi.fn(() => ({ in: inMock }));
+    const from = vi.fn(() => ({ select }));
+    const supabase = { from } as never;
+
+    const map = await resolveAppUsersById(supabase, ["del"]);
+    expect(map.get("del")!.kind).toBe("deleted");
+    expect(map.get("del")!.label).toBe("Usuario eliminado");
   });
 });

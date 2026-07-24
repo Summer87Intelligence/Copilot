@@ -13,6 +13,7 @@ import { TablePagination } from "@/components/copilot/ui/table-pagination";
 import { formatDate } from "@/components/copilot/bank-movements/canonical-evidence-ui";
 import {
   collapseZeroNewImportRetries,
+  resolveImportActorSecondaryEmail,
   resolveImportHistoryStats,
 } from "@/lib/bank-movements/bank-import-history-display";
 import type { BankStatementImport } from "@/lib/bank-movements/bank-movements-types";
@@ -81,7 +82,7 @@ export function BankHistoryPanel({
       <section className={copilotCardStandardClass}>
         <h2 className={copilotSectionTitleClass}>Importaciones</h2>
         <p className={`${copilotCaptionClass} mt-1`}>
-          Fecha, archivo, leídos, nuevos, ya existentes, errores y actor.
+          Fecha, archivo, leídos, nuevos, ya existentes, errores e importado por.
         </p>
         {displayImports.length === 0 ? (
           <div className="mt-3">
@@ -99,10 +100,12 @@ export function BankHistoryPanel({
           <ul className="mt-3 space-y-2">
             {paginatedImports.map((item) => {
               const stats = resolveImportHistoryStats(item);
+              const secondaryEmail = resolveImportActorSecondaryEmail(stats);
               return (
                 <li
                   key={item.id}
                   className="flex items-center justify-between gap-3 rounded-xl border border-[var(--copilot-border)] px-3 py-2 text-sm"
+                  data-testid="bank-import-history-row"
                 >
                   <span className="flex min-w-0 items-center gap-2">
                     <Landmark className="h-4 w-4 shrink-0 text-[var(--copilot-muted)]" aria-hidden />
@@ -113,9 +116,27 @@ export function BankHistoryPanel({
                       <span className={copilotCaptionClass}>
                         {stats.read} leídos · {stats.inserted} nuevos · {stats.alreadyExists} ya existentes
                         {stats.errors > 0 ? ` · ${stats.errors} errores` : ""}
-                        {stats.actor ? ` · ${stats.actor}` : ""}
                         {stats.retryCount > 1 ? ` · ${stats.retryCount} reintentos sin nuevos` : ""}
                       </span>
+                      {stats.actor ? (
+                        <span
+                          className={`${copilotCaptionClass} mt-0.5 block min-w-0`}
+                          data-testid="bank-import-actor"
+                        >
+                          <span className="block text-[var(--copilot-muted)]">Importado por</span>
+                          <span
+                            className="block truncate text-[var(--copilot-text)]"
+                            title={stats.actor}
+                          >
+                            {stats.actor}
+                          </span>
+                          {secondaryEmail ? (
+                            <span className="block truncate" title={secondaryEmail}>
+                              {secondaryEmail}
+                            </span>
+                          ) : null}
+                        </span>
+                      ) : null}
                     </span>
                   </span>
                   <span className={`${copilotCaptionClass} whitespace-nowrap`}>{formatDate(item.imported_at)}</span>
