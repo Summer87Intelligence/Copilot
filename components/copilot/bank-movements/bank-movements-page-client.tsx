@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Plus, Sparkles, EyeOff, Eye, X } from "lucide-react";
+import { Plus, Sparkles, EyeOff, Eye, X, Clock } from "lucide-react";
 
 import { BankMovementsImportPanel } from "@/components/copilot/bank-movements/bank-movements-import-panel";
 import { BankMovementsReconciliationPanel } from "@/components/copilot/bank-movements/bank-movements-reconciliation-panel";
@@ -12,6 +12,7 @@ import { SimpleReconciliationList } from "@/components/copilot/bank-movements/si
 import { BankHistoryPanel } from "@/components/copilot/bank-movements/bank-history-panel";
 import { BankSimpleFiltersBar } from "@/components/copilot/bank-movements/bank-simple-filters-bar";
 import { buildBankReturnToQuery } from "@/lib/bank-movements/client-banking-navigation";
+import { formatCopilotDateTime } from "@/lib/copilot-format";
 import {
   BANK_MOVEMENT_DESCRIPTION_CLASS,
   BANK_MOVEMENT_DESCRIPTION_COMPACT_CLASS,
@@ -350,6 +351,16 @@ export function BankMovementsPageClient() {
     const timer = setTimeout(() => setFeedback(null), 4000);
     return () => clearTimeout(timer);
   }, [feedback]);
+
+  /** Fecha de la importación exitosa (status "parsed") más reciente, para el bloque "Movimientos bancarios". */
+  const lastSuccessfulImportAt = useMemo(() => {
+    let latest: string | null = null;
+    for (const imp of imports) {
+      if (imp.status !== "parsed") continue;
+      if (!latest || imp.imported_at > latest) latest = imp.imported_at;
+    }
+    return latest;
+  }, [imports]);
 
   const periodRange = useMemo(() => resolveBankPeriodRange(period), [period]);
 
@@ -1040,6 +1051,17 @@ export function BankMovementsPageClient() {
       <CopilotPageHeader
         title="Movimientos bancarios"
         description="Movimientos bancarios para revisar y conciliar manualmente."
+        right={
+          <span
+            className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-bold text-[var(--copilot-text)]"
+            data-testid="bank-last-import-updated-at"
+          >
+            <Clock className="h-3.5 w-3.5 shrink-0 text-[var(--copilot-muted)]" aria-hidden />
+            {lastSuccessfulImportAt
+              ? `Última actualización: ${formatCopilotDateTime(lastSuccessfulImportAt)}`
+              : "Sin importaciones registradas"}
+          </span>
+        }
       />
 
       {feedback ? (

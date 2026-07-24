@@ -647,6 +647,7 @@ export function formatCopilotDateTime(value: string | Date | null | undefined): 
   const time = d.toLocaleTimeString(COPILOT_DATE_LOCALE, {
     hour: "2-digit",
     minute: "2-digit",
+    hour12: false,
     timeZone: COPILOT_DATE_TZ,
   });
   return `${date} · ${time}`;
