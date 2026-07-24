@@ -1,10 +1,19 @@
 /**
- * Regla global de importación: cualquier texto que represente el saldo de la
- * cuenta ("Saldo final", "Saldo inicial", "Saldo disponible", "Saldo
- * contable", "Nuevo saldo", "Balance") se descarta ANTES de persistir el
- * movimiento — para todos los usuarios, sin excepción. No depende de rol,
- * permiso ni workspace: corre una sola vez, en el builder compartido por PDF
- * y Excel (`buildMovementInsertFromPreview`).
+ * REGLA FUNCIONAL PERMANENTE del motor de importación bancaria (todo banco,
+ * todo formato, presente y futuro — ver docs/architecture/bank-import-
+ * balance-normalization.md): el saldo de cuenta NO forma parte de un
+ * movimiento bancario. Cualquier texto que lo represente ("Saldo final",
+ * "Saldo inicial", "Saldo disponible", "Saldo contable", "Nuevo saldo",
+ * "Balance", "Closing balance", "Opening balance", "Available balance",
+ * "Ledger balance", o cualquier variante equivalente) se descarta ANTES de
+ * persistir el movimiento — para todos los usuarios, sin excepción. No
+ * depende de rol, permiso, workspace ni frontend: corre una sola vez, en el
+ * builder compartido por todos los importadores (`buildMovementInsertFromPreview`).
+ *
+ * Único helper de normalización de descripciones bancarias del proyecto.
+ * Todo importador (Santander PDF, Santander Excel, y cualquier banco o
+ * formato futuro) DEBE reutilizar esta función — nunca duplicar expresiones
+ * regulares ni lógica de limpieza de saldo en otro archivo.
  *
  * No es una capa de privacidad por usuario — eso sigue siendo
  * `bank-movement-balance-privacy.ts`, que resuelve un problema distinto
@@ -26,9 +35,11 @@ import { parseUruguayMoney } from "@/lib/treasury/santander-pdf-statement-parser
 
 const MONEY_SRC = String.raw`-?\d{1,3}(?:\.\d{3})*(?:,\d{2})?|-?\d+(?:,\d{2})?`;
 const CURRENCY_SRC = String.raw`(?:UYU|USD|U\$S)`;
-/** Lista cerrada de variantes conocidas — nunca un genérico "saldo + cualquier palabra"
- *  (evitaría falsos positivos en descripciones legítimas como "PAGO SALDO TARJETA"). */
-const BALANCE_LABEL_SRC = String.raw`(?:nuevo\s+saldo|saldo\s+(?:final|inicial|disponible|contable)|balance)`;
+/** Lista cerrada de variantes conocidas (español + inglés) — nunca un
+ *  genérico "saldo + cualquier palabra" (evitaría falsos positivos en
+ *  descripciones legítimas como "PAGO SALDO TARJETA"). Bancos/formatos
+ *  futuros que agreguen una variante nueva la suman acá, en un único lugar. */
+const BALANCE_LABEL_SRC = String.raw`(?:nuevo\s+saldo|saldo\s+(?:final|inicial|disponible|contable)|opening\s+balance|closing\s+balance|available\s+balance|ledger\s+balance|balance)`;
 
 const BALANCE_CLAUSE_RE = new RegExp(
   String.raw`${BALANCE_LABEL_SRC}\s*:?\s*(?:${CURRENCY_SRC}\s*)?(${MONEY_SRC})?(?:\s*${CURRENCY_SRC})?`,

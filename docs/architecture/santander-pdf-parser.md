@@ -5,6 +5,15 @@ del import de PDF contra dos extractos reales de julio 2026 (cuenta USD `0051011
 UYU `000001211749`). Este documento describe el pipeline actual, el bug real encontrado, y los
 campos nuevos que el parser expone.
 
+> **Regla permanente relacionada:** el saldo de cuenta nunca es parte de un
+> movimiento — ver
+> [`bank-import-balance-normalization.md`](./bank-import-balance-normalization.md).
+> El bug de "pérdida silenciosa del último movimiento" de más abajo es la
+> causa raíz real de por qué "Saldo final X" terminaba embebido en
+> `raw_text`; la normalización que lo limpia antes de persistir vive en
+> `sanitizeBankMovementDescription` (helper único, no específico de este
+> parser).
+
 ## Pipeline
 
 ```

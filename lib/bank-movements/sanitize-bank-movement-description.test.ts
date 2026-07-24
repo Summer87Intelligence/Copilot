@@ -51,6 +51,36 @@ describe("sanitizeBankMovementDescription", () => {
     expect(sanitizeBankMovementDescription("PAYMENT 500,00 Balance 3.400,00")).toBe("PAYMENT 500,00");
   });
 
+  it("'Closing balance' (regla permanente — variantes internacionales)", () => {
+    expect(sanitizeBankMovementDescription("PAYMENT 500,00 Closing balance 3.400,00")).toBe(
+      "PAYMENT 500,00"
+    );
+  });
+
+  it("'Opening balance'", () => {
+    expect(sanitizeBankMovementDescription("Opening balance 1.000,00 DEPOSIT 200,00")).toBe(
+      "DEPOSIT 200,00"
+    );
+  });
+
+  it("'Available balance'", () => {
+    expect(sanitizeBankMovementDescription("WITHDRAWAL 300,00 Available balance 700,00")).toBe(
+      "WITHDRAWAL 300,00"
+    );
+  });
+
+  it("'Ledger balance'", () => {
+    expect(sanitizeBankMovementDescription("TRANSFER 150,00 Ledger balance 9.850,00")).toBe(
+      "TRANSFER 150,00"
+    );
+  });
+
+  it("'Closing balance' con el valor duplicado inmediatamente antes (mismo patrón que 'Saldo final')", () => {
+    expect(
+      sanitizeBankMovementDescription("PAYMENT 500,00 3.400,00 Closing balance 3.400,00")
+    ).toBe("PAYMENT 500,00");
+  });
+
   it("saltos de línea y espacios múltiples entre el importe y la etiqueta", () => {
     const raw =
       "24/07/2026\n7505 DEBITO A\nCONFIRMAR\nBANRED COMPRA\n510325 -\nMONTEVIDEO/DLO\n*ARCOS DORADOS\nUY VIS3 -\n-184,32 709.689,76\nSaldo final 709.689,76";
