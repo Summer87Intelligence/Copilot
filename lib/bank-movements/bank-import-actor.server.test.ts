@@ -73,4 +73,19 @@ describe("enrichBankStatementImportsWithActors", () => {
     expect(enriched[0]!.actor.displayName).toBe("Usuario del sistema");
     expect(enriched[0]!.actor.id).toBe(missing);
   });
+
+  it("si el lookup .in() falla, propaga error (la ruta API captura actors_unresolved)", async () => {
+    const inMock = vi.fn().mockResolvedValue({
+      data: null,
+      error: { message: "permission denied" },
+    });
+    const select = vi.fn(() => ({ in: inMock }));
+    const from = vi.fn(() => ({ select }));
+    const supabase = { from } as never;
+
+    await expect(
+      enrichBankStatementImportsWithActors(supabase, [row({ id: "i1", imported_by: U1 })])
+    ).rejects.toThrow(/RESOLVE_APP_USERS_FAILED/);
+    expect(from).toHaveBeenCalledTimes(1);
+  });
 });

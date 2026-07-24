@@ -57,5 +57,9 @@ describe("BankHistoryPanel — identificaciones e importaciones, solo lectura, s
     expect(historyPanel).toContain("resolveImportActorSecondaryEmail");
     expect(historyPanel).toContain("truncate");
     expect(historyPanel).not.toMatch(/stats\.actor \? ` · \$\{stats\.actor\}`/);
+    // No imprimir ids técnicos en JSX.
+    expect(historyPanel).not.toMatch(/\{[^}]*imported_by[^}]*\}/);
+    expect(historyPanel).not.toMatch(/actor\.id/);
+    expect(historyPanel).not.toContain("actors_unresolved");
   });
 });

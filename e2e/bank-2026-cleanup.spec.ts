@@ -195,7 +195,24 @@ async function install(page: Page) {
             created_at: "2026-07-15T12:00:00Z",
             updated_at: "2026-07-15T12:00:00Z",
           },
+          // Simula meta.actors_unresolved: fila cruda sin view model.
+          {
+            id: "imp-unresolved",
+            workspace_id: WS,
+            bank_name: "Santander",
+            account_label: "Santander UYU",
+            file_name: "umsatz-sin-actor.pdf",
+            file_type: "pdf",
+            imported_by: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+            imported_at: "2026-07-14T12:00:00Z",
+            status: "parsed",
+            row_count: 3,
+            metadata: { total_preview_count: 3, inserted_count: 3, already_exists_count: 0 },
+            created_at: "2026-07-14T12:00:00Z",
+            updated_at: "2026-07-14T12:00:00Z",
+          },
         ],
+        meta: { total: 2, migration_pending: false, actors_unresolved: true },
       }),
     });
   });
@@ -256,6 +273,12 @@ test.describe("Bank 2026 cleanup — fixtures", () => {
     await expect(actor).toContainText("Daniel Odella");
     await expect(actor).toContainText("daniel@example.com");
     await expect(actor).not.toContainText("22535d5c-3c6d-4bc4-a9a1-550132a1819b");
+
+    // Camino actors_unresolved: fallback legible, sin UUID.
+    await expect(page.getByText("Usuario del sistema").first()).toBeVisible();
+    await expect(page.getByTestId("bank-history-panel")).not.toContainText(
+      "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+    );
   });
 
   test("3b. Historial mobile: actor sin overflow horizontal", async ({ page }) => {

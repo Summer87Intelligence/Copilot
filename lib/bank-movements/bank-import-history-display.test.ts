@@ -5,6 +5,7 @@ import {
   resolveImportActorSecondaryEmail,
   resolveImportHistoryStats,
 } from "@/lib/bank-movements/bank-import-history-display";
+import { isUuidAsPrimaryActorLabel } from "@/lib/bank-movements/bank-import-actor";
 import type { BankStatementImport } from "@/lib/bank-movements/bank-movements-types";
 
 function imp(partial: Partial<BankStatementImport> & Pick<BankStatementImport, "id">): BankStatementImport {
@@ -71,6 +72,21 @@ describe("bank-import-history-display", () => {
     const stats = resolveImportHistoryStats(imp({ id: "3", imported_by: uuid }));
     expect(stats.actor).toBe("Usuario del sistema");
     expect(stats.actor).not.toBe(uuid);
+  });
+
+  it("actors_unresolved (fila cruda): mismo contrato visual que sin actor", () => {
+    const uuid = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+    const stats = resolveImportHistoryStats(
+      imp({
+        id: "raw",
+        imported_by: uuid,
+        actor: undefined,
+        metadata: { inserted_count: 2, total_preview_count: 2 },
+      })
+    );
+    expect(stats.actor).toBe("Usuario del sistema");
+    expect(isUuidAsPrimaryActorLabel(stats.actor)).toBe(false);
+    expect(stats.actorEmail).toBeNull();
   });
 
   it("agrupa reintentos del mismo archivo con 0 nuevos", () => {
