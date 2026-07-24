@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotModuleAccessAny } from "@/lib/auth/copilot-module-api-auth";
+import {
+  isBankMovementsInflowReadonly,
+  requireCopilotModuleAccessAny,
+} from "@/lib/auth/copilot-module-api-auth";
 import { listRecentIdentificationEvents } from "@/lib/bank/canonical/client-identification-repository.server";
 import { maskAccountOrReference } from "@/lib/bank/canonical/payer-identity";
 import { resolveAppUsersById } from "@/lib/bank/canonical/resolve-app-users.server";
@@ -25,6 +28,21 @@ const STATUS_EVENT_LABEL: Record<string, string> = {
 export async function GET(request: NextRequest) {
   const auth = await requireCopilotModuleAccessAny(request, ["bank_movements", "clientes", "cobranza"]);
   if (!auth.ok) return auth.response;
+
+  // Endpoint exclusivo de Historial (ver doc arriba): inflow_readonly nunca
+  // debe verlo, aunque califique por otro módulo (p. ej. clientes:read de su
+  // rol base) — esa lectura es para Clientes, no un atajo hacia Historial.
+  if (await isBankMovementsInflowReadonly(auth.ctx)) {
+    return NextResponse.json(
+      {
+        ok: false as const,
+        code: "FORBIDDEN_MODULE" as const,
+        message: "No tenés acceso a este módulo.",
+        moduleKey: "bank_movements" as const,
+      },
+      { status: 403 }
+    );
+  }
 
   const limitRaw = Number(request.nextUrl.searchParams.get("limit") ?? "20");
   const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 50) : 20;

@@ -13,6 +13,8 @@ import {
   requireCopilotModuleAccessAny,
   requireCopilotModuleAccess,
   requireCopilotModuleWriteAccess,
+  requireBankMovementsFullReadAccess,
+  isBankMovementsInflowReadonly,
 } from "@/lib/auth/copilot-module-api-auth";
 import { resolveCopilotApiModuleKey } from "@/lib/auth/copilot-api-module-map";
 
@@ -252,6 +254,85 @@ describe("requireCopilotModuleAccess — bank_movements inflow_readonly (FASE BA
     const req = new NextRequest("http://localhost/api/copilot/bank-movements");
     const auth = await requireCopilotModuleAccess(req, "bank_movements");
     expect(auth.ok).toBe(true);
+  });
+});
+
+describe("requireBankMovementsFullReadAccess / isBankMovementsInflowReadonly (Historial — bloqueo API para inflow_readonly)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    requireCopilotTenantContext.mockResolvedValue({
+      ok: true,
+      ctx: {
+        ...tenantCtx,
+        appUser: { ...tenantCtx.appUser, role: "usuario" },
+      },
+    });
+  });
+
+  it("403 FORBIDDEN_MODULE para inflow_readonly, aunque el read genérico de bank_movements lo dejaría pasar", async () => {
+    const supabase = mockPermissionsSupabase([
+      { module_key: "bank_movements", access_level: "inflow_readonly" },
+    ]);
+    requireCopilotTenantContext.mockResolvedValue({
+      ok: true,
+      ctx: { ...tenantCtx, supabase, appUser: { ...tenantCtx.appUser, role: "usuario" } },
+    });
+    const req = new NextRequest("http://localhost/api/copilot/bank-movements/imports");
+    const auth = await requireBankMovementsFullReadAccess(req);
+    expect(auth.ok).toBe(false);
+    if (!auth.ok) {
+      expect(auth.response.status).toBe(403);
+      const body = await auth.response.json();
+      expect(body.code).toBe("FORBIDDEN_MODULE");
+      expect(body.moduleKey).toBe("bank_movements");
+    }
+  });
+
+  it("permite lectura completa con bank_movements=read/write/admin", async () => {
+    for (const level of ["read", "write", "admin"]) {
+      const supabase = mockPermissionsSupabase([{ module_key: "bank_movements", access_level: level }]);
+      requireCopilotTenantContext.mockResolvedValue({
+        ok: true,
+        ctx: { ...tenantCtx, supabase, appUser: { ...tenantCtx.appUser, role: "usuario" } },
+      });
+      const req = new NextRequest("http://localhost/api/copilot/bank-movements/imports");
+      const auth = await requireBankMovementsFullReadAccess(req);
+      expect(auth.ok).toBe(true);
+    }
+  });
+
+  it("403 FORBIDDEN_MODULE con bank_movements=none (igual que el read genérico)", async () => {
+    const supabase = mockPermissionsSupabase([{ module_key: "bank_movements", access_level: "none" }]);
+    requireCopilotTenantContext.mockResolvedValue({
+      ok: true,
+      ctx: { ...tenantCtx, supabase, appUser: { ...tenantCtx.appUser, role: "usuario" } },
+    });
+    const req = new NextRequest("http://localhost/api/copilot/bank-movements/imports");
+    const auth = await requireBankMovementsFullReadAccess(req);
+    expect(auth.ok).toBe(false);
+    if (!auth.ok) expect(auth.response.status).toBe(403);
+  });
+
+  it("superadmin bypass", async () => {
+    requireCopilotTenantContext.mockResolvedValue({
+      ok: true,
+      ctx: { ...tenantCtx, appUser: { ...tenantCtx.appUser, role: "superadmin" } },
+    });
+    const req = new NextRequest("http://localhost/api/copilot/bank-movements/imports");
+    const auth = await requireBankMovementsFullReadAccess(req);
+    expect(auth.ok).toBe(true);
+  });
+
+  it("isBankMovementsInflowReadonly refleja el scope resuelto", async () => {
+    const supabase = mockPermissionsSupabase([
+      { module_key: "bank_movements", access_level: "inflow_readonly" },
+    ]);
+    const ctx = { ...tenantCtx, supabase, appUser: { ...tenantCtx.appUser, role: "usuario" } };
+    expect(await isBankMovementsInflowReadonly(ctx as never)).toBe(true);
+
+    const supabaseFull = mockPermissionsSupabase([{ module_key: "bank_movements", access_level: "write" }]);
+    const ctxFull = { ...tenantCtx, supabase: supabaseFull, appUser: { ...tenantCtx.appUser, role: "usuario" } };
+    expect(await isBankMovementsInflowReadonly(ctxFull as never)).toBe(false);
   });
 });
 

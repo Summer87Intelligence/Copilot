@@ -231,22 +231,17 @@ async function confirmWithExisting(
     parserId
   );
 
-  // Reimport sin filas nuevas: no crear import batch vacío (el resultado de
-  // confirmación ya audita leídos / ya existentes / duplicados en archivo).
-  if (plan.to_insert.length === 0) {
-    return {
-      import_id: null,
-      inserted_count: 0,
-      skipped_duplicates_count: plan.skipped_duplicates_count,
-      already_exists_count: plan.already_exists_count,
-      duplicate_in_file_count: plan.duplicate_in_file_count,
-      excluded_before_2026_count: 0,
-      cross_parser_duplicates_count: plan.cross_parser_duplicates.filter((d) => d.existingMovementId)
-        .length,
-      total_preview_count: plan.total_preview_count,
-      outcomes: { ...plan.outcomes, inserted: 0 },
-    };
-  }
+  // Toda corrida exitosa (incluida una sin filas nuevas: todo duplicado o ya
+  // existente) deja un registro persistido en bank_statement_imports. Es la
+  // única fuente de verdad de "última importación exitosa" en la UI.
+  //
+  // Si hay movimientos por insertar, el registro nace "uploaded" (proceso en
+  // curso) y solo pasa a "parsed" cuando el insert idempotente de movimientos
+  // termina bien — así una corrida que crea el registro pero falla al
+  // insertar movimientos nunca queda marcada como éxito falso. Sin
+  // movimientos nuevos, el proceso ya terminó al leer/deduplicar: puede
+  // nacer "parsed" directamente.
+  const hasNewMovements = plan.to_insert.length > 0;
 
   const importInsert = buildStatementImportRecord({
     workspaceId,
@@ -262,6 +257,7 @@ async function confirmWithExisting(
     alreadyExistsCount: plan.already_exists_count,
     duplicateInFileCount: plan.duplicate_in_file_count,
     outcomes: plan.outcomes,
+    status: hasNewMovements ? "uploaded" : "parsed",
   });
 
   const { data: importRow, error: importError } = await supabase
@@ -278,25 +274,45 @@ async function confirmWithExisting(
   let insertedCount = 0;
   let racedAlreadyExists = 0;
 
-  if (params.writeFingerprintColumns) {
-    const result = await insertMovementsIdempotent({
-      supabase,
-      workspaceId,
-      importId,
-      accountLabel: plan.account_label,
-      rows: plan.to_insert,
-    });
-    insertedCount = result.inserted;
-    racedAlreadyExists = result.racedAlreadyExists;
-  } else {
-    const movementRows = plan.to_insert.map((row) => {
-      const full = toMovementRow(workspaceId, importId, plan.account_label, row);
-      const { fingerprint_v1: _fp, fingerprint_version: _ver, ...legacy } = full;
-      return legacy;
-    });
-    const { error: movementsError } = await supabase.from("bank_movements").insert(movementRows);
-    if (movementsError) throw new Error("MOVEMENTS_INSERT_FAILED");
-    insertedCount = movementRows.length;
+  if (hasNewMovements) {
+    try {
+      if (params.writeFingerprintColumns) {
+        const result = await insertMovementsIdempotent({
+          supabase,
+          workspaceId,
+          importId,
+          accountLabel: plan.account_label,
+          rows: plan.to_insert,
+        });
+        insertedCount = result.inserted;
+        racedAlreadyExists = result.racedAlreadyExists;
+      } else {
+        const movementRows = plan.to_insert.map((row) => {
+          const full = toMovementRow(workspaceId, importId, plan.account_label, row);
+          const { fingerprint_v1: _fp, fingerprint_version: _ver, ...legacy } = full;
+          return legacy;
+        });
+        const { error: movementsError } = await supabase.from("bank_movements").insert(movementRows);
+        if (movementsError) throw new Error("MOVEMENTS_INSERT_FAILED");
+        insertedCount = movementRows.length;
+      }
+    } catch (err) {
+      // No dejar una marca de éxito falsa: el batch se registró pero los
+      // movimientos no quedaron persistidos. Best-effort — si el update
+      // también falla, igual propaga el error original (no lo enmascara).
+      try {
+        await supabase.from("bank_statement_imports").update({ status: "failed" }).eq("id", importId);
+      } catch {
+        // ignorado a propósito
+      }
+      throw err;
+    }
+
+    const { error: finalizeError } = await supabase
+      .from("bank_statement_imports")
+      .update({ status: "parsed", row_count: insertedCount })
+      .eq("id", importId);
+    if (finalizeError) throw new Error("IMPORT_FINALIZE_FAILED");
   }
 
   const crossParserDuplicates = plan.cross_parser_duplicates.filter((d) => d.existingMovementId);

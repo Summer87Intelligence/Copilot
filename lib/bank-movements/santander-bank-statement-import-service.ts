@@ -487,6 +487,13 @@ export function buildStatementImportRecord(input: {
   alreadyExistsCount?: number;
   duplicateInFileCount?: number;
   outcomes?: ImportOutcomeCounts;
+  /**
+   * "uploaded" mientras el insert idempotente de movimientos todavía no
+   * terminó (el caller lo pasa a "parsed" recién cuando confirma éxito).
+   * Sin movimientos nuevos por insertar, el proceso ya terminó al leer/
+   * deduplicar: el caller puede pasar "parsed" directamente.
+   */
+  status?: "uploaded" | "parsed";
 }): Record<string, unknown> {
   const fileType = input.fileType ?? inferBankStatementImportFileType(input.fileName);
   const parserId = input.parserId ?? inferBankStatementParserId(input.fileName);
@@ -498,7 +505,7 @@ export function buildStatementImportRecord(input: {
     file_name: input.fileName,
     file_type: fileType,
     imported_by: input.importedBy,
-    status: "parsed",
+    status: input.status ?? "parsed",
     row_count: input.insertedCount,
     metadata: {
       account_number: input.preview.account_number,

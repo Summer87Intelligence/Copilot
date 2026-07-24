@@ -5,12 +5,12 @@ import { isUuidAsPrimaryActorLabel } from "@/lib/bank-movements/bank-import-acto
 import { resolveImportHistoryStats } from "@/lib/bank-movements/bank-import-history-display";
 
 const mocks = vi.hoisted(() => ({
-  requireCopilotModuleAccess: vi.fn(),
+  requireBankMovementsFullReadAccess: vi.fn(),
   enrichBankStatementImportsWithActors: vi.fn(),
 }));
 
 vi.mock("@/lib/auth/copilot-module-api-auth", () => ({
-  requireCopilotModuleAccess: mocks.requireCopilotModuleAccess,
+  requireBankMovementsFullReadAccess: mocks.requireBankMovementsFullReadAccess,
 }));
 
 vi.mock("@/lib/bank-movements/bank-import-actor.server", () => ({
@@ -63,7 +63,7 @@ describe("GET /api/copilot/bank-movements/imports — actors_unresolved", () => 
       }),
     };
 
-    mocks.requireCopilotModuleAccess.mockResolvedValue({
+    mocks.requireBankMovementsFullReadAccess.mockResolvedValue({
       ok: true,
       response: null,
       ctx: {
@@ -106,7 +106,7 @@ describe("GET /api/copilot/bank-movements/imports — actors_unresolved", () => 
         select: vi.fn().mockReturnValue({ eq }),
       })),
     };
-    mocks.requireCopilotModuleAccess.mockResolvedValue({
+    mocks.requireBankMovementsFullReadAccess.mockResolvedValue({
       ok: true,
       response: null,
       ctx: { supabase, tenantCompanyId: WS, appUser: { id: "u1" } },

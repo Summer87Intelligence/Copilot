@@ -69,6 +69,15 @@ function createSupabaseMock() {
           },
         };
       },
+      update: (payload: Record<string, unknown>) => ({
+        eq: (column: string, value: unknown) => {
+          if (table === "bank_statement_imports" && column === "id") {
+            const target = imports.find((imp) => imp.id === value);
+            if (target) Object.assign(target.row, payload);
+          }
+          return Promise.resolve({ error: null });
+        },
+      }),
       then: (
         resolve: (value: { data: Record<string, unknown>[] | null; error: null }) => void,
         reject?: (reason: unknown) => void
@@ -166,6 +175,37 @@ describe("confirmSantanderBankStatementImportsBulk", () => {
     expect(second.skipped_duplicates_count).toBe(5);
     expect(second.results.every((r) => r.status === "duplicate")).toBe(true);
     expect(supabase._bankMovements).toHaveLength(5);
+  });
+
+  it("reimport sin movimientos nuevos igual persiste una fila de importación (status parsed, row_count 0)", async () => {
+    const supabase = createSupabaseMock();
+    const previews = [
+      { file_name: "uyu.pdf", preview: previewBodyFromFixture(SANTANDER_UYU_JULY_AUSZUG_FIXTURE) },
+      { file_name: "usd.pdf", preview: previewBodyFromFixture(SANTANDER_USD_JULY_AUSZUG_FIXTURE) },
+    ];
+
+    await confirmSantanderBankStatementImportsBulk({
+      supabase: supabase as never,
+      workspaceId,
+      importedBy: "user-1",
+      previews,
+    });
+    expect(supabase._imports).toHaveLength(2);
+
+    const second = await confirmSantanderBankStatementImportsBulk({
+      supabase: supabase as never,
+      workspaceId,
+      importedBy: "user-1",
+      previews,
+    });
+
+    expect(second.inserted_count).toBe(0);
+    expect(second.results.every((r) => Boolean(r.import_id))).toBe(true);
+    // Cada archivo reimportado (aunque 0 filas nuevas) deja su propia fila de
+    // ejecución: la UI necesita un imported_at fresco para "Última actualización".
+    expect(supabase._imports).toHaveLength(4);
+    const newRows = supabase._imports.slice(2);
+    expect(newRows.every((imp) => imp.row.status === "parsed" && imp.row.row_count === 0)).toBe(true);
   });
 
   it("bulk parcial duplicado inserta solo el archivo nuevo", async () => {

@@ -28,7 +28,10 @@ function hasModuleAuth(src: string): boolean {
     src.includes("requireCopilotModuleAccess") ||
     src.includes("requireCopilotModuleWriteAccess") ||
     src.includes("requireCopilotModuleAdminAccess") ||
-    src.includes("requireCopilotApiModuleAccess")
+    src.includes("requireCopilotApiModuleAccess") ||
+    // Envuelve requireCopilotModuleAccess("bank_movements") + deniega
+    // inflow_readonly para superficies de historial/reconciliación.
+    src.includes("requireBankMovementsFullReadAccess")
   );
 }
 

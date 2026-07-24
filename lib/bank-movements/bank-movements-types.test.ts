@@ -9,6 +9,7 @@ import {
   BANK_MOVEMENT_MATCH_TYPES,
   BANK_MOVEMENT_STATUSES,
   BANK_MOVEMENT_STATUS_LABELS,
+  isSuccessfulBankImportStatus,
   isValidBankMovementDirection,
   isValidBankMovementStatus,
 } from "@/lib/bank-movements/bank-movements-types";
@@ -69,5 +70,12 @@ describe("bank movements types", () => {
     expect(isValidBankMovementStatus("unknown")).toBe(false);
     expect(isValidBankMovementDirection("inflow")).toBe(true);
     expect(isValidBankMovementDirection("credit")).toBe(false);
+  });
+
+  it("solo 'parsed' cuenta como ejecución exitosa de importación", () => {
+    expect(isSuccessfulBankImportStatus("parsed")).toBe(true);
+    expect(isSuccessfulBankImportStatus("uploaded")).toBe(false);
+    expect(isSuccessfulBankImportStatus("failed")).toBe(false);
+    expect(isSuccessfulBankImportStatus("archived")).toBe(false);
   });
 });

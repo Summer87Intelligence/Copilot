@@ -124,6 +124,13 @@ export type BankMovementMatchSuggestion = {
   updated_at: string;
 };
 
+/** Único criterio de "ejecución exitosa de importación": la corrida terminó y
+ *  quedó auditada, haya insertado filas nuevas o no. `failed`/`archived` y
+ *  `uploaded` (batch todavía sin procesar) nunca cuentan. */
+export function isSuccessfulBankImportStatus(status: BankImportStatus): boolean {
+  return status === "parsed";
+}
+
 export function isValidBankMovementStatus(v: unknown): v is BankMovementStatus {
   return typeof v === "string" && (BANK_MOVEMENT_STATUSES as readonly string[]).includes(v);
 }

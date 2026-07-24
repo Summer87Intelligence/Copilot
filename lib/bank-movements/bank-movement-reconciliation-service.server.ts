@@ -37,6 +37,27 @@ export type ReconciliationListResult = {
   meta: ReconciliationListMeta;
 };
 
+/**
+ * Motor A (Tesorería — pagos programados) concilia EXCLUSIVAMENTE egresos
+ * contra `planned_cash_obligation`s de salida (ver `outflowMovements` más
+ * abajo): no existe una versión "de ingresos" de este dataset. `inflow_readonly`
+ * nunca debe recibir filas, counts ni totales de acá — el caller (route
+ * handler) devuelve esto directamente sin llamar a `loadBankMovementReconciliationList`.
+ */
+export function emptyReconciliationListResult(): ReconciliationListResult {
+  return {
+    items: [],
+    meta: {
+      pending_count: 0,
+      with_high_confidence: 0,
+      with_medium_confidence: 0,
+      without_suggestions: 0,
+      matched_count: 0,
+      ignored_count: 0,
+    },
+  };
+}
+
 function addDaysYmd(ymd: string, days: number): string {
   const date = new Date(`${ymd.slice(0, 10)}T00:00:00`);
   date.setDate(date.getDate() + days);

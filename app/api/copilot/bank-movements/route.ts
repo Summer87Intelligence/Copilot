@@ -7,6 +7,7 @@ import {
   requireCopilotModuleWriteAccess,
 } from "@/lib/auth/copilot-module-api-auth";
 import { bankMovementsScopeFromAccessLevel, mustForceBankInflowOnly } from "@/lib/auth/bank-movements-scope";
+import { sanitizeBankMovementsForInflowReadonly } from "@/lib/bank-movements/bank-movement-balance-privacy";
 import {
   bankMovementCreateBodySchema,
   buildBankMovementInsert,
@@ -88,6 +89,8 @@ export async function GET(request: NextRequest) {
   // acá porque `metadata.ui_hidden` no es un filtro trivial de Postgrest.
   if (forceInflowOnly) {
     rows = rows.filter((r) => !isBankMovementUiHidden((r as { metadata?: Record<string, unknown> | null }).metadata));
+    // inflow_readonly ve movimientos individuales, nunca un saldo de cuenta.
+    rows = sanitizeBankMovementsForInflowReadonly(rows);
   }
 
   // FASE BANK-FULL-RECONCILIATION-UI-CORRECTION-001 — nivel real por movimiento

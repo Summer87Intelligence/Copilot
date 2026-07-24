@@ -74,6 +74,7 @@ import {
 import {
   BANK_MOVEMENT_DIRECTION_LABELS,
   BANK_MOVEMENT_STATUS_LABELS,
+  isSuccessfulBankImportStatus,
   type BankMovement,
   type BankMovementDirection,
   type BankStatementImport,
@@ -209,7 +210,11 @@ function buildInitialBankViewState(
   simpleAssociationMovementId: string | null;
 } {
   const parsed = parseBankFiltersFromSearchParams(searchParams);
-  const tab = resolveInitialTab(searchParams);
+  // Alcance inflow_readonly: Movimientos es la única pestaña permitida. Nunca
+  // confiar en `?tab=`/`?direction=`/`?movementId=` para aterrizar en otra —
+  // se normaliza acá, antes de que exista cualquier estado de React que un
+  // deep link pudiera manipular.
+  const tab = forceInflowOnly ? "movimientos" : resolveInitialTab(searchParams);
   const movementIdParam = searchParams.get("movementId");
   const viewConsult =
     searchParams.get("view") === "consult" || searchParams.get("tab") === "movimientos";
@@ -246,6 +251,9 @@ export function BankMovementsPageClient() {
   // `canMutateBankMovementRecord` es la única fuente de verdad del scope, así
   // que `inflow_readonly` jamás puede colar un canWriteBank=true acá.
   const canWriteBank = canMutateBankMovementRecord(bankScope);
+  // inflow_readonly: única pestaña visible. Nada de espacios vacíos donde
+  // estaban las otras — el nav simplemente renderiza un solo botón.
+  const visibleTabs = forceInflowOnly ? TABS.filter((t) => t.id === "movimientos") : TABS;
   const initialUrlStateRef = useRef<ReturnType<typeof buildInitialBankViewState> | null>(null);
   if (!initialUrlStateRef.current) {
     initialUrlStateRef.current = buildInitialBankViewState(searchParams, forceInflowOnly);
@@ -315,6 +323,15 @@ export function BankMovementsPageClient() {
     );
   }, [forceInflowOnly]);
 
+  // `inflow_readonly` solo puede ver Movimientos: Importar/Conciliación/
+  // Historial quedan fuera de alcance por completo. Igual que el guard de
+  // dirección arriba, esto corrige un cambio de permisos en caliente y
+  // cualquier intento de setTab(...) que haya quedado en otro valor.
+  useEffect(() => {
+    if (!forceInflowOnly) return;
+    setTab((prev) => (prev === "movimientos" ? prev : "movimientos"));
+  }, [forceInflowOnly]);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -352,11 +369,17 @@ export function BankMovementsPageClient() {
     return () => clearTimeout(timer);
   }, [feedback]);
 
-  /** Fecha de la importación exitosa (status "parsed") más reciente, para el bloque "Movimientos bancarios". */
+  /**
+   * Fecha de la última ejecución exitosa de "Importar extracto" (criterio
+   * centralizado en `isSuccessfulBankImportStatus`), para el bloque
+   * "Movimientos bancarios". Una corrida exitosa sin movimientos nuevos
+   * también cuenta: el backend persiste una fila en bank_statement_imports
+   * aunque insertedCount sea 0.
+   */
   const lastSuccessfulImportAt = useMemo(() => {
     let latest: string | null = null;
     for (const imp of imports) {
-      if (imp.status !== "parsed") continue;
+      if (!isSuccessfulBankImportStatus(imp.status)) continue;
       if (!latest || imp.imported_at > latest) latest = imp.imported_at;
     }
     return latest;
@@ -823,12 +846,15 @@ export function BankMovementsPageClient() {
 
   // FASE BANK-SIMPLE-RESPONSIBILITY-AND-DRAWER-DETAIL-001 — Movimientos es
   // solo consulta. La asignación vive exclusivamente en Conciliación.
+  // inflow_readonly nunca tiene Conciliación disponible: no-op defensivo,
+  // aunque los botones que la disparan ya se ocultan más abajo.
   const goToReconciliation = useCallback(
     (movementId: string) => {
+      if (forceInflowOnly) return;
       setTab("conciliacion");
       openSimpleAssociation(movementId);
     },
-    [openSimpleAssociation]
+    [openSimpleAssociation, forceInflowOnly]
   );
 
   const renderMovementActions = (m: BankMovement) => {
@@ -844,7 +870,7 @@ export function BankMovementsPageClient() {
 
     return (
       <div className="flex flex-wrap justify-end gap-1.5">
-        {!isDup ? (
+        {!isDup && !forceInflowOnly ? (
           <button
             type="button"
             onClick={() => goToReconciliation(m.id)}
@@ -855,7 +881,7 @@ export function BankMovementsPageClient() {
             Ver movimiento
           </button>
         ) : null}
-        {isDup ? (
+        {isDup && !forceInflowOnly ? (
           <button
             type="button"
             onClick={() => goToReconciliation(movementDuplicates[m.id]?.canonicalMovementId ?? m.id)}
@@ -865,6 +891,7 @@ export function BankMovementsPageClient() {
           </button>
         ) : null}
         {!isDup &&
+        !forceInflowOnly &&
         (simple === "sin_cliente" || simple === "pendiente") &&
         m.direction === "inflow" ? (
           <button
@@ -1144,7 +1171,7 @@ export function BankMovementsPageClient() {
         aria-label="Secciones de movimientos bancarios"
         data-bank-tabs
       >
-        {TABS.map((item) => (
+        {visibleTabs.map((item) => (
           <button
             key={item.id}
             type="button"

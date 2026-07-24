@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotModuleAccess } from "@/lib/auth/copilot-module-api-auth";
+import { requireBankMovementsFullReadAccess } from "@/lib/auth/copilot-module-api-auth";
 import { enrichBankStatementImportsWithActors } from "@/lib/bank-movements/bank-import-actor.server";
 import type { BankStatementImport } from "@/lib/bank-movements/bank-movements-types";
 
@@ -9,7 +9,9 @@ export const dynamic = "force-dynamic";
 const TABLE_MISSING_CODE = "42P01";
 
 export async function GET(request: NextRequest) {
-  const auth = await requireCopilotModuleAccess(request, "bank_movements");
+  // Historial (Importaciones): inflow_readonly nunca lo ve, ni por UI ni
+  // invocando este endpoint directamente. Guard corre antes de tocar datos.
+  const auth = await requireBankMovementsFullReadAccess(request);
   if (!auth.ok) return auth.response;
 
   const { supabase, tenantCompanyId } = auth.ctx;

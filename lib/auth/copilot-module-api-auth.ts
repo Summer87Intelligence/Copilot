@@ -22,6 +22,7 @@ import { isReadOnlyRole } from "@/lib/auth/permissions";
 import {
   bankMovementsScopeFromAccessLevel,
   canReadBankMovementsScope,
+  mustForceBankInflowOnly,
 } from "@/lib/auth/bank-movements-scope";
 import type { AppUser } from "@/types/app-user";
 
@@ -140,6 +141,34 @@ export async function getCopilotModuleAccessLevel(
   if (role === "superadmin") return "admin";
   const effective = await loadEffectiveModulePermissionsForAppUser(ctx.supabase, ctx.appUser);
   return getModuleAccessLevel(effective, moduleKey);
+}
+
+/** true si el alcance efectivo de `bank_movements` es exactamente `inflow_readonly`. */
+export async function isBankMovementsInflowReadonly(ctx: CopilotTenantContext): Promise<boolean> {
+  const level = await getCopilotModuleAccessLevel(ctx, "bank_movements");
+  return mustForceBankInflowOnly(bankMovementsScopeFromAccessLevel(level));
+}
+
+/**
+ * RBAC para superficies de `bank_movements` que son historial/reconciliación
+ * (Importaciones, y cualquier endpoint auxiliar exclusivo de esa vista) —
+ * nunca la lista acotada de movimientos. `inflow_readonly` puede leer
+ * movimientos (solo ingresos) vía `requireCopilotModuleAccess`, pero jamás
+ * debe ver el historial de importaciones ni por UI ni invocando la API
+ * directamente. Guard pensado para correr ANTES de cualquier consulta a datos.
+ */
+export async function requireBankMovementsFullReadAccess(
+  request: NextRequest,
+  body?: unknown
+): Promise<CopilotAuthResult> {
+  const auth = await requireCopilotModuleAccess(request, "bank_movements", body);
+  if (!auth.ok) return auth;
+
+  if (await isBankMovementsInflowReadonly(auth.ctx)) {
+    return { ok: false, response: moduleForbiddenResponse("bank_movements", "read") };
+  }
+
+  return auth;
 }
 
 /**

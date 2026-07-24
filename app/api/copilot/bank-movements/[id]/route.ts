@@ -7,6 +7,7 @@ import {
   requireCopilotModuleWriteAccess,
 } from "@/lib/auth/copilot-module-api-auth";
 import { bankMovementsScopeFromAccessLevel, mustForceBankInflowOnly } from "@/lib/auth/bank-movements-scope";
+import { stripBankMovementBalanceMetadata } from "@/lib/bank-movements/bank-movement-balance-privacy";
 import {
   bankMovementUpdateBodySchema,
   buildBankMovementPatch,
@@ -62,14 +63,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   // que el listado ya lo excluye del alcance de este lector.
   const accessLevel = await getCopilotModuleAccessLevel(auth.ctx, "bank_movements");
   const scope = bankMovementsScopeFromAccessLevel(accessLevel);
-  if (mustForceBankInflowOnly(scope) && movement.direction !== "inflow") {
+  const forceInflowOnly = mustForceBankInflowOnly(scope);
+  if (forceInflowOnly && movement.direction !== "inflow") {
     return NextResponse.json(
       { ok: false as const, error: "Movimiento no encontrado." },
       { status: 404 }
     );
   }
 
-  return NextResponse.json({ ok: true as const, data: movement });
+  // inflow_readonly ve el movimiento individual, nunca un saldo de cuenta.
+  const responseMovement = forceInflowOnly ? stripBankMovementBalanceMetadata(movement) : movement;
+
+  return NextResponse.json({ ok: true as const, data: responseMovement });
 }
 
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
