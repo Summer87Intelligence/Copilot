@@ -9,6 +9,7 @@ import type { BankImportActorView } from "@/lib/bank-movements/bank-import-actor
 
 export const BANK_IMPORT_STATUSES = ["uploaded", "parsed", "failed", "archived"] as const;
 export type BankImportStatus = (typeof BANK_IMPORT_STATUSES)[number];
+export const SUCCESSFUL_BANK_IMPORT_STATUSES = ["parsed"] as const satisfies readonly BankImportStatus[];
 
 export const BANK_MOVEMENT_DIRECTIONS = ["inflow", "outflow"] as const;
 export type BankMovementDirection = (typeof BANK_MOVEMENT_DIRECTIONS)[number];
@@ -128,7 +129,7 @@ export type BankMovementMatchSuggestion = {
  *  quedó auditada, haya insertado filas nuevas o no. `failed`/`archived` y
  *  `uploaded` (batch todavía sin procesar) nunca cuentan. */
 export function isSuccessfulBankImportStatus(status: BankImportStatus): boolean {
-  return status === "parsed";
+  return (SUCCESSFUL_BANK_IMPORT_STATUSES as readonly BankImportStatus[]).includes(status);
 }
 
 export function isValidBankMovementStatus(v: unknown): v is BankMovementStatus {

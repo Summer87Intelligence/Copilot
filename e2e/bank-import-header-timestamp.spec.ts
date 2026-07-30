@@ -45,25 +45,28 @@ test.describe("bank import header — última actualización", () => {
       });
     });
 
-    let importsCallCount = 0;
+    let latestSuccessfulImportCallCount = 0;
+    await page.route("**/api/copilot/bank-movements/imports/latest-successful", async (route) => {
+      latestSuccessfulImportCallCount += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ok: true,
+          data: {
+            imported_at:
+              latestSuccessfulImportCallCount === 1 ? FIRST_IMPORT_AT : SECOND_IMPORT_AT,
+          },
+        }),
+      });
+    });
+
     await page.route("**/api/copilot/bank-movements/imports", async (route) => {
       if (route.request().method() !== "GET") {
         await route.continue();
         return;
       }
-      importsCallCount += 1;
-      const rows =
-        importsCallCount === 1
-          ? [importRow({})]
-          : [
-              importRow({}),
-              importRow({
-                id: "imp-2",
-                imported_at: SECOND_IMPORT_AT,
-                row_count: 0,
-                metadata: { inserted_count: 0, already_exists_count: 2, total_preview_count: 2 },
-              }),
-            ];
+      const rows = [importRow({})];
       await route.fulfill({
         status: 200,
         contentType: "application/json",

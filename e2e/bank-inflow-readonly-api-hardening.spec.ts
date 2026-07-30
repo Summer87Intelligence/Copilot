@@ -59,6 +59,29 @@ test.describe("Banco — Historial bloqueado y saldos sanitizados a nivel API (C
     expect(JSON.stringify(body)).not.toMatch(/file_name|row_count|imported_at|opening_balance|closing_balance/);
   });
 
+  test("Camila puede leer solo el timestamp del encabezado, sin abrir Historial", async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    await loginAsCami(context, baseURL ?? "http://127.0.0.1:3001");
+    await page.goto("/copilot/movimientos-bancarios");
+
+    const { status, body } = await fetchJson(
+      page,
+      "/api/copilot/bank-movements/imports/latest-successful"
+    );
+    expect(status).toBe(200);
+    expect(body).toMatchObject({
+      ok: true,
+      data: { imported_at: expect.any(String) },
+    });
+    expect(Object.keys((body as { data: Record<string, unknown> }).data)).toEqual(["imported_at"]);
+    await expect(page.getByTestId("bank-last-import-updated-at")).toContainText(
+      "Última actualización"
+    );
+  });
+
   test("GET /imports responde 200 con listado real para superadmin (sin regresión)", async ({
     page,
     context,

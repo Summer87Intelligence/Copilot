@@ -74,7 +74,6 @@ import {
 import {
   BANK_MOVEMENT_DIRECTION_LABELS,
   BANK_MOVEMENT_STATUS_LABELS,
-  isSuccessfulBankImportStatus,
   type BankMovement,
   type BankMovementDirection,
   type BankStatementImport,
@@ -97,6 +96,11 @@ const TABS: Array<{ id: BankTab; label: string; primary?: boolean }> = [
 ];
 
 type ListResponse<T> = { ok: boolean; data?: T[]; message?: string };
+type LatestSuccessfulImportResponse = {
+  ok: boolean;
+  data?: { imported_at: string | null };
+  message?: string;
+};
 type WriteResponse = { ok: boolean; data?: BankMovement; error?: string };
 
 const dateFormatter = new Intl.DateTimeFormat("es-UY", { dateStyle: "medium" });
@@ -281,6 +285,7 @@ export function BankMovementsPageClient() {
     Record<string, { clientCompanyId: string; clientName: string | null }>
   >({});
   const [imports, setImports] = useState<BankStatementImport[]>([]);
+  const [lastSuccessfulImportAt, setLastSuccessfulImportAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<FormState | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -335,9 +340,10 @@ export function BankMovementsPageClient() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [movementsRes, importsRes] = await Promise.all([
+      const [movementsRes, importsRes, latestSuccessfulImportRes] = await Promise.all([
         fetch("/api/copilot/bank-movements"),
         fetch("/api/copilot/bank-movements/imports"),
+        fetch("/api/copilot/bank-movements/imports/latest-successful"),
       ]);
       const movementsJson = (await movementsRes.json()) as ListResponse<BankMovement> & {
         levels?: Record<string, MovementReconciliationLevel>;
@@ -345,6 +351,8 @@ export function BankMovementsPageClient() {
         clients?: Record<string, { clientCompanyId: string; clientName: string | null }>;
       };
       const importsJson = (await importsRes.json()) as ListResponse<BankStatementImport>;
+      const latestSuccessfulImportJson =
+        (await latestSuccessfulImportRes.json()) as LatestSuccessfulImportResponse;
       if (movementsJson.ok) {
         setMovements(movementsJson.data ?? []);
         setMovementLevels(movementsJson.levels ?? {});
@@ -352,6 +360,9 @@ export function BankMovementsPageClient() {
         setMovementClients(movementsJson.clients ?? {});
       }
       if (importsJson.ok) setImports(importsJson.data ?? []);
+      if (latestSuccessfulImportJson.ok) {
+        setLastSuccessfulImportAt(latestSuccessfulImportJson.data?.imported_at ?? null);
+      }
     } catch {
       // Estado vacío ya cubre el caso sin datos.
     } finally {
@@ -368,22 +379,6 @@ export function BankMovementsPageClient() {
     const timer = setTimeout(() => setFeedback(null), 4000);
     return () => clearTimeout(timer);
   }, [feedback]);
-
-  /**
-   * Fecha de la última ejecución exitosa de "Importar extracto" (criterio
-   * centralizado en `isSuccessfulBankImportStatus`), para el bloque
-   * "Movimientos bancarios". Una corrida exitosa sin movimientos nuevos
-   * también cuenta: el backend persiste una fila en bank_statement_imports
-   * aunque insertedCount sea 0.
-   */
-  const lastSuccessfulImportAt = useMemo(() => {
-    let latest: string | null = null;
-    for (const imp of imports) {
-      if (!isSuccessfulBankImportStatus(imp.status)) continue;
-      if (!latest || imp.imported_at > latest) latest = imp.imported_at;
-    }
-    return latest;
-  }, [imports]);
 
   const periodRange = useMemo(() => resolveBankPeriodRange(period), [period]);
 
