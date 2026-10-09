@@ -11,7 +11,7 @@ const WS = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
 type Row = Record<string, unknown>;
 type Tables = Record<string, Row[]>;
 
-function fakeClient(tables: Tables) {
+function fakeClient(tables: Tables, maxInValues = Infinity) {
   return {
     from(table: string) {
       const rows = tables[table] ?? [];
@@ -36,6 +36,7 @@ function fakeClient(tables: Tables) {
           return builder;
         },
         in(col: string, vals: unknown[]) {
+          if (vals.length > maxInValues) throw new Error("Request URI too large");
           inFilters[col] = vals;
           return builder;
         },
@@ -368,4 +369,17 @@ describe("BANK-FULL-RECONCILIATION-UI-CORRECTION-001 — listReconciledPaymentsF
     expect(payments[0]!.level).toBe("reconciled_with_receipt");
     expect(payments[0]!.appliedInvoices).toHaveLength(0);
   });
+});
+
+
+it("preserves saved client associations when a full list exceeds the query URL limit", async () => {
+  const movements = Array.from({ length: 205 }, (_, i) => ({ id: `movement-${i}`, currency: "UYU", amount: 100 }));
+  const client = fakeClient({
+    bank_movement_client_identifications: [{ workspace_id: WS, movement_id: "movement-204", client_company_id: "client-last", status: "identified" }],
+  }, 200);
+  const result = await batchDeriveMovementReconciliationLevels(client as never, WS, movements);
+  expect(result.size).toBe(205);
+  expect(result.get("movement-204")?.clientCompanyId).toBe("client-last");
+  expect(result.get("movement-204")?.level).not.toBe("unidentified");
+  expect(result.get("movement-0")?.level).toBe("unidentified");
 });

@@ -37,6 +37,19 @@ export async function batchDeriveMovementReconciliationLevels(
   const result = new Map<string, MovementLevelDetail>();
   if (movements.length === 0) return result;
 
+  // Keep PostgREST .in() URLs below request-size limits for the full bank list.
+  // Preserve every movement instead of silently dropping all association states.
+  const batchSize = 100;
+  if (movements.length > batchSize) {
+    for (let offset = 0; offset < movements.length; offset += batchSize) {
+      const batch = await batchDeriveMovementReconciliationLevels(
+        supabase, workspaceId, movements.slice(offset, offset + batchSize)
+      );
+      for (const [id, detail] of batch) result.set(id, detail);
+    }
+    return result;
+  }
+
   const movementIds = movements.map((m) => m.id);
 
   const [identRes, linkRes] = await Promise.all([
