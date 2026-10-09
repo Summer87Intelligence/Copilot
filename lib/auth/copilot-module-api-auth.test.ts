@@ -15,6 +15,7 @@ import {
   requireCopilotModuleWriteAccess,
   requireBankMovementsFullReadAccess,
   isBankMovementsInflowReadonly,
+  requireBankMovementClientAssignmentAccess,
 } from "@/lib/auth/copilot-module-api-auth";
 import { resolveCopilotApiModuleKey } from "@/lib/auth/copilot-api-module-map";
 
@@ -41,6 +42,37 @@ const tenantCtx = {
   },
   tenantCompanyId: "ws-1",
 };
+
+describe("asignación de clientes con acceso solo a ingresos", () => {
+  beforeEach(() => vi.clearAllMocks());
+  const request = () => new NextRequest("http://localhost/api/copilot/bank-reconciliation/client-identifications");
+  function context(level: string, role = "usuario") {
+    requireCopilotTenantContext.mockResolvedValue({ ok: true, ctx: {
+      ...tenantCtx,
+      supabase: mockPermissionsSupabase([{ module_key: "bank_movements", access_level: level }]),
+      appUser: { ...tenantCtx.appUser, role },
+    } });
+  }
+  it("permite asignar, pero rechaza escritura general e historial", async () => {
+    context("inflow_associate");
+    expect((await requireBankMovementClientAssignmentAccess(request())).ok).toBe(true);
+    expect((await requireCopilotModuleAccess(request(), "bank_movements")).ok).toBe(true);
+    const write = await requireCopilotModuleWriteAccess(request(), "bank_movements");
+    expect(write.ok).toBe(false);
+    if (!write.ok) expect(write.response.status).toBe(403);
+    expect((await requireBankMovementsFullReadAccess(request())).ok).toBe(false);
+  });
+  it.each(["none", "inflow_readonly", "read"])("rechaza asignación para %s", async (level) => {
+    context(level);
+    expect((await requireBankMovementClientAssignmentAccess(request())).ok).toBe(false);
+  });
+  it("preserva escritura completa y bloqueo del rol demo", async () => {
+    context("write");
+    expect((await requireBankMovementClientAssignmentAccess(request())).ok).toBe(true);
+    context("inflow_associate", "demo_readonly");
+    expect((await requireBankMovementClientAssignmentAccess(request())).ok).toBe(false);
+  });
+});
 
 describe("resolveCopilotApiModuleKey", () => {
   it("mapea prefijos críticos", () => {

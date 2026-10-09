@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { parseAndValidateJsonBody } from "@/lib/api/parse-and-validate-json-body";
-import { requireCopilotModuleWriteAccess } from "@/lib/auth/copilot-module-api-auth";
+import { getCopilotModuleAccessLevel, requireBankMovementClientAssignmentAccess } from "@/lib/auth/copilot-module-api-auth";
+import { canAccessBankInflowAssignmentBatch } from "@/lib/bank-movements/bank-client-assignment-access.server";
 import { confirmBatchClientIdentification } from "@/lib/bank/canonical/confirm-client-identification.server";
 
 export const dynamic = "force-dynamic";
@@ -29,14 +30,18 @@ export async function POST(request: NextRequest) {
   const parsed = await parseAndValidateJsonBody(request, bodySchema);
   if (!parsed.ok) return parsed.response;
 
-  const auth = await requireCopilotModuleWriteAccess(
+  const auth = await requireBankMovementClientAssignmentAccess(
     request,
-    "bank_movements",
     parsed.data as Record<string, unknown>
   );
   if (!auth.ok) return auth.response;
 
   try {
+    if (await getCopilotModuleAccessLevel(auth.ctx, "bank_movements") === "inflow_associate" &&
+        !await canAccessBankInflowAssignmentBatch(auth.ctx.supabase, auth.ctx.tenantCompanyId,
+          parsed.data.movementIds, parsed.data.clientCompanyId)) {
+      return NextResponse.json({ ok: false, error: "Movimiento o cliente no encontrado." }, { status: 404 });
+    }
     const result = await confirmBatchClientIdentification(auth.ctx.supabase, {
       workspaceId: auth.ctx.tenantCompanyId,
       actorUserId: auth.ctx.appUser.id,

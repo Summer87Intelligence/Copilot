@@ -22,6 +22,8 @@ import {
 import { buildBankReturnToQuery, buildClientBankingHref } from "@/lib/bank-movements/client-banking-navigation";
 import type { BankMovement } from "@/lib/bank-movements/bank-movements-types";
 import { maskAccountOrReference } from "@/lib/bank/canonical/mask-account-or-reference";
+import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
+import { bankMovementsScopeFromAccessLevel, canAssignBankMovementClient, canMutateBankMovementRecord } from "@/lib/auth/bank-movements-scope";
 
 /**
  * FASE BANK-SIMPLE-RESPONSIBILITY-AND-DRAWER-DETAIL-001 — panel único de
@@ -87,6 +89,10 @@ export function SimpleMovementAssociationPanel({
   onClose: () => void;
   onChanged: () => void;
 }) {
+  const { modulePermissions } = useCopilotPermissions();
+  const scope = bankMovementsScopeFromAccessLevel(modulePermissions.bank_movements);
+  const canAssignClient = canAssignBankMovementClient(scope);
+  const canManageAssociation = canMutateBankMovementRecord(scope);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [movement, setMovement] = useState<MovementDTO | null>(null);
   const [association, setAssociation] = useState<AssociationDTO>(null);
@@ -148,7 +154,7 @@ export function SimpleMovementAssociationPanel({
     if (!pickedClientId) return;
     setSubmitting(true);
     setFeedback(null);
-    const res = await fetchJson<{ createdCount: number }>("/api/copilot/bank-reconciliation/client-identifications", {
+    const res = await fetchJson<{ createdCount: number; conflicts?: Array<{ movementId: string }> }>("/api/copilot/bank-reconciliation/client-identifications", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ clientCompanyId: pickedClientId, movementIds: [movementId], reason: null }),
@@ -158,7 +164,16 @@ export function SimpleMovementAssociationPanel({
       setFeedback({ tone: "error", message: res.error ?? "No se pudo guardar la asociación." });
       return;
     }
+    if (res.data?.conflicts?.length) {
+      setFeedback({ tone: "error", message: "Este movimiento ya está asociado a otro cliente. Revisá la asociación existente." });
+      setPickedClientId(null);
+      await load(movementId);
+      onChanged();
+      return;
+    }
     setFeedback({ tone: "ok", message: `Movimiento asociado a ${pickedClientName}.` });
+    setPickedClientId(null);
+    setPickedClientName("");
     await load(movementId);
     onChanged();
   }, [pickedClientId, pickedClientName, movementId, load, onChanged]);
@@ -371,7 +386,7 @@ export function SimpleMovementAssociationPanel({
                     revocar el cliente no está disponible acá — eso afectaría una conciliación financiera real,
                     fuera de alcance de este panel.
                   </p>
-                ) : pickedClientId ? (
+                ) : canManageAssociation && pickedClientId ? (
                   <div className="space-y-2">
                     <p className={copilotCaptionClass}>Nuevo cliente: {pickedClientName}</p>
                     <div>
@@ -386,7 +401,7 @@ export function SimpleMovementAssociationPanel({
                   </div>
                 ) : null}
               </div>
-            ) : (
+            ) : canAssignClient ? (
               <div>
                 <label className={copilotMetricLabelClass}>Cliente</label>
                 {pickedClientId ? (
@@ -438,14 +453,16 @@ export function SimpleMovementAssociationPanel({
                   </div>
                 )}
               </div>
-            )}
+            ) : <p className={copilotCaptionClass}>Sin cliente asociado.</p>}
           </div>
         ) : null}
       </BankDrawerBody>
 
       {loadState === "ready" && movement ? (
         <BankDrawerFooter className="flex flex-wrap gap-2 border-t border-[var(--copilot-border)] px-5 py-3">
-          {isAssociated ? (
+          {!canManageAssociation && isAssociated ? (
+            <p className={copilotCaptionClass}>Asociación disponible para consulta.</p>
+          ) : isAssociated ? (
             association?.source === "financial_link" ? (
               <a
                 href={buildClientBankingHref({
@@ -517,7 +534,7 @@ export function SimpleMovementAssociationPanel({
                 </button>
               </>
             )
-          ) : (
+          ) : canAssignClient ? (
             <>
               <button
                 type="button"
@@ -527,6 +544,7 @@ export function SimpleMovementAssociationPanel({
               >
                 {submitting ? "Guardando asociación…" : "Confirmar asociación"}
               </button>
+              {canManageAssociation ? <>
               <button
                 type="button"
                 disabled={submitting}
@@ -543,8 +561,9 @@ export function SimpleMovementAssociationPanel({
               >
                 Marcar ingreso no comercial
               </button>
+              </> : null}
             </>
-          )}
+          ) : null}
         </BankDrawerFooter>
       ) : null}
     </BankDrawerShell>

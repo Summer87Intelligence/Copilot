@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireCopilotModuleAccess } from "@/lib/auth/copilot-module-api-auth";
+import { requireCopilotModuleAccess, isBankMovementsInflowReadonly } from "@/lib/auth/copilot-module-api-auth";
+import { stripBankMovementBalanceMetadata } from "@/lib/bank-movements/bank-movement-balance-privacy";
+import { isBankMovementUiHidden } from "@/lib/bank-movements/bank-movement-visibility";
 import { getActiveIdentificationForMovement } from "@/lib/bank/canonical/client-identification-repository.server";
 import type { BankMovement } from "@/lib/bank-movements/bank-movements-types";
 
@@ -37,6 +39,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   const auth = await requireCopilotModuleAccess(request, "bank_movements");
   if (!auth.ok) return auth.response;
   const { supabase, tenantCompanyId } = auth.ctx;
+  const forceInflowOnly = await isBankMovementsInflowReadonly(auth.ctx);
 
   const { data: movement, error: movementError } = await supabase
     .from("bank_movements")
@@ -47,7 +50,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   if (movementError) {
     return NextResponse.json({ ok: false as const, error: "No se pudo cargar el movimiento." }, { status: 500 });
   }
-  if (!movement) {
+  if (!movement || (forceInflowOnly && (movement.direction !== "inflow" || isBankMovementUiHidden(movement.metadata)))) {
     return NextResponse.json({ ok: false as const, error: "Movimiento no encontrado." }, { status: 404 });
   }
 
@@ -92,7 +95,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   return NextResponse.json({
     ok: true as const,
     data: {
-      movement: movement as BankMovement,
+      movement: forceInflowOnly ? stripBankMovementBalanceMetadata(movement as BankMovement) : movement as BankMovement,
       identification: clientCompanyId
         ? {
             id: identification?.id ?? null,

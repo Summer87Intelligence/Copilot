@@ -69,6 +69,7 @@ import { useCopilotPermissions } from "@/lib/auth/copilot-permissions-context";
 import {
   bankMovementsScopeFromAccessLevel,
   canMutateBankMovementRecord,
+  canAssignBankMovementClient,
   mustForceBankInflowOnly,
 } from "@/lib/auth/bank-movements-scope";
 import {
@@ -201,7 +202,8 @@ function resolveInitialTab(searchParams: URLSearchParams): BankTab {
 
 function buildInitialBankViewState(
   searchParams: URLSearchParams,
-  forceInflowOnly: boolean
+  forceInflowOnly: boolean,
+  allowInflowAssignment = false
 ): {
   tab: BankTab;
   period: BankPeriodState;
@@ -221,7 +223,7 @@ function buildInitialBankViewState(
   const tab = forceInflowOnly ? "movimientos" : resolveInitialTab(searchParams);
   const movementIdParam = searchParams.get("movementId");
   const viewConsult =
-    searchParams.get("view") === "consult" || searchParams.get("tab") === "movimientos";
+    searchParams.get("view") === "consult" || (searchParams.get("tab") === "movimientos" && !allowInflowAssignment);
   const filters = withForcedBankDirection({ ...parsed.filters }, forceInflowOnly);
 
   if (tab === "conciliacion" && filters.simpleStates.trim() === "") {
@@ -255,12 +257,13 @@ export function BankMovementsPageClient() {
   // `canMutateBankMovementRecord` es la única fuente de verdad del scope, así
   // que `inflow_readonly` jamás puede colar un canWriteBank=true acá.
   const canWriteBank = canMutateBankMovementRecord(bankScope);
+  const canAssignClient = canAssignBankMovementClient(bankScope);
   // inflow_readonly: única pestaña visible. Nada de espacios vacíos donde
   // estaban las otras — el nav simplemente renderiza un solo botón.
   const visibleTabs = forceInflowOnly ? TABS.filter((t) => t.id === "movimientos") : TABS;
   const initialUrlStateRef = useRef<ReturnType<typeof buildInitialBankViewState> | null>(null);
   if (!initialUrlStateRef.current) {
-    initialUrlStateRef.current = buildInitialBankViewState(searchParams, forceInflowOnly);
+    initialUrlStateRef.current = buildInitialBankViewState(searchParams, forceInflowOnly, bankScope === "inflow_associate");
   }
   const initialUrlState = initialUrlStateRef.current;
   const [tab, setTab] = useState<BankTab>(initialUrlState.tab);
@@ -478,7 +481,7 @@ export function BankMovementsPageClient() {
     tab === "conciliacion"
       ? simpleAssociationMovementId
       : tab === "movimientos"
-        ? highlightMovementId
+        ? (bankScope === "inflow_associate" ? simpleAssociationMovementId ?? highlightMovementId : highlightMovementId)
         : null;
   const activeViewForUrl =
     tab === "movimientos" && highlightMovementId ? "consult" : null;
@@ -1104,7 +1107,7 @@ export function BankMovementsPageClient() {
         // operativo actual, no un hecho histórico, así que no se muestran ahí.
         <div className="space-y-3">
           <div className={`grid grid-cols-2 lg:grid-cols-4 ${COPILOT_GRID_GAP}`}>
-            {kpiCards.map((card) => {
+            {kpiCards.filter((card) => !forceInflowOnly || card.focus !== "outflow").map((card) => {
               const active = kpiFocus === card.focus;
               return (
                 <button
@@ -1143,10 +1146,10 @@ export function BankMovementsPageClient() {
               <p className={copilotCaptionClass}>
                 {periodRange.label} · {bankAccountLabel}
               </p>
-              <p className={copilotCaptionClass} title="Diferencia entre entradas y salidas del período.">
+              {!forceInflowOnly ? <p className={copilotCaptionClass} title="Diferencia entre entradas y salidas del período.">
                 Diferencia del período · UYU {numberFormatter.format(periodDifference.UYU)} · USD{" "}
                 {numberFormatter.format(periodDifference.USD)}
-              </p>
+              </p> : null}
             </div>
             {kpiFocus !== "none" ? (
               <button
@@ -1263,6 +1266,21 @@ export function BankMovementsPageClient() {
                 description="Probá limpiar filtros o revisar otra moneda, estado o dirección."
               />
             </div>
+          ) : bankScope === "inflow_associate" ? (
+            <div className="mt-4">
+              <SimpleReconciliationList
+                movements={filteredMovements}
+                movementLevels={movementLevels}
+                movementDuplicates={movementDuplicates}
+                movementClients={movementClients}
+                canWriteBank={false}
+                onOpenAssociation={openSimpleAssociation}
+                onRestore={() => undefined}
+                pageSize={movPageSize}
+                onPageSizeChange={(size) => changeMovPageSize(size as MovPageSize)}
+                returnToSearch={currentSearchString}
+              />
+            </div>
           ) : (
             <div className="mt-4 space-y-3">
               <CopilotResponsiveTable<BankMovement>
@@ -1369,7 +1387,7 @@ export function BankMovementsPageClient() {
         </div>
       ) : null}
 
-      {tab === "conciliacion" && simpleAssociationMovementId ? (
+      {(tab === "conciliacion" || (tab === "movimientos" && bankScope === "inflow_associate" && canAssignClient)) && simpleAssociationMovementId ? (
         <SimpleMovementAssociationPanel
           movementId={simpleAssociationMovementId}
           returnToSearch={currentSearchString}

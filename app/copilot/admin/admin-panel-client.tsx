@@ -727,7 +727,7 @@ function EditPermissionsModal({
                         aria-label={`Nivel de acceso para ${MODULE_LABELS[moduleKey]}`}
                         className="w-full max-w-[220px] rounded-lg border border-[var(--copilot-border)] bg-[var(--copilot-card-bg)] px-2 py-1 text-xs text-[var(--copilot-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--copilot-accent)]/40"
                       >
-                        {(["none", "inflow_readonly", "read", "write"] as const).map((option) => (
+                        {(["none", "inflow_readonly", "inflow_associate", "read", "write"] as const).map((option) => (
                           <option key={option} value={option}>
                             {accessLevelLabel(option)}
                           </option>

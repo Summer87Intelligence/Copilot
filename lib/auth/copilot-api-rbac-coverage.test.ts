@@ -27,6 +27,7 @@ function hasModuleAuth(src: string): boolean {
   return (
     src.includes("requireCopilotModuleAccess") ||
     src.includes("requireCopilotModuleWriteAccess") ||
+    src.includes("requireBankMovementClientAssignmentAccess") ||
     src.includes("requireCopilotModuleAdminAccess") ||
     src.includes("requireCopilotApiModuleAccess") ||
     // Envuelve requireCopilotModuleAccess("bank_movements") + deniega

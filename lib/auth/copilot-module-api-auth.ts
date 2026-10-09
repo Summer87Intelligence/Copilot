@@ -22,6 +22,7 @@ import { isReadOnlyRole } from "@/lib/auth/permissions";
 import {
   bankMovementsScopeFromAccessLevel,
   canReadBankMovementsScope,
+  canAssignBankMovementClient,
   mustForceBankInflowOnly,
 } from "@/lib/auth/bank-movements-scope";
 import type { AppUser } from "@/types/app-user";
@@ -143,10 +144,25 @@ export async function getCopilotModuleAccessLevel(
   return getModuleAccessLevel(effective, moduleKey);
 }
 
-/** true si el alcance efectivo de `bank_movements` es exactamente `inflow_readonly`. */
+/** Compatibilidad: true para ambos alcances limitados a ingresos. */
 export async function isBankMovementsInflowReadonly(ctx: CopilotTenantContext): Promise<boolean> {
   const level = await getCopilotModuleAccessLevel(ctx, "bank_movements");
   return mustForceBankInflowOnly(bankMovementsScopeFromAccessLevel(level));
+}
+
+/** Autoriza solamente crear asociaciones movimiento→cliente; no mutaciones bancarias. */
+export async function requireBankMovementClientAssignmentAccess(
+  request: NextRequest,
+  body?: unknown
+): Promise<CopilotAuthResult> {
+  const auth = await requireCopilotModuleAccess(request, "bank_movements", body);
+  if (!auth.ok) return auth;
+  const level = await getCopilotModuleAccessLevel(auth.ctx, "bank_movements");
+  if (isReadOnlyRole(auth.ctx.appUser.role) ||
+      !canAssignBankMovementClient(bankMovementsScopeFromAccessLevel(level))) {
+    return { ok: false, response: moduleForbiddenResponse("bank_movements", "write") };
+  }
+  return auth;
 }
 
 /**

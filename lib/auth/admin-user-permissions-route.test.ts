@@ -48,6 +48,17 @@ describe("PATCH /api/copilot/admin/users/:id/permissions", () => {
     vi.clearAllMocks();
   });
 
+  it.each(["bank_movements", "tesoreria"])("permiso inflow_associate se limita a Banco (%s)", async (moduleKey) => {
+    const upsert = vi.fn().mockResolvedValue({ error: null });
+    const admin = { from: vi.fn((table: string) => table === "app_users"
+      ? makeUserLookupChain({ id: TARGET_ID, role: "usuario" }) : { upsert }) };
+    mocks.requireAdminContext.mockResolvedValue(adminAuthOk(admin));
+    const response = await PATCH(makeRequest({ permissions: [{ moduleKey, accessLevel: "inflow_associate" }] }),
+      { params: Promise.resolve({ id: TARGET_ID }) });
+    expect(response.status).toBe(moduleKey === "bank_movements" ? 200 : 400);
+    expect(upsert).toHaveBeenCalledTimes(moduleKey === "bank_movements" ? 1 : 0);
+  });
+
   it("persiste bank_movements en write vía upsert por user_id (no email)", async () => {
     const upsertMock = vi.fn().mockResolvedValue({ error: null });
     const admin = {

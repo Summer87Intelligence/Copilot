@@ -79,6 +79,12 @@ export async function PATCH(
         { status: 400 }
       );
     }
+    if (accessLevel === "inflow_associate" && moduleKey !== "bank_movements") {
+      return NextResponse.json(
+        { ok: false, message: "Solo ingresos · Asignar clientes aplica únicamente a Banco." },
+        { status: 400 }
+      );
+    }
     // No permitir 'admin' a no-superadmin (excepto para el módulo admin que solo superadmin puede tener)
     if (accessLevel === "admin" && userRole !== "superadmin") {
       return NextResponse.json(

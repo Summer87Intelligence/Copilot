@@ -30,12 +30,13 @@ export const MODULE_KEYS = [
 
 export type ModuleKey = (typeof MODULE_KEYS)[number];
 
-export const ACCESS_LEVELS = ["none", "inflow_readonly", "read", "write", "admin"] as const;
+export const ACCESS_LEVELS = ["none", "inflow_readonly", "inflow_associate", "read", "write", "admin"] as const;
 export type AccessLevel = (typeof ACCESS_LEVELS)[number];
 
 const LEVEL_RANK: Record<AccessLevel, number> = {
   none: 0,
   inflow_readonly: 1,
+  inflow_associate: 1,
   read: 2,
   write: 3,
   admin: 4,
@@ -122,6 +123,7 @@ export function accessLevelLabel(level: AccessLevel): string {
   const labels: Record<AccessLevel, string> = {
     none: "No ver",
     inflow_readonly: "Solo ingresos · Solo lectura",
+    inflow_associate: "Solo ingresos · Asignar clientes",
     read: "Ver",
     write: "Modificar",
     admin: "Admin",

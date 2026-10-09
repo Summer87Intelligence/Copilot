@@ -4,6 +4,7 @@ import {
   bankMovementsScopeFromAccessLevel,
   bankMovementsScopeLabel,
   canMutateBankMovementRecord,
+  canAssignBankMovementClient,
   canReadBankMovementsScope,
   mustForceBankInflowOnly,
 } from "@/lib/auth/bank-movements-scope";
@@ -84,5 +85,23 @@ describe("bankMovementsScopeLabel", () => {
     expect(bankMovementsScopeLabel("none")).toBe("No ver");
     expect(bankMovementsScopeLabel("read_all")).toBe("Ver todos");
     expect(bankMovementsScopeLabel("write_all")).toBe("Modificar");
+  });
+});
+
+describe("Solo ingresos con asignación de clientes", () => {
+  it("lee y asigna sin habilitar egresos ni editar movimientos", () => {
+    const scope = bankMovementsScopeFromAccessLevel("inflow_associate");
+    expect(scope).toBe("inflow_associate");
+    expect(canReadBankMovementsScope(scope)).toBe(true);
+    expect(canAssignBankMovementClient(scope)).toBe(true);
+    expect(mustForceBankInflowOnly(scope)).toBe(true);
+    expect(canMutateBankMovementRecord(scope)).toBe(false);
+    expect(bankMovementsScopeLabel(scope)).toBe("Solo ingresos · Asignar clientes");
+  });
+  it("no transforma a otros lectores en operadores", () => {
+    expect(canAssignBankMovementClient("inflow_readonly")).toBe(false);
+    expect(canAssignBankMovementClient("read_all")).toBe(false);
+    expect(canAssignBankMovementClient("none")).toBe(false);
+    expect(canAssignBankMovementClient("write_all")).toBe(true);
   });
 });
